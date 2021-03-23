@@ -1,0 +1,23 @@
+Package: tfarima
+Type: Package
+Title: Transfer Function and ARIMA Models
+Version: 0.1.1
+Date: 2020-11-14
+Authors@R: person("Jose L.", "Gallego", email = "jose.gallego@unican.es",
+  role = c("aut", "cre"))
+Description: Building customized transfer function and ARIMA models with multiple operators and parameter restrictions. Functions for model identification, model estimation (exact or conditional maximum likelihood), model diagnostic checking, automatic outlier detection, calendar effects, forecasting and seasonal adjustment. See Bell and Hillmer (1983) <doi:10.1080/01621459.1983.10478005>, Box, Jenkins, Reinsel and Ljung <ISBN:978-1-118-67502-1>, Box, Pierce and Newbold (1987) <doi:10.1080/01621459.1987.10478430>, Box and Tiao (1975) <doi:10.1080/01621459.1975.10480264>, Chen and Liu (1993) <doi:10.1080/01621459.1993.10594321>, Thompson and Tiao (1970) <http://old-www.stat.wisc.edu/sites/default/files/TR222.pdf>.
+Author: Jose L. Gallego [aut, cre]
+Maintainer: Jose L. Gallego <jose.gallego@unican.es>
+License: GPL-2
+Imports: Rcpp (>= 1.0.0), stats, numDeriv, zoo
+LinkingTo: Rcpp, RcppArmadillo
+Suggests: knitr, rmarkdown
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.1
+Depends: R (>= 2.10)
+VignetteBuilder: knitr
+NeedsCompilation: yes
+Packaged: 2020-11-14 07:39:19 UTC; jlgal
+Repository: CRAN
+Date/Publication: 2020-11-14 13:00:02 UTC
