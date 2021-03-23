@@ -65,17 +65,19 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
     for (i in 1:k) {
       stopifnot(inherits(inputs[[i]], "tf"))
       if (frequency(inputs[[i]]$x) != s) stop("invalid frequency for input")
+      # Check sample period for input: start1 <= start and end1 >= end
       start1 <- start(inputs[[i]]$x)
+      t0 <- (start[1] - start1[1])*s + (start1[2] - start[2] + 1)
       end1 <- end(inputs[[i]]$x)
-      t0 <- (start[1] - start1[1])*s + (start1[2] - start[2]) + 1
-      t1 <- (end1[1] - start[1])*s + end1[2] - start[2] + 1 
-      if (t0 < 1 || t1 < t0 || t1 < N) {
+      t1 <- (end1[1] - start1[1])*s + (end1[2] - start[2] + 1)
+      if (t0 < 1 || (t1 - t0 + 1) != N) {
         stop("incompatible samples")
       }
+      t1 <- t0 + N - 1
       inputs[[i]]$t.start <- t0
       inputs[[i]]$t.end <- t1
       if (inputs[[i]]$param[1] == 0) {
-        x <- diffC(inputs[[i]]$x[t0:(t0+N-1)], noise$nabla, FALSE)
+        x <- diffC(inputs[[i]]$x[t0:t1], noise$nabla, FALSE)
         inputs[[i]]$param[1] <- lm(y ~ x)$coefficients[2]
       }
     }
@@ -95,19 +97,17 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
       if (kx == 1) cn <- xn
       else cn <- paste(xn, 1:kx, sep = "")
     }
-    if (is.ts(xreg)) {
-      if (frequency(xreg) != s) stop("invalid frequency for xreg inputs")
-      start1 <- start(xreg)
-      end1 <- end(xreg)
-      t0 <- (start[1] - start1[1])*s + (start1[2] - start[2]) + 1
-      t1 <- (end1[1] - start[1])*s + end1[2] - start[2] + 1 
-      if (t0 < 1 || t1 < t0 || t1 < N) {
-        stop("incompatible samples")
-      }
-      if (t0 > 1) xreg <- xreg[t0:t1, ]
-    } else {
-      xreg <- ts(xreg, start = start, frequency = s)
+    if (!is.ts(xreg)) xreg <- ts(xreg, start = start, frequency = s)
+    if (frequency(xreg) != s) stop("invalid frequency for xreg inputs")
+    # Check sample period for X: start1 <= start and end1 >= end
+    start1 <- start(xreg)
+    t0 <- (start[1] - start1[1])*s + (start[2] - start1[2] + 1)
+    end1 <- end(xreg)
+    t1 <- (end1[1] - start1[1])*s + (end1[2] - start1[2] + 1)
+    if (t0 < 1 || (t1 - t0 + 1) < N) {
+      stop("incompatible samples")
     }
+    if (t0 > 1) xreg <- xreg[t0:t1, ]
     colnames(xreg) <- cn
     X <- apply(xreg, 2, function(x) {
       x <- diffC(x, noise$nabla, FALSE)
@@ -352,7 +352,7 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir=NULL, ...) 
         t0 <- tfm$inputs[[i]]$t.start
         t1 <- tfm$inputs[[i]]$t.end
         if (t0 > 1 || t1 > N) 
-          y <- y - diffC(x[t0:(t0+N-1)], tfm$noise$nabla, tfm$inputs[[i]]$um$bc)
+          y <- y - diffC(x[t0:t1], tfm$noise$nabla, tfm$inputs[[i]]$um$bc)
         else
           y <- y - diffC(x, tfm$noise$nabla, tfm$inputs[[i]]$um$bc)
       }
@@ -372,7 +372,7 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir=NULL, ...) 
         t0 <- tfm$inputs[[i]]$t.start
         t1 <- tfm$inputs[[i]]$t.end
         if (t0 > 1 || t1 > N)
-          y <- y - x[t0:(t0+N-1)]
+          y <- y - x[t0:t1]
         else
           y <- y - x
       }
@@ -708,7 +708,7 @@ predict.tfm <- function(object, y = NULL, ori = NULL, n.ahead = NULL,
   if (object$k > 0) {
     for (i in 1:object$k) {
       start1 <- start(object$inputs[[i]]$x)
-      if (length(object$inputs[[i]]$x) < n) {
+      if (length(object$inputs[[i]]$x) - object$inputs[[i]]$t.start + 1 < n) {      
         if (has.um.tf(object$inputs[[i]])) {
           end1 <- end(object$inputs[[i]]$x)
           nahead <- (end[1] - end1[1])*s + end[2] - end1[2]
@@ -841,7 +841,7 @@ signal.tfm <- function(mdl, y = NULL, diff = TRUE, envir=NULL, ...) {
         t0 <- mdl$inputs[[i]]$t.start
         t1 <- mdl$inputs[[i]]$t.end
         if (t0 > 1 || t1 > N) 
-          y <- y + diffC(x[t0:(t0+N-1)], mdl$noise$nabla, mdl$inputs[[i]]$um$bc)
+          y <- y + diffC(x[t0:t1], mdl$noise$nabla, mdl$inputs[[i]]$um$bc)
         else
           y <- y + diffC(x, mdl$noise$nabla, mdl$inputs[[i]]$um$bc)
       }
@@ -861,7 +861,7 @@ signal.tfm <- function(mdl, y = NULL, diff = TRUE, envir=NULL, ...) {
         t0 <- mdl$inputs[[i]]$t.start
         t1 <- mdl$inputs[[i]]$t.end
         if (t0 > 1 || t1 > N)
-          y <- y + x[t0:(t0+N-1)]
+          y <- y + x[t0:t1]
         else
           y <- y + x
       }
