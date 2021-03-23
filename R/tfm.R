@@ -674,11 +674,22 @@ outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
 #' @param level confidence level.
 #' @param envir environment in which the function arguments are evaluated.
 #'    If NULL the calling environment of this function will be used.
+#' @param newdata new data for the predictors for the forecast period. This is
+#'   a matrix if there is more than one predictor. The number of columns is
+#'   equal to the number of predictors, the number of rows equal to
+#'   \code{n.ahead}. If there is one predictor only the data may be provided
+#'   alternatively as a vector.    
 #' @param ... additional arguments.
+#' 
+#' @details Forecasts for the inputs of a \code{tfm} object can be provided
+#' in tree ways: (1) extending the time series with forecasts so that the length
+#' of the intput is greater than the length of the output, (2) computed 
+#' internally from the \code{um} object associated to the input and (3) with 
+#' the \code{newdata} argument.  
 #'
 #' @export predict.tfm
 #' @export
-predict.tfm <- function(object, y = NULL, ori = NULL, n.ahead = NULL,
+predict.tfm <- function(object, newdata=NULL, y = NULL, ori = NULL, n.ahead = NULL,
                         level = 0.95, envir=NULL, ...) {
   stopifnot(is.tfm(object))
   if (is.null (envir)) envir <- parent.frame ()
@@ -699,23 +710,39 @@ predict.tfm <- function(object, y = NULL, ori = NULL, n.ahead = NULL,
   n <- length(z)
   s <- frequency(z)
   
+  if (!is.null(newdata)) {
+    newdata <- as.matrix(newdata)
+    stopifnot(nrow(newdata) >= n.ahead)
+  }
+  
   if (object$kx > 0) {
-    if (nrow(object$xreg) < n) 
-      stop("insufficient number of forecasts for input")
-    z[t] <- z[t] + as.matrix(object$xreg[t, ]) %*% unlist(object$param[1:object$kx])
+    if (nrow(object$xreg) < n) {
+      if (is.null(newdata)) 
+        stop("insufficient number of forecasts for input") 
+      if (col(newdata) < object$kx) 
+        stop("wrong object 'newdata'")
+      Xf <- newdata[1:n.ahead, 1:object$kx]
+      if (ncol(newdata) > object$kx) 
+        newdata <- newdata[,object$kx:ncol(newdata)]
+      else 
+        newdata <- NULL
+    } else Xf <- as.matrix(object$xreg[t, ])
+    z[t] <- z[t] +  Xf %*% unlist(object$param[1:object$kx])
   }
   
   if (object$k > 0) {
     for (i in 1:object$k) {
       start1 <- start(object$inputs[[i]]$x)
-      if (length(object$inputs[[i]]$x) - object$inputs[[i]]$t.start + 1 < n) {      
+      if ( any(colnames(newdata) == object$inputs[[i]]$x.name) ) {
+        x <- newdata[, object$inputs[[i]]$x.name]
+        t1 <- object$inputs[[i]]$t.end
+        object$inputs[[i]]$x <- c(object$inputs[[i]]$x[1:t1], x)
+      } else if (length(object$inputs[[i]]$x) - object$inputs[[i]]$t.start + 1 < n) {      
         if (has.um.tf(object$inputs[[i]])) {
           end1 <- end(object$inputs[[i]]$x)
           nahead <- (end[1] - end1[1])*s + end[2] - end1[2]
           object$inputs[[i]] <- 
             predict.tf(object$inputs[[i]], n.ahead = nahead)
-          v <- var.predict.tf(object$inputs[[i]], n.ahead)
-          X[t, 4] <- X[t, 4] + v
         } else stop("insufficient number of forecasts for input")
       }
       x <- object$inputs[[i]]$x
@@ -725,6 +752,10 @@ predict.tfm <- function(object, y = NULL, ori = NULL, n.ahead = NULL,
       x <- ts(as.numeric(x), start = start1, frequency = s)
       x <- window(x, start = start, end = end) 
       z[t] <- z[t] + x[t] 
+      if (has.um.tf(object$inputs[[i]])) {
+        v <- var.predict.tf(object$inputs[[i]], n.ahead)
+        X[t, 4] <- X[t, 4] + v
+      }
     }
   }
   

@@ -12,7 +12,7 @@
 \item{y}{output of the TF model (if it is different to that of the "tfm" 
 object).}
 
-\item{method}{a character string specifying the method to compute the 
+\item{method}{a character string specifying the method to compute the
 residuals, exact or conditional.}
 
 \item{envir}{environment in which the function arguments are evaluated.

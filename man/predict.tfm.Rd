@@ -6,6 +6,7 @@
 \usage{
 \method{predict}{tfm}(
   object,
+  newdata = NULL,
   y = NULL,
   ori = NULL,
   n.ahead = NULL,
@@ -16,6 +17,12 @@
 }
 \arguments{
 \item{object}{an object of class \code{\link{um}}.}
+
+\item{newdata}{new data for the predictors for the forecast period. This is
+a matrix if there is more than one predictor. The number of columns is
+equal to the number of predictors, the number of rows equal to
+\code{n.ahead}. If there is one predictor only the data may be provided
+alternatively as a vector.}
 
 \item{y}{an object of class \code{\link{ts}}.}
 
@@ -33,4 +40,11 @@ If NULL the calling environment of this function will be used.}
 \description{
 \code{predict} computes point and interval predictions for a time series
 based on a \code{tfm} object.
+}
+\details{
+Forecasts for the inputs of a \code{tfm} object can be provided
+in tree ways: (1) extending the time series with forecasts so that the length
+of the intput is greater than the length of the output, (2) computed 
+internally from the \code{um} object associated to the input and (3) with 
+the \code{newdata} argument.
 }

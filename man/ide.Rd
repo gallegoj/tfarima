@@ -39,7 +39,7 @@ cpgram (cummulative periodogram), rm (range-median).}
 \item{set.layout}{logical. If TRUE the layout is set by the function,
 otherwise it is set by the user.}
 
-\item{byrow}{logical. If TRUE the layout is filled by rows, otherwise it 
+\item{byrow}{logical. If TRUE the layout is filled by rows, otherwise it
 is filled by columns.}
 
 \item{main}{title of the graph.}

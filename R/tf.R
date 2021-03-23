@@ -275,6 +275,7 @@ tfest <- function(y, x, delay = 0, p = 1, q = 2, um.y = NULL, um.x = NULL,
   x.copy <- x
   if (is.null(n.back)) n.back  <- length(x)/4
   tf.x <- tf(x, delay = delay, ar = p, ma = q, um = um.x, par.prefix = x.name)
+  tf.x$x.name <- x.name
   if (is.null(um.y)) um.y <- um()
   else um.y$param <- NULL
   tfm.x <- tfm(deparse(substitute(y)), inputs = tf.x, noise = um.y, envir=envir)
