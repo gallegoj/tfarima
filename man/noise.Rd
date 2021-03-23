@@ -7,7 +7,7 @@
 \usage{
 noise(tfm, ...)
 
-\method{noise}{tfm}(tfm, y = NULL, diff = TRUE, exp = FALSE, ...)
+\method{noise}{tfm}(tfm, y = NULL, diff = TRUE, exp = FALSE, envir = NULL, ...)
 }
 \arguments{
 \item{tfm}{an object of the class \code{tfm}.}
@@ -21,6 +21,9 @@ noise(tfm, ...)
 the "i" operator of the univariate model of the noise.}
 
 \item{exp}{logical. If TRUE, the antilog transformation is applied.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 }
 \value{
 A "ts" object.

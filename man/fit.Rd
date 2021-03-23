@@ -13,6 +13,7 @@
   optim.method = "BFGS",
   show.iter = FALSE,
   fit.noise = TRUE,
+  envir = NULL,
   ...
 )
 
@@ -24,6 +25,7 @@ fit(mdl, ...)
   method = c("exact", "cond"),
   optim.method = "BFGS",
   show.iter = FALSE,
+  envir = NULL,
   ...
 )
 }
@@ -41,6 +43,9 @@ function.}
 different iterations.}
 
 \item{fit.noise}{logical. If TRUE parameters of the noise model are fixed.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 

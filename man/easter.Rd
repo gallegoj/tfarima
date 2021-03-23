@@ -7,7 +7,7 @@
 \usage{
 easter(um, ...)
 
-\method{easter}{um}(um, z = NULL, n.ahead = 0, ...)
+\method{easter}{um}(um, z = NULL, n.ahead = 0, envir = NULL, ...)
 }
 \arguments{
 \item{um}{an object of class \code{\link{um}}.}
@@ -19,6 +19,9 @@ easter(um, ...)
 \item{n.ahead}{a positive integer to extend the sample period of the
 Easter regression variable with \code{n.ahead} observations, which could be
 necessary to forecast the output.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 }
 \value{
 An object of class "\code{\link{tfm}}".

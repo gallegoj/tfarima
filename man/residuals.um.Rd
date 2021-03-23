@@ -4,7 +4,7 @@
 \alias{residuals.um}
 \title{Residuals of the ARIMA model}
 \usage{
-\method{residuals}{um}(object, z = NULL, method = c("exact", "cond"), ...)
+\method{residuals}{um}(object, z = NULL, method = c("exact", "cond"), envir = NULL, ...)
 }
 \arguments{
 \item{object}{an object of class \code{um}.}
@@ -12,6 +12,9 @@
 \item{z}{an object of class \code{ts}.}
 
 \item{method}{exact/conditional residuals.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 }

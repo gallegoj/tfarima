@@ -12,7 +12,8 @@ tf(
   ma = NULL,
   um = NULL,
   n.back = NULL,
-  par.prefix = ""
+  par.prefix = "",
+  envir = NULL
 )
 }
 \arguments{
@@ -31,6 +32,9 @@ tf(
 \item{n.back}{number of backcasts to extend the input.}
 
 \item{par.prefix}{prefix name for parameters.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 }
 \value{
 An object of the class "tf".

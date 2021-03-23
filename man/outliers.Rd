@@ -15,6 +15,7 @@
   easter = FALSE,
   n.ahead = NULL,
   p.value = 1,
+  envir = NULL,
   ...
 )
 
@@ -29,6 +30,7 @@ outliers(mdl, ...)
   easter = FALSE,
   n.ahead = 0,
   p.value = 1,
+  envir = NULL,
   ...
 )
 }
@@ -53,6 +55,9 @@ intervation variables with \code{n.ahead} observations, which could be
 necessary to forecast the output.}
 
 \item{p.value}{estimates with a p-value greater than p.value are omitted.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 

@@ -7,7 +7,13 @@
 \usage{
 seasadj(mdl, ...)
 
-\method{seasadj}{um}(mdl, z = NULL, method = c("mixed", "forecast", "backcast"), ...)
+\method{seasadj}{um}(
+  mdl,
+  z = NULL,
+  method = c("mixed", "forecast", "backcast"),
+  envir = NULL,
+  ...
+)
 }
 \arguments{
 \item{mdl}{an object of class \code{\link{um}} or \code{\link{tfm}}.}
@@ -17,6 +23,9 @@ seasadj(mdl, ...)
 \item{z}{an object of class \code{\link{ts}}.}
 
 \item{method}{forward/backward forecasts or a mixture of the two.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 }
 \value{
 \code{seasadj} returns a seasonal adjusted time series.

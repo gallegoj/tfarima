@@ -14,6 +14,7 @@ ide(
   set.layout = TRUE,
   byrow = TRUE,
   main = "",
+  envir = NULL,
   ...
 )
 }
@@ -42,6 +43,9 @@ otherwise it is set by the user.}
 is filled by columns.}
 
 \item{main}{title of the graph.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 }

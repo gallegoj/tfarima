@@ -6,9 +6,11 @@
 #' @param xreg a matrix of regressors.
 #' @param inputs a list of tf objects.
 #' @param noise a um object for the noise.
-#' @param fit logical. If TRUE, model is fitted. 
+#' @param fit logical. If TRUE, model is fitted.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
-#' 
+#'
 #' @return An object of the class \code{tfm}.
 #' 
 #' @seealso \code{\link{tf}} and \code{\link{um}}.
@@ -20,11 +22,12 @@
 #'
 #' @export
 tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
-                ...) {
+                envir=NULL, ...) {
   stopifnot(is.um(noise))
+  if (is.null (envir)) envir <- parent.frame ()
 
-  if (!is.null(inputs)) {  
-    if (inherits(inputs, "tf")) { 
+  if (!is.null(inputs)) {
+    if (inherits(inputs, "tf")) {
       inputs <- list(inputs)
     } else {
       inputs <- inputs[!sapply(inputs, is.null)]
@@ -37,12 +40,12 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
       if (is.null(noise$z)) stop("missing output")
       else {
         txt <- noise$z
-        output <- eval(parse(text = txt), .GlobalEnv)
+        output <- eval(parse(text = txt), envir)
       }
     }
   } else if (is.character(output)) {
     txt <- output
-    output <- eval(parse(text = txt), .GlobalEnv)
+    output <- eval(parse(text = txt), envir)
   } else if (is.numeric(output)) {
     txt <- deparse(substitute(output))
     noise$z <- txt
@@ -123,39 +126,45 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
     param <- c(param, noise$param)
   }
   
-  mod <- list(output = txt, xreg = xreg, inputs = inputs, noise = noise, 
+  mod <- list(output = txt, xreg = xreg, inputs = inputs, noise = noise,
               param = param, kx = kx, k = k, optim = NULL, method = NULL)
   class(mod) <- "tfm"
-  if (fit) mod <- fit.tfm(mod, output, ...)
-  
+  if (fit) mod <- fit.tfm(mod, output, envir=envir, ...)
+
   return(mod)
-  
+
 }
 
 
 #' @rdname diagchk
 #' @param y an object of class \code{ts}.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @export
-diagchk.tfm <- function(mdl, y = NULL, method = c("exact", "cond"), 
-                        lag.max = NULL, std = TRUE, ...) {
+diagchk.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
+                        lag.max = NULL, std = TRUE, envir, ...) {
+  if (is.null (envir)) envir <- parent.frame ()
   u <- residuals.tfm(mdl, y, method)
-  ide(u, graphs = c("plot", "hist", "acf", "pacf", "cpgram"), lag.max = lag.max, std = std, ...)
+  ide(u, graphs = c("plot", "hist", "acf", "pacf", "cpgram"), lag.max = lag.max, std = std, envir=envir, ...)
 }
 
 
 #' @rdname fit
 #' @param y a \code{ts} object.
 #' @param fit.noise logical. If TRUE parameters of the noise model are fixed.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
-#' 
+#'
 #' @return A \code{tfm} object.
 #' @export
-fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"), 
-                    optim.method = "BFGS", show.iter = FALSE, 
-                    fit.noise = TRUE, ...){
-  
+fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
+                    optim.method = "BFGS", show.iter = FALSE,
+                    fit.noise = TRUE, envir=NULL, ...){
+
   stopifnot(inherits(mdl, "tfm"))
-  
+  if (is.null (envir)) envir <- parent.frame ()
+
   if (!fit.noise) {
     par.noise <- names(mdl$noise$param)
     mdl$noise$param <- unname(mdl$noise$param)
@@ -175,9 +184,9 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
   if (is.null(y)) {
     if (is.null(mdl$output)) stop("output required")
     else {
-      y <- eval(parse(text = mdl$output), .GlobalEnv)
+      y <- eval(parse(text = mdl$output), envir)
     }
-  } 
+  }
 
   if (!is.ts(y)) y <- as.ts(y)
   
@@ -245,11 +254,11 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
   if(opt$convergence > 0)
     warning(gettextf("possible convergence problem: optim gave code = %d",
                      opt$convergence), domain = NA)
-  
+
   mdl <- update.tfm(mdl, opt$par)
-  wstar <- noise.tfm(mdl, diff = TRUE)
-  if (!is.null(mdl$noise$mu)) wstar <- wstar - mdl$noise$mu 
-  if (method == "cond") 
+  wstar <- noise.tfm(mdl, diff = TRUE, envir=envir)
+  if (!is.null(mdl$noise$mu)) wstar <- wstar - mdl$noise$mu
+  if (method == "cond")
     res <- condresC(wstar, mdl$noise$phi, mdl$noise$theta, TRUE)
   else res <- gresC(wstar, mdl$noise$phi, mdl$noise$theta)
   mdl$noise$sig2 <- sum(res^2)/length(res)
@@ -264,9 +273,10 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
 
 
 #' @export
-logLik.tfm <-function(object, y = NULL, method = c("exact", "cond"), ...) {
+logLik.tfm <-function(object, y = NULL, method = c("exact", "cond"), envir=NULL, ...) {
   method <- match.arg(method)
-  w <- noise.tfm(object, y, TRUE)
+  if (is.null (envir)) envir <- parent.frame ()
+  w <- noise.tfm(object, y, TRUE, envir=envir)
   if (!is.null(object$noise$mu))
     w <- w - object$noise$mu
   if (method == "exact") ll <- ellarmaC(w, object$noise$phi, object$noise$theta)
@@ -301,10 +311,12 @@ modify.tfm <- function(mdl, ...) {
 #' @param y output of the TF model if it is different to that of the 
 #' \code{tfm} object.
 #' @param diff logical. If TRUE, the noise is differenced with
-#' the "i" operator of the univariate model of the noise.   
+#' the "i" operator of the univariate model of the noise.
 #' @param exp logical. If TRUE, the antilog transformation is applied.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
-#' 
+#'
 #' @return A "ts" object.
 #' 
 #' @export
@@ -312,8 +324,9 @@ noise <- function (tfm, ...) { UseMethod("noise") }
 
 #' @rdname noise
 #' @export
-noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, ...) {
-  y <- output.tfm(tfm, y)
+noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir=NULL, ...) {
+  if (is.null (envir)) envir <- parent.frame ()
+  y <- output.tfm(tfm, y, envir=envir)
   start <- start(y)
   end <- end(y)
   s <- frequency(y)
@@ -413,41 +426,44 @@ setinputs.tfm <- function(tfm, xreg = NULL, inputs = NULL, ...) {
 #' @param y a "ts" object.
 #' @param method exact or conditional maximum likelihood.
 #' @param digits number of significant digits to use when printing.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
 #' @return A \code{tfm} object.
 #' @export
 summary.tfm <- function(object, y=NULL, method = c("exact", "cond"),
-                        digits = max(3L, getOption("digits") - 3L), ...) {
-  
+                        digits = max(3L, getOption("digits") - 3L), envir=NULL, ...) {
+
   stopifnot(inherits(object, "tfm"))
+  if (is.null (envir)) envir <- parent.frame ()
   model.name <- deparse(substitute(object))
-  
+
   args <- list(...)
   if(is.null(args[["p.values"]])) p.values <- FALSE
   else p.values <- args[["p.values"]]
-  
+
   if (is.null(y)) {
     if (is.null(object$output)) stop("argument y required")
-    else y <- eval(parse(text = object$output), .GlobalEnv)
+    else y <- eval(parse(text = object$output), envir)
   }
-  
+
   method <- match.arg(method)
   if (!is.null(object$noise$method)) method <- object$noise$method
-  
+
   logLikTFM <- function(b){
     object <<- update.tfm(object, b)
-    wstar <- noise.tfm(object, diff = TRUE)
-    if (!is.null(object$noise$mu)) wstar <- wstar - object$noise$mu 
+    wstar <- noise.tfm(object, diff = TRUE, envir=envir)
+    if (!is.null(object$noise$mu)) wstar <- wstar - object$noise$mu
     if (method == "cond") ll <- cllarmaC(wstar, object$noise$phi, object$noise$theta)
     else ll <- ellarmaC(wstar, object$noise$phi, object$noise$theta)
     return(ll)
   }
-  
+
   resTFM <- function(b) {
     object <<- update.tfm(object, b)
-    wstar <- noise.tfm(object, diff = TRUE)
-    if (!is.null(object$noise$mu)) wstar <- wstar - object$noise$mu 
-    if (method == "cond") 
+    wstar <- noise.tfm(object, diff = TRUE, envir=envir)
+    if (!is.null(object$noise$mu)) wstar <- wstar - object$noise$mu
+    if (method == "cond")
       res <- condresC(wstar, object$noise$phi, object$noise$theta, TRUE)
     else res <- gresC(wstar, object$noise$phi, object$noise$theta)
     as.vector(res)
@@ -471,11 +487,11 @@ summary.tfm <- function(object, y=NULL, method = c("exact", "cond"),
   se <- sqrt(diag(varb))
   z <- b/se
   p <- pnorm(abs(z), lower.tail = F)*2
-  
+
   if (p.values) return(p)
-  
-  res <- noise.tfm(object)
-  if (!is.null(object$noise$mu)) res <- res - object$noise$mu 
+
+  res <- noise.tfm(object, envir=envir)
+  if (!is.null(object$noise$mu)) res <- res - object$noise$mu
   if (method == "cond") {
     res <- as.numeric(condresC(res, object$noise$phi, object$noise$theta, TRUE))
   } else{
@@ -540,13 +556,16 @@ print.summary.tfm <- function(x, stats = TRUE,
 
 #' @rdname outliers
 #' @param y an object of class \code{ts}
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @export
-outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE, 
-                         easter = FALSE, n.ahead = NULL, p.value = 1, ...) {
-  
+outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
+                         easter = FALSE, n.ahead = NULL, p.value = 1, envir=NULL, ...) {
+
+  if (is.null (envir)) envir <- parent.frame ()
   if (is.null(n.ahead)) n.ahead = 0
   else n.ahead <- abs(n.ahead)
-  N <- noise.tfm(mdl, y, diff = FALSE)
+  N <- noise.tfm(mdl, y, diff = FALSE, envir=envir)
   start <- start(N)
   freq <- frequency(N)
   if( freq < 2) {
@@ -582,9 +601,9 @@ outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
       tfm1 <- calendar.um(mdl$noise, N, easter = easter, n.ahead = n.ahead)
     else
       tfm1 <- easter.um(mdl$noise, N, n.ahead)
-    N <- noise.tfm(tfm1, diff = FALSE)
+    N <- noise.tfm(tfm1, diff = FALSE, envir=envir)
     A <- outliersC(N, FALSE,  mu, tfm1$noise$phi, tfm1$noise$nabla, tfm1$noise$theta, indx, abs(c))
-  } else { 
+  } else {
     A <- outliersC(N, 1,  mu, mdl$noise$phi, mdl$noise$nabla, mdl$noise$theta, indx, abs(c))
   }
   
@@ -652,19 +671,22 @@ outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
 #' @param y an object of class \code{\link{ts}}.
 #' @param ori the origin of prediction. By default, it is the last observation.
 #' @param n.ahead number of steps ahead.
-#' @param level confidence level. 
+#' @param level confidence level.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
 #'
 #' @export predict.tfm
 #' @export
-predict.tfm <- function(object, y = NULL, ori = NULL, n.ahead = NULL, 
-                        level = 0.95, ...) {
+predict.tfm <- function(object, y = NULL, ori = NULL, n.ahead = NULL,
+                        level = 0.95, envir=NULL, ...) {
   stopifnot(is.tfm(object))
-  y <- output.tfm(object, y)
-  z <- noise.tfm(object, y, FALSE)  
+  if (is.null (envir)) envir <- parent.frame ()
+  y <- output.tfm(object, y, envir=envir)
+  z <- noise.tfm(object, y, FALSE, envir=envir)
   if (is.null(object$noise$mu)) mu <- 0
   else mu <- object$noise$mu
-  
+
   if (is.null(ori)) ori <- length(z)
   if (is.null(n.ahead)) n.ahead <- frequency(z)
   
@@ -741,20 +763,23 @@ print.tfm <- function(x, ...) {
 #' @param object a \code{tfm} object.
 #' @param y output of the TF model (if it is different to that of the "tfm" 
 #' object).
-#' @param method a character string specifying the method to compute the 
+#' @param method a character string specifying the method to compute the
 #' residuals, exact or conditional.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
-#'       
+#'
 #' @return A "ts" object.
-#' 
+#'
 #' @export
-residuals.tfm <- function(object, y = NULL, method = c("exact", "cond"), ...) {
-  
+residuals.tfm <- function(object, y = NULL, method = c("exact", "cond"), envir=NULL, ...) {
+
   stopifnot(inherits(object, "tfm"))
+  if (is.null (envir)) envir <- parent.frame ()
   method <- match.arg(method)
-  
-  w <- noise.tfm(object, y)
-  if (!is.null(object$noise$mu)) w <- w - object$noise$mu 
+
+  w <- noise.tfm(object, y, envir=envir)
+  if (!is.null(object$noise$mu)) w <- w - object$noise$mu
   if (method == "cond")
     res <- condresC(w, object$noise$phi, object$noise$theta, TRUE)
   else 
@@ -777,17 +802,20 @@ residuals.tfm <- function(object, y = NULL, method = c("exact", "cond"), ...) {
 #' @param y output of the TF model if it is different to that of the 
 #' \code{tfm} object.
 #' @param diff logical. If TRUE, the noise is differenced with
-#' the "i" operator of the univariate model of the noise.   
+#' the "i" operator of the univariate model of the noise.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
-#' 
+#'
 #' @return A "ts" object.
 #' @export
 signal <- function (mdl, ...) { UseMethod("signal") }
 
 #' @rdname signal
 #' @export
-signal.tfm <- function(mdl, y = NULL, diff = TRUE, ...) {
-  y <- output.tfm(mdl, y)
+signal.tfm <- function(mdl, y = NULL, diff = TRUE, envir=NULL, ...) {
+  if (is.null (envir)) envir <- parent.frame ()
+  y <- output.tfm(mdl, y, envir=envir)
   start <- start(y)
   end <- end(y)
   s <- frequency(y)
@@ -961,10 +989,11 @@ param.tfm <- function(tfm) {
   unlist(tfm$param, use.names = TRUE)
 }
 
-output.tfm <- function(tfm, y = NULL) {
+output.tfm <- function(tfm, y = NULL, envir=NULL) {
+  if (is.null (envir)) envir <- parent.frame ()
   if (is.null(y)) {
     if (is.null(tfm$output)) stop("argment y required")
-    y <- eval(parse(text = tfm$output), .GlobalEnv)
+    y <- eval(parse(text = tfm$output), envir)
   } else {
     if (!is.numeric(y)) stop("output must be a numeric vector")
   }
@@ -993,14 +1022,17 @@ update.tfm <- function(tfm, param) {
 #' @param tfm a \code{tfm} object.
 #' @param lag.max number of lags.
 #' @param method Exact/conditional residuals.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
 #'
 #'
-ccf.tfm <- function(tfm, lag.max = NULL, method = c("exact", "cond"), ...) {
+ccf.tfm <- function(tfm, lag.max = NULL, method = c("exact", "cond"), envir=NULL, ...) {
 
+  if (is.null (envir)) envir <- parent.frame ()
   if (tfm$k < 1) stop("no stochastic input")
 
-  j <- c()  
+  j <- c()
   for (i in 1:tfm$k) 
     if (tfm$inputs[[i]]$um$k > 0)
       j <- c(j, i)
@@ -1021,7 +1053,7 @@ ccf.tfm <- function(tfm, lag.max = NULL, method = c("exact", "cond"), ...) {
     s <- frequency(tfm$inputs[[i]]$x)
     x <- tfm$inputs[[i]]$x[tfm$inputs[[i]]$n.back:length(tfm$inputs[[i]]$x)]
     x <- ts(x, end = end, frequency = s)
-    x <- residuals.um(tfm$inputs[[i]]$um, x, method)
+    x <- residuals.um(tfm$inputs[[i]]$um, x, method, envir=envir)
     x <- window(x, start = start(u), end = end(u))
     pccf(x, u, lag.max = lag.max)
   }
@@ -1033,15 +1065,18 @@ ccf.tfm <- function(tfm, lag.max = NULL, method = c("exact", "cond"), ...) {
 
 #' @rdname ucomp
 #' @param y an object of class \code{\link{ts}}.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @export
-ucomp.tfm <- function(mdl, y = NULL, 
-                      method = c("mixed", "forecast", "backcast"), ...) {
+ucomp.tfm <- function(mdl, y = NULL,
+                      method = c("mixed", "forecast", "backcast"), envir=envir, ...) {
 
-  y <- noise.tfm(mdl, y, FALSE)  
+  if (is.null (envir)) envir <- parent.frame ()
+  y <- noise.tfm(mdl, y, FALSE, envir=envir)
   mdl$noise$bc <- FALSE
-  uc <- ucomp.um(mdl$noise, y, method)
+  uc <- ucomp.um(mdl$noise, y, method, envir=envir)
   return(uc)
-  
+
 }
 
 

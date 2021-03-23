@@ -12,6 +12,7 @@
   method = c("exact", "cond"),
   lag.max = NULL,
   std = TRUE,
+  envir,
   ...
 )
 
@@ -23,6 +24,7 @@ diagchk(mdl, ...)
   method = c("exact", "cond"),
   lag.max = NULL,
   std = TRUE,
+  envir = NULL,
   ...
 )
 }
@@ -36,6 +38,9 @@ diagchk(mdl, ...)
 \item{lag.max}{number of lags for ACF/PACF.}
 
 \item{std}{logical. If TRUE standardized residuals are shown.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 

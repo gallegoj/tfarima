@@ -4,7 +4,17 @@
 \alias{tfest}
 \title{Preestimates of a transfer function}
 \usage{
-tfest(y, x, delay = 0, p = 1, q = 2, um.y = NULL, um.x = NULL, n.back = NULL)
+tfest(
+  y,
+  x,
+  delay = 0,
+  p = 1,
+  q = 2,
+  um.y = NULL,
+  um.x = NULL,
+  n.back = NULL,
+  envir = NULL
+)
 }
 \arguments{
 \item{y}{output, a ts object or a numeric vector.}
@@ -19,9 +29,12 @@ tfest(y, x, delay = 0, p = 1, q = 2, um.y = NULL, um.x = NULL, n.back = NULL)
 
 \item{um.y}{univariate model for output, um object or NULL.}
 
-\item{um.x}{univariate model for input, um object or NUL.}
+\item{um.x}{univariate model for input, um object or NULL.}
 
 \item{n.back}{number of backcasts.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 }
 \value{
 A "tf" S3 object

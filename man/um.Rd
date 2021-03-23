@@ -13,6 +13,7 @@ um(
   sig2 = 1,
   bc = FALSE,
   fit = TRUE,
+  envir = NULL,
   ...
 )
 }
@@ -32,6 +33,9 @@ um(
 \item{bc}{logical. If TRUE logs are taken.}
 
 \item{fit}{logical. If TRUE, model is fitted.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 }

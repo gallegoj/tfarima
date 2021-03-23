@@ -12,9 +12,11 @@
 #' @param w0 constant term of the polynomial V(B), double.
 #' @param ar list of stationary AR polynomials.
 #' @param ma list of MA polynomials.
-#' @param um univariate model for stochastic input. 
+#' @param um univariate model for stochastic input.
 #' @param n.back number of backcasts to extend the input.
 #' @param par.prefix prefix name for parameters.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #'
 #' @return An object of the class "tf".
 #'
@@ -33,16 +35,17 @@
 #' x <- rep(0, 100)
 #' x[50] <- 1
 #' tfx <- tf(x, w0 = 0.8, ar = "(1 - 0.5B)(1 - 0.7B^12)")
-#' 
+#'
 #' @export
-tf <- function(x = NULL, delay = 0,  w0 = 0, ar = NULL, ma = NULL, 
-               um = NULL, n.back = NULL, par.prefix = "") {
+tf <- function(x = NULL, delay = 0,  w0 = 0, ar = NULL, ma = NULL,
+               um = NULL, n.back = NULL, par.prefix = "", envir=NULL) {
+  if (is.null (envir)) envir <- parent.frame ()
   if (is.null(x)) {
     if (is.null(um)) stop("input x required")
     else if (is.null(um$z)) stop("input x required")
-    else { x <- get(um$z, .GlobalEnv); x.name <- um$z }
-  } else if (is.character(x)) { 
-    x.name <- x; x <- get(x, .GlobalEnv) 
+    else { x <- get(um$z, envir); x.name <- um$z }
+  } else if (is.character(x)) {
+    x.name <- x; x <- get(x, envir)
   } else {
     x.name <- deparse(substitute(x))
   }
@@ -57,9 +60,9 @@ tf <- function(x = NULL, delay = 0,  w0 = 0, ar = NULL, ma = NULL,
     stopifnot(is.numeric(x))
     x <- ts(x)
   }
-  
+
   if (!is.null(ar)) {
-    ar <- .lagpol0(ar, "ar", paste(par.prefix, ".d", sep = ""))
+    ar <- .lagpol0(ar, "ar", paste(par.prefix, ".d", sep = ""), envir=envir)
     phi <- polyexpand(ar)
   } else {
     phi <- 1.0
@@ -67,7 +70,7 @@ tf <- function(x = NULL, delay = 0,  w0 = 0, ar = NULL, ma = NULL,
   names(phi) <- paste("[phi", 0:(length(phi)-1), "]", sep = "")
 
   if (!is.null(ma)) {
-    ma <- .lagpol0(ma, "ma", paste(par.prefix, ".w", sep = ""))
+    ma <- .lagpol0(ma, "ma", paste(par.prefix, ".w", sep = ""), envir=envir)
     theta <- polyexpand(ma)
   } else {
     theta <- 1.0
@@ -89,11 +92,11 @@ tf <- function(x = NULL, delay = 0,  w0 = 0, ar = NULL, ma = NULL,
     stopifnot(is.um(um))
     if (is.null(n.back)) 
       n.back <- max(c(frequency(x)*3, length(phi) - 1, length(theta) + delay - 1))
-    else 
+    else
       n.back <- abs(n.back)
-    if (n.back > 0) x <- backcast.um(um, x, n.back)
+    if (n.back > 0) x <- backcast.um(um, x, n.back, envir=envir)
   }
-  
+
   tf.input <- list(x.name = x.name, x = x, delay = delay, w0 = w0, w0.expr = w0.expr,
                    phi = phi, theta = theta, ar = ar, ma = ma, kar = length(ar),
                    kma = length(ma), p = length(phi)-1, q = length(theta)-1,
@@ -252,15 +255,18 @@ output.tf <- function(tf) {
 #' @param q order of the MA polynomial, double.
 #' @param delay integer.
 #' @param um.y univariate model for output, um object or NULL.
-#' @param um.x univariate model for input, um object or NUL.
+#' @param um.x univariate model for input, um object or NULL.
 #' @param n.back number of backcasts.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @return A "tf" S3 object
 #' @export
-tfest <- function(y, x, delay = 0, p = 1, q = 2, um.y = NULL, um.x = NULL, 
-                  n.back = NULL) {
-  
+tfest <- function(y, x, delay = 0, p = 1, q = 2, um.y = NULL, um.x = NULL,
+                  n.back = NULL, envir=NULL) {
+
   stopifnot(p >= 0, q >= 0, delay >= 0)
   if (is.null(um.y)) stop("Univariate model for output required")
+  if (is.null (envir)) envir <- parent.frame ()
   x.name <- deparse(substitute(x))
   if (!is.ts(y)) y <- ts(y)
   if (!is.ts(x)) x <- ts(x)
@@ -271,7 +277,7 @@ tfest <- function(y, x, delay = 0, p = 1, q = 2, um.y = NULL, um.x = NULL,
   tf.x <- tf(x, delay = delay, ar = p, ma = q, um = um.x, par.prefix = x.name)
   if (is.null(um.y)) um.y <- um()
   else um.y$param <- NULL
-  tfm.x <- tfm(deparse(substitute(y)), inputs = tf.x, noise = um.y)
+  tfm.x <- tfm(deparse(substitute(y)), inputs = tf.x, noise = um.y, envir=envir)
   return(tfm.x$inputs[[1]])
 
 }
@@ -289,19 +295,22 @@ tfest <- function(y, x, delay = 0, p = 1, q = 2, um.y = NULL, um.x = NULL,
 #' @param lag.max number of lags, integer.
 #' @param main title of the graph.
 #' @param nu.weights logical. If TRUE the coefficients of the IRF are 
-#' computed instead of the cross-correlations. 
+#' computed instead of the cross-correlations.
 #' @param plot logical value to indicate if the ccf graph must be graphed or
 #'   computed.
-#' @param ... additional arguments.   
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
+#' @param ... additional arguments.
 #'
 #' @return The estimated cross correlations are displayed in a graph or returned
 #'   into a numeric vector.
 #' @export
-pccf <- function(x, y, um.x = NULL, um.y = NULL, lag.max = NULL, plot = TRUE, 
-                 main = NULL, nu.weights = FALSE, ...) {
+pccf <- function(x, y, um.x = NULL, um.y = NULL, lag.max = NULL, plot = TRUE,
+                 envir=NULL, main = NULL, nu.weights = FALSE, ...) {
+  if (is.null (envir)) envir <- parent.frame ()
   xlab <- deparse(substitute(x))
   ylab <- deparse(substitute(y))
-  
+
   if (!is.ts(y)) y <- ts(y)
   if (!is.ts(x)) x <- ts(x)
   if (!is.null(ncol(x))) x <- x[, 1]
@@ -309,16 +318,16 @@ pccf <- function(x, y, um.x = NULL, um.y = NULL, lag.max = NULL, plot = TRUE,
 
   s <- frequency(y)
   if (s != frequency(x)) stop("incompatible series")
-  
+
   if (!is.null(um.x)) {
-    x <- residuals.um(um.x, x, method = "cond")
-    if (is.null(um.y)) y <- residuals.um(um.x, y, method = "cond")
-    else y <- residuals.um(um.y, y, method = "cond")     
+    x <- residuals.um(um.x, x, method = "cond", envir=envir)
+    if (is.null(um.y)) y <- residuals.um(um.x, y, method = "cond", envir=envir)
+    else y <- residuals.um(um.y, y, method = "cond", envir=envir)
   } else if (!is.null(um.y)) {
-    y <- residuals.um(um.y, y, method = "cond")
-    x <- residuals.um(um.y, x, method = "cond")
+    y <- residuals.um(um.y, y, method = "cond", envir=envir)
+    x <- residuals.um(um.y, x, method = "cond", envir=envir)
   }
-  
+
   x <- window(x, start = start(y), end = end(y))
 
   cc <- stats::ccf(x, y, lag.max = lag.max, plot = FALSE)
@@ -362,11 +371,12 @@ roots.tf <- function(tf, opr = c("arma", "ar", "ma")) {
   t
 }
 
-sim.tf <- function(tf, N=100, x0=NULL) {
+sim.tf <- function(tf, N=100, x0=NULL, envir=NULL) {
+  if (is.null (envir)) envir <- parent.frame ()
   if (is.null(tf$um)) {
     x <- tf$x
   } else {
-   x <- sim.um(tf$um, N, x0) 
+   x <- sim.um(tf$um, N, x0, envir=envir)
   }
   output.tf(tf)
 }

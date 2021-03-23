@@ -7,7 +7,7 @@
 \usage{
 signal(mdl, ...)
 
-\method{signal}{tfm}(mdl, y = NULL, diff = TRUE, ...)
+\method{signal}{tfm}(mdl, y = NULL, diff = TRUE, envir = NULL, ...)
 }
 \arguments{
 \item{mdl}{an object of the class \code{tfm}.}
@@ -19,6 +19,9 @@ signal(mdl, ...)
 
 \item{diff}{logical. If TRUE, the noise is differenced with
 the "i" operator of the univariate model of the noise.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 }
 \value{
 A "ts" object.

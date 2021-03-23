@@ -6,11 +6,23 @@
 \alias{ucomp.um}
 \title{Unobserved components}
 \usage{
-\method{ucomp}{tfm}(mdl, y = NULL, method = c("mixed", "forecast", "backcast"), ...)
+\method{ucomp}{tfm}(
+  mdl,
+  y = NULL,
+  method = c("mixed", "forecast", "backcast"),
+  envir = envir,
+  ...
+)
 
 ucomp(mdl, ...)
 
-\method{ucomp}{um}(mdl, z = NULL, method = c("mixed", "forecast", "backcast"), ...)
+\method{ucomp}{um}(
+  mdl,
+  z = NULL,
+  method = c("mixed", "forecast", "backcast"),
+  envir = NULL,
+  ...
+)
 }
 \arguments{
 \item{mdl}{an object of class \code{\link{um}} or \code{\link{tfm}}.}
@@ -18,6 +30,9 @@ ucomp(mdl, ...)
 \item{y}{an object of class \code{\link{ts}}.}
 
 \item{method}{forward/backward forecasts or a mixture of the two.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 

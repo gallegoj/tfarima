@@ -577,6 +577,8 @@ polyexpand <- function(...) {
 # @param type the type of operators: "ar", "i" or "ma".
 # @param coef.name prefix name for the parameters.
 # @param counter index for parameters.
+# @param envir environment in which the function arguments are evaluated.
+#    If NULL the calling environment of this function will be used.
 #
 # @return A list of lag polynomials.
 #
@@ -584,19 +586,20 @@ polyexpand <- function(...) {
 #   multiplicative ARIMA(p, d, q) models.
 #
 # @seealso \link{lagpol}
-.lagpol0 <- function(op, type, coef.name, counter = 1) {
-  
+.lagpol0 <- function(op, type, coef.name, counter = 1, envir=NULL) {
+
+  if (is.null (envir)) envir <- parent.frame ()
   if (is.character(op)) {
     op <- gsub(" ", "", op)
     if (regexpr("B", op)[1] > 1) {
       if (!startsWith(op, "(")) op <- paste("(", op, ")", sep = "")
-      op <- .lagpol2(op, type, coef.name, counter)
+      op <- .lagpol2(op, type, coef.name, counter, envir=envir)
     }
-    else{ 
-      op <- .lagpol3(op, type, coef.name, counter)
+    else{
+      op <- .lagpol3(op, type, coef.name, counter, envir=envir)
     }
   }
-  
+
   if (is.lagpol(op)) return(list(op))
   if (is.lagpol.list(op)) return(op)
   
@@ -606,10 +609,10 @@ polyexpand <- function(...) {
     if (is.lagpol(op)) op <- list(op)
     return(op)
   }
-  
+
   if (is.list(op)) {
     l <- lapply(op, function(x) {
-      lp <- .lagpol0(x, type, coef.name, counter)
+      lp <- .lagpol0(x, type, coef.name, counter, envir=envir)
       if (type != "i") {
         if (!is.list(lp)) lp <- list(lp)
         counter <<- .parcounter(lp, coef.name) + 1
@@ -706,8 +709,9 @@ polyexpand <- function(...) {
 #
 # @seealso \link{.lagpol0}
 #
-.lagpol2 <- function(str, type, coef.name = "", counter = 1) {
-  
+.lagpol2 <- function(str, type, coef.name = "", counter = 1, envir=envir) {
+
+  if (is.null (envir)) envir <- parent.frame ()
   if (!startsWith(str, "1")) {
     if (coef.name == "") coef.name <- "a"
     l <- gregexpr("\\(", str)[[1]]
@@ -729,7 +733,7 @@ polyexpand <- function(...) {
     n <- nchar(str)
     if (endsWith(str, ")")) n <- n-1
     txt <- c(txt, substr(str, start = start, stop = n))
-    ll <- lapply(txt, .lagpol2)
+    ll <- lapply(txt, .lagpol2, type=type, coef.name=coef.name, counter=counter, envir=envir)
     if (counter < 0) counter <- abs(counter)
     j <- counter
     ll <- lapply(ll, function(x) {
@@ -751,21 +755,21 @@ polyexpand <- function(...) {
     j <- i
   stopifnot(j > 1)
   txt <- substr(str, start = 1, stop = j-1)
-  i <- eval(parse(text = txt), .GlobalEnv)
+  i <- eval(parse(text = txt), envir)
   stopifnot(as.integer(i) == 1)
   str <- substr(str, start = j, stop = nchar(str))
-  
+
   # Power of the lag polynomial
   i <- regexpr("\\)[1-9]", str)[1]
   if (i > 1) {
     txt <- substr(str, i+1, nchar(str))
-    p <- eval(parse(text = txt), .GlobalEnv)
+    p <- eval(parse(text = txt), envir)
     str <- substr(str, 1, i-1)
   } else {
     i <- regexpr("\\)\\^[1-9]", str)[1]
     if (i > 1) {
       txt <- substr(str, i+2, nchar(str))
-      p <- eval(parse(text = txt), .GlobalEnv)
+      p <- eval(parse(text = txt), envir)
       str <- substr(str, 1, i-1)
     } else {
       p <- 1
@@ -784,7 +788,7 @@ polyexpand <- function(...) {
       stop("Invalid lag polynomial")
     txt <- substr(str, start = 1, stop = i-1)
     if (nchar(txt)>1)
-      b <- eval(parse(text = txt), .GlobalEnv)
+      b <- eval(parse(text = txt), envir)
     else if (txt == "-")
       b <- -1
     else
@@ -836,30 +840,31 @@ polyexpand <- function(...) {
 #
 # @seealso \link{.lagpol0}
 #
-.lagpol3 <- function(str, type, coef.name = "", counter = 1) {
-  
+.lagpol3 <- function(str, type, coef.name = "", counter = 1, envir=NULL) {
+
+  if (is.null (envir)) envir <- parent.frame ()
   if (type == "ar") param <- 0.3
   else if (type == "ma") param <- 0.6
   else if (type == "i") param <- 1
   else stop(paste("invalid ", type, " operator"))
-  
+
   if (coef.name == "") coef.name <- "a"
   f <- lapply(str, function(x) {
-    eval(parse(text = x), .GlobalEnv)
+    eval(parse(text = x), envir)
   })
   f <- unlist(f)
-  
+
   if (length(str) == 1) {
     k <- gregexpr("\\)\\/", str)[[1]] # several frequencies, (0:6)/12
     if (length(k) == 1 && k[1] > 0) {
       txt <- substr(str, k[1]+2, nchar(str))
-      s <- eval(parse(text = txt), .GlobalEnv)
+      s <- eval(parse(text = txt), envir)
       if (s < 2) s <- 1
     } else {
       k <- gregexpr("\\/", str)[[1]] # single frequency 0/12
       if (length(k) == 1 && k[1] > 0) {
         txt <- substr(str, k[1]+1, nchar(str))
-        s <- eval(parse(text = txt), .GlobalEnv)
+        s <- eval(parse(text = txt), envir)
         if (s < 2) s <- 1
       } else s <- 1
     }

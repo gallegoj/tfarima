@@ -10,7 +10,7 @@
 
 sim(mdl, ...)
 
-\method{sim}{um}(mdl, n = 100, z0 = NULL, seed = NULL, ...)
+\method{sim}{um}(mdl, n = 100, z0 = NULL, seed = NULL, envir = NULL, ...)
 }
 \arguments{
 \item{mdl}{an object of class \code{um} or \code{tfm}.}
@@ -24,6 +24,9 @@ sim(mdl, ...)
 \item{...}{additional arguments.}
 
 \item{z0}{initial conditions for the nonstationary series.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 }
 \value{
 An object of class \code{ts}.

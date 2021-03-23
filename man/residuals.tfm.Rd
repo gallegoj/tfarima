@@ -4,7 +4,7 @@
 \alias{residuals.tfm}
 \title{Residuals of a transfer function model}
 \usage{
-\method{residuals}{tfm}(object, y = NULL, method = c("exact", "cond"), ...)
+\method{residuals}{tfm}(object, y = NULL, method = c("exact", "cond"), envir = NULL, ...)
 }
 \arguments{
 \item{object}{a \code{tfm} object.}
@@ -14,6 +14,9 @@ object).}
 
 \item{method}{a character string specifying the method to compute the 
 residuals, exact or conditional.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 }

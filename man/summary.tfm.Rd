@@ -9,6 +9,7 @@
   y = NULL,
   method = c("exact", "cond"),
   digits = max(3L, getOption("digits") - 3L),
+  envir = NULL,
   ...
 )
 }
@@ -20,6 +21,9 @@
 \item{method}{exact or conditional maximum likelihood.}
 
 \item{digits}{number of significant digits to use when printing.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 }

@@ -17,26 +17,29 @@
 #' cpgram (cummulative periodogram), rm (range-median).
 #' @param set.layout logical. If TRUE the layout is set by the function,
 #' otherwise it is set by the user.
-#' @param byrow logical. If TRUE the layout is filled by rows, otherwise it 
+#' @param byrow logical. If TRUE the layout is filled by rows, otherwise it
 #' is filled by columns.
 #' @param main title of the graph.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
 #' @return NULL
-#' 
+#'
 #' @examples
 #' Y <- AirPassengers
 #' ide(Y, graphs = c("plot", "rm"))
 #' ide(Y, transf = list(list(bc = TRUE, S = TRUE), list(bc = TRUE, d = 1, D = 1)))
 #' 
 #' @export
-ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, 
-                wn.bands = TRUE, graphs = c("plot", "acf", "pacf"), 
-                set.layout = TRUE, byrow = TRUE, main = "", ...) {
-  
+ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
+                wn.bands = TRUE, graphs = c("plot", "acf", "pacf"),
+                set.layout = TRUE, byrow = TRUE, main = "", envir=NULL, ...) {
 
+
+  if (is.null (envir)) envir <- parent.frame ()
   ylab <- deparse(substitute(Y))
-  if (!exists(ylab, envir = .GlobalEnv)) ylab <- "y"
-  
+  if (!exists(ylab, envir = envir)) ylab <- "y"
+
   args <- list(...)
   graphs <- tolower(graphs)
   graphs <- unique(graphs)

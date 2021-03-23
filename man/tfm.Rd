@@ -4,7 +4,15 @@
 \alias{tfm}
 \title{Transfer function models}
 \usage{
-tfm(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE, ...)
+tfm(
+  output = NULL,
+  xreg = NULL,
+  inputs = NULL,
+  noise,
+  fit = TRUE,
+  envir = NULL,
+  ...
+)
 }
 \arguments{
 \item{output}{a ts object or a numeric vector.}
@@ -16,6 +24,9 @@ tfm(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE, ...)
 \item{noise}{a um object for the noise.}
 
 \item{fit}{logical. If TRUE, model is fitted.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 }

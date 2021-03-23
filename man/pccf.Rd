@@ -11,6 +11,7 @@ pccf(
   um.y = NULL,
   lag.max = NULL,
   plot = TRUE,
+  envir = NULL,
   main = NULL,
   nu.weights = FALSE,
   ...
@@ -29,6 +30,9 @@ pccf(
 
 \item{plot}{logical value to indicate if the ccf graph must be graphed or
 computed.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{main}{title of the graph.}
 
