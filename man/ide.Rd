@@ -9,6 +9,7 @@ ide(
   transf = list(),
   order.polreg = 0,
   lag.max = NULL,
+  lags.at = NULL,
   wn.bands = TRUE,
   graphs = c("plot", "acf", "pacf"),
   set.layout = TRUE,
@@ -29,6 +30,8 @@ sum operator.}
 \item{order.polreg}{an integer indicating the order of a polynomial trend.}
 
 \item{lag.max}{number of autocorrelations.}
+
+\item{lags.at}{the lags of the ACF/PACF at which tick-marks are to be drawn.}
 
 \item{wn.bands}{logical. If TRUE confidence intervals for sample 
 autocorrelations are computed assuming a white noise series.}

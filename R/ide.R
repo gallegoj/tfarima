@@ -11,6 +11,7 @@
 #' sum operator.
 #' @param order.polreg an integer indicating the order of a polynomial trend.
 #' @param lag.max number of autocorrelations.
+#' @param lags.at the lags of the ACF/PACF at which tick-marks are to be drawn. 
 #' @param wn.bands logical. If TRUE confidence intervals for sample 
 #' autocorrelations are computed assuming a white noise series. 
 #' @param graphs graphs to be shown: plot, hist, acf, pacf, pgram, 
@@ -31,7 +32,7 @@
 #' ide(Y, transf = list(list(bc = TRUE, S = TRUE), list(bc = TRUE, d = 1, D = 1)))
 #' 
 #' @export
-ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
+ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, lags.at = NULL,
                 wn.bands = TRUE, graphs = c("plot", "acf", "pacf"),
                 set.layout = TRUE, byrow = TRUE, main = "", envir=NULL, ...) {
 
@@ -169,10 +170,10 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
       stopifnot(n > 1)
       if (is.null(lag.max) ) {
         if (s > 1) lag.max <- min(3*s+3, n/4)
-        else lag.max <- floor(n/4)
+        else lag.max <- min(floor(n/4), 3*168+3)
       } else if (lag.max < 1 | lag.max > n-1) {
         if (s > 1) lag.max <- min(3*s+3, n/4)
-        else lag.max <- floor(n/4)
+        else lag.max <- min(floor(n/4), 3*168+3)
       }
       stopifnot(lag.max > 0)
     
@@ -220,10 +221,23 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
           }
           abline(h = 0)  
           #
-          if (s>1 & lag.max > s) { 
+          if (!is.null(lags.at)) {
+            if (length(lags.at) == 1) {
+              abline(v = seq(lags.at, lag.max, lags.at), lty = 2, col = "gray" )
+              axis(1, at = seq(lags.at, lag.max, lags.at))
+            } else if (length(lags.at) == 2) {
+              abline(v = seq(lags.at[1], lag.max, lags.at[1]), lty = 3, col = "gray" )
+              abline(v = seq(lags.at[2], lag.max, lags.at[2]), lty = 2, col = "gray" )
+              axis(1, at = seq(lags.at[1], lag.max, lags.at[1]), labels = FALSE)
+              axis(1, at = seq(lags.at[2], lag.max, lags.at[2]))
+            } else {
+              abline(v = lags, lty = 2, col = "gray" )
+              axis(1, at = lags)
+            }
+          } else if (s>1 & lag.max > s) { 
             abline(v = seq(s, lag.max, s), lty = 2, col = "gray" )
             axis(1, at = seq(s, lag.max, s))
-          } else if (lag.max > 5) {
+          } else if (lag.max > 5 & lag.max < 50) {
             abline(v = seq(5, lag.max, 5), lty = 2, col = "gray" )
             axis(1, at = seq(5, lag.max, 5))
           }
@@ -237,10 +251,23 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
           plot(k, phi, type = "n", xlab = "lag", ylab = "PACF", ylim = ylim, xaxt = "n")
           abline(h = 0)
           abline(h = c(-1.96/sqrt(n), 1.96/sqrt(n)), lty = 2, col = "gray")  
-          if (s>1 & lag.max > s) {
+          if (!is.null(lags.at)) {
+            if (length(lags.at) == 1) {
+              abline(v = seq(lags.at, lag.max, lags.at), lty = 2, col = "gray" )
+              axis(1, at = seq(lags.at, lag.max, lags.at))
+            } else if (length(lags.at) == 2) {
+              abline(v = seq(lags.at[1], lag.max, lags.at[1]), lty = 3, col = "gray")
+              abline(v = seq(lags.at[2], lag.max, lags.at[2]), lty = 2, col = "gray" )
+              axis(1, at = seq(lags.at[1], lag.max, lags.at[1]), labels = FALSE)
+              axis(1, at = seq(lags.at[2], lag.max, lags.at[2]))
+            } else {
+              abline(v = lags, lty = 2, col = "gray" )
+              axis(1, at = lags)
+            }
+          } else if (s>1 & lag.max > s) {
             abline(v = seq(s, lag.max, s), lty = 2, col = "gray" )
             axis(1, at = seq(s, lag.max, s))
-          } else if (lag.max > 5) {
+          } else if (lag.max > 5 & lag.max < 50) {
             abline(v = seq(5, lag.max, 5), lty = 2, col = "gray" )
             axis(1, at = seq(5, lag.max, 5))
           }
