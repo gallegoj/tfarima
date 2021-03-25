@@ -194,6 +194,9 @@ roots.lagpol <- function(x, table = TRUE, ...) {
       t <- t[indx, ]
     }
     
+    if (!is.matrix(t))
+      t <- matrix(t, nrow = length(t)/6, ncol = 6)
+    
     colnames(t) <- 
       c("Real", "Imaginary", "Modulus", "Frequency", "Period", "Mult.")
     return(t)
