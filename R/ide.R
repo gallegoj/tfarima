@@ -231,8 +231,8 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, lags.at = 
               axis(1, at = seq(lags.at[1], lag.max, lags.at[1]), labels = FALSE)
               axis(1, at = seq(lags.at[2], lag.max, lags.at[2]))
             } else {
-              abline(v = lags, lty = 2, col = "gray" )
-              axis(1, at = lags)
+              abline(v = lags.at, lty = 2, col = "gray" )
+              axis(1, at = lags.at)
             }
           } else if (s>1 & lag.max > s) { 
             abline(v = seq(s, lag.max, s), lty = 2, col = "gray" )
@@ -261,8 +261,8 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, lags.at = 
               axis(1, at = seq(lags.at[1], lag.max, lags.at[1]), labels = FALSE)
               axis(1, at = seq(lags.at[2], lag.max, lags.at[2]))
             } else {
-              abline(v = lags, lty = 2, col = "gray" )
-              axis(1, at = lags)
+              abline(v = lags.at, lty = 2, col = "gray" )
+              axis(1, at = lags.at)
             }
           } else if (s>1 & lag.max > s) {
             abline(v = seq(s, lag.max, s), lty = 2, col = "gray" )
