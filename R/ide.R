@@ -138,7 +138,7 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, lags.at = 
   if (n.ser > 1) ylab1 <- ylab
   for (ser in 1:n.ser) {
     for (tr in 1:n.transf) {
-      maxcorr < 0
+      maxcorr <- 0
       if (is.matrix(Y)) y <- Y[, ser]
       else if (is.list(Y)) y <- Y[[ser]]
       else y <- Y 
