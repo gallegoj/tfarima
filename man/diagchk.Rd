@@ -12,7 +12,7 @@
   method = c("exact", "cond"),
   lag.max = NULL,
   std = TRUE,
-  envir,
+  envir = NULL,
   ...
 )
 
@@ -23,6 +23,7 @@ diagchk(mdl, ...)
   z = NULL,
   method = c("exact", "cond"),
   lag.max = NULL,
+  lags.at = NULL,
   std = TRUE,
   envir = NULL,
   ...
@@ -45,6 +46,8 @@ If NULL the calling environment of this function will be used.}
 \item{...}{additional arguments.}
 
 \item{z}{optional, an object of class \code{ts}.}
+
+\item{lags.at}{the lags of the ACF/PACF at which tick-marks are to be drawn.}
 }
 \description{
 \code{diagchk} displays tools for diagnostic checking.

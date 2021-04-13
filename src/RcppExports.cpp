@@ -211,8 +211,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // outliersC
-arma::mat outliersC(const arma::colvec& z, bool bc, double mu, const arma::colvec& phi, const arma::colvec& nabla, const arma::colvec& theta, arma::ucolvec& timing, double c);
-RcppExport SEXP _tfarima_outliersC(SEXP zSEXP, SEXP bcSEXP, SEXP muSEXP, SEXP phiSEXP, SEXP nablaSEXP, SEXP thetaSEXP, SEXP timingSEXP, SEXP cSEXP) {
+arma::mat outliersC(const arma::colvec& z, bool bc, double mu, const arma::colvec& phi, const arma::colvec& nabla, const arma::colvec& theta, arma::ucolvec& timing, bool eres, double c);
+RcppExport SEXP _tfarima_outliersC(SEXP zSEXP, SEXP bcSEXP, SEXP muSEXP, SEXP phiSEXP, SEXP nablaSEXP, SEXP thetaSEXP, SEXP timingSEXP, SEXP eresSEXP, SEXP cSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -223,8 +223,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::colvec& >::type nabla(nablaSEXP);
     Rcpp::traits::input_parameter< const arma::colvec& >::type theta(thetaSEXP);
     Rcpp::traits::input_parameter< arma::ucolvec& >::type timing(timingSEXP);
+    Rcpp::traits::input_parameter< bool >::type eres(eresSEXP);
     Rcpp::traits::input_parameter< double >::type c(cSEXP);
-    rcpp_result_gen = Rcpp::wrap(outliersC(z, bc, mu, phi, nabla, theta, timing, c));
+    rcpp_result_gen = Rcpp::wrap(outliersC(z, bc, mu, phi, nabla, theta, timing, eres, c));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -520,7 +521,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_tfarima_gresC", (DL_FUNC) &_tfarima_gresC, 3},
     {"_tfarima_ssrC", (DL_FUNC) &_tfarima_ssrC, 3},
     {"_tfarima_cllarmaC", (DL_FUNC) &_tfarima_cllarmaC, 3},
-    {"_tfarima_outliersC", (DL_FUNC) &_tfarima_outliersC, 8},
+    {"_tfarima_outliersC", (DL_FUNC) &_tfarima_outliersC, 9},
     {"_tfarima_polyevalC", (DL_FUNC) &_tfarima_polyevalC, 2},
     {"_tfarima_polyrootsC", (DL_FUNC) &_tfarima_polyrootsC, 1},
     {"_tfarima_sortrootsC", (DL_FUNC) &_tfarima_sortrootsC, 1},

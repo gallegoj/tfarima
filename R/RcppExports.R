@@ -57,8 +57,8 @@ cllarmaC <- function(w, phi, theta) {
     .Call(`_tfarima_cllarmaC`, w, phi, theta)
 }
 
-outliersC <- function(z, bc, mu, phi, nabla, theta, timing, c) {
-    .Call(`_tfarima_outliersC`, z, bc, mu, phi, nabla, theta, timing, c)
+outliersC <- function(z, bc, mu, phi, nabla, theta, timing, eres, c) {
+    .Call(`_tfarima_outliersC`, z, bc, mu, phi, nabla, theta, timing, eres, c)
 }
 
 polyevalC <- function(pol, z) {

@@ -13,6 +13,7 @@
   c = 3,
   calendar = FALSE,
   easter = FALSE,
+  resid = c("exact", "cond"),
   n.ahead = NULL,
   p.value = 1,
   envir = NULL,
@@ -28,6 +29,7 @@ outliers(mdl, ...)
   c = 3,
   calendar = FALSE,
   easter = FALSE,
+  resid = c("exact", "cond"),
   n.ahead = 0,
   p.value = 1,
   envir = NULL,
@@ -62,6 +64,9 @@ If NULL the calling environment of this function will be used.}
 \item{...}{additional arguments.}
 
 \item{z}{a time series.}
+
+\item{exact.res}{logical; if TRUE (FALSE), exact (conditional) residuals are
+used to identify outliers.}
 }
 \value{
 an object of class "\code{\link{tfm}}" or a table.

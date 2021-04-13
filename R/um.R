@@ -308,6 +308,7 @@ function(um, z = NULL, form = c("dif", "td"), easter = FALSE, n.ahead = 0,
 #' @param mdl an object of class \code{um} or \code{tfm}.
 #' @param method exact or conditional residuals.   
 #' @param lag.max number of lags for ACF/PACF.
+#' @param lags.at the lags of the ACF/PACF at which tick-marks are to be drawn. 
 #' @param std logical. If TRUE standardized residuals are shown.
 #' @param ... additional arguments.
 #' 
@@ -327,11 +328,12 @@ diagchk <- function (mdl, ...) { UseMethod("diagchk") }
 #' diagchk(airl)
 #' @export
 diagchk.um <- function(mdl, z = NULL, method = c("exact", "cond"),
-                       lag.max = NULL, std = TRUE, envir=NULL, ...) {
+                       lag.max = NULL, lags.at = NULL, 
+                       std = TRUE, envir=NULL, ...) {
   if (is.null (envir)) envir <- parent.frame ()
   u <- residuals.um(mdl, z, envir=envir)
   ide(u, graphs = c("plot", "hist", "acf", "pacf", "cpgram"),
-      lag.max = lag.max, std = std, envir=envir, ...)
+      lag.max = lag.max, lags.at = lags.at, std = std, envir=envir, ...)
 }
 
 
@@ -719,11 +721,13 @@ nabla.um <- function(um) {
 #'   only used when \code{dates = NULL}.
 #' @param calendar logical; if true, calendar effects are also estimated.
 #' @param easter logical; if true, Easter effect is also estimated.
+#' @param exact.res logical; if TRUE (FALSE), exact (conditional) residuals are
+#'   used to identify outliers.
 #' @param n.ahead a positive integer to extend the sample period of the
 #'   intervation variables with \code{n.ahead} observations, which could be
 #'   necessary to forecast the output.
-#' @param p.value estimates with a p-value greater than p.value are omitted.   
-#' @param ... additional arguments.   
+#' @param p.value estimates with a p-value greater than p.value are omitted.
+#' @param ... additional arguments.
 #' @return an object of class "\code{\link{tfm}}" or a table.
 #' @export
 outliers <- function (mdl, ...) { UseMethod("outliers") }
@@ -735,7 +739,8 @@ outliers <- function (mdl, ...) { UseMethod("outliers") }
 #' outliers(um1)
 #' @export
 outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
-                        easter = FALSE, n.ahead = 0, p.value = 1, envir=NULL, ...) {
+                        easter = FALSE, resid = c("exact", "cond"), n.ahead = 0, 
+                        p.value = 1,  envir=NULL, ...) {
   if (is.null (envir)) envir <- parent.frame ()
   if (is.null(z)) z <- z.um(mdl, envir=envir)
   else if(!is.ts(z)) z <- ts(z)
@@ -745,6 +750,11 @@ outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
     calendar <- FALSE
     easter <- FALSE
   }
+  if ((mdl$p > 50 || mdl$q > 50) && length(resid) > 1)
+    resid <- "cond"
+  resid <- match.arg(resid)
+  eres <- resid == "exact"
+  
   
   if (is.null(dates)) indx = 0  
   else if (is.numeric(dates)) {
@@ -770,14 +780,14 @@ outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
   tfm1 <- NULL
   if (calendar||easter) {
     if (calendar)
-      tfm1 <- calendar.um(mdl, z, easter = easter, n.ahead = n.ahead)
+      tfm1 <- calendar.um(mdl, z, easter = easter, n.ahead = n.ahead, envir = envir)
     else
-      tfm1 <- easter.um(mdl, z, n.ahead)
+      tfm1 <- easter.um(mdl, z, n.ahead, envir = envir)
     N <- noise.tfm(tfm1, diff = FALSE)
     A <- outliersC(N, FALSE,  mu, tfm1$noise$phi, tfm1$noise$nabla, 
-                   tfm1$noise$theta, indx, abs(c))
+                   tfm1$noise$theta, indx, eres, abs(c))
   } else { 
-    A <- outliersC(z, mdl$bc,  mu, mdl$phi, mdl$nabla, mdl$theta, indx, abs(c))
+    A <- outliersC(z, mdl$bc,  mu, mdl$phi, mdl$nabla, mdl$theta, indx, eres, abs(c))
   }
   if (ncol(A) == 1) {
     warning("no outlier")
@@ -813,7 +823,7 @@ outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
 
   if (calendar||easter) xreg <- tfm1$xreg
   else xreg <- NULL
-  tfm1 <- tfm(xreg = xreg, inputs = tfi, noise = mdl, envir=envir)
+  tfm1 <- tfm(xreg = xreg, inputs = tfi, noise = mdl, envir=envir, ...)
   if (p.value < 0.999)
     tfm1 <- varsel.tfm(tfm1, p.value = p.value)
   tfm1

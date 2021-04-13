@@ -93,21 +93,22 @@ void tempchangeC(int tau, arma::colvec &x, const arma::colvec &y, double &b,
 // @param z the time series.
 // @param bc logical. If \code{TRUE} logs are taken.
 // @param mu the mean of the stationary series.
-// @param phi,nabla,theta numeric vectors containing the coefficients
-// of this polynomiall.
-// @param timing a integer vector with the indices of outliers. 
-// @param c cut point to classify an observation as outlier. 
-// 
-// @return \code{outliersC} returns a matrix with the detected outliers.  
-// 
-// @section Warning:
-// This C function is called by the R functions \code{\link{outliers.um}} and
-//  \code{\link{outliers.tfm}}. 
-// 
-// [[Rcpp::export]]
+// @param phi,nabla,theta numeric vectors containing the coefficients of this
+//   polynomiall.
+// @param timing a integer vector with the indices of outliers.
+// @param eres logical. If \code{TRUE}, exact residuals are used to
+//   identify outliers; if \code{FALSE}, conditional residuals are used.
+// @param c cut point to classify an observation as outlier.
+//
+// @return \code{outliersC} returns a matrix with the detected outliers.
+//
+// @section Warning: This C function is called by the R functions
+//   \code{\link{outliers.um}} and \code{\link{outliers.tfm}}.
+//
+//   [[Rcpp::export]]
 arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colvec &phi,
                     const arma::colvec &nabla, const arma::colvec &theta, 
-                    arma::ucolvec &timing, double c) {
+                    arma::ucolvec &timing, bool eres, double c) {
   
   int t, tau, i, N, T, k, iter;
   double d1, d2, sa;
@@ -115,7 +116,9 @@ arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colve
   N = z.n_elem;
   vec w = diffC(z, nabla, bc);
 
-  vec a = exactresC(w, phi, theta);
+  vec a;
+  if (eres) a  = exactresC(w, phi, theta);
+  else a  = condresC(w, phi, theta);
   if ((int)a.n_elem > N) a.shed_rows(1, a.n_elem - N);
   else if ((int)a.n_elem < N) a.insert_rows(0, N - a.n_elem);
   vec a1 = a;
@@ -190,7 +193,7 @@ arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colve
     }
     if (k == 0) break;  
   }
-
+  
   if (k==0 && iter==1) return mat(1, 1, fill::zeros);
 
   for (t = T - 1; t > - 1; t--) {
@@ -235,7 +238,6 @@ arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colve
     }
   }
 
-    
   return A;
     
 }
