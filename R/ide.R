@@ -44,7 +44,8 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, lags.at = 
   args <- list(...)
   graphs <- tolower(graphs)
   graphs <- unique(graphs)
-  graphs <- match.arg(graphs, c("plot", "hist", "acf", "pacf", "pgram", "cpgram", "rm", "sdm"), several.ok = TRUE)
+  graphs <- match.arg(graphs, c("plot", "hist", "acf", "pacf", "pgram", "cpgram",
+                                "rm", "sdm"), several.ok = TRUE)
   n.graphs <- length(graphs)
   n.transf <- length(transf)
   if (n.transf == 0) {
@@ -137,6 +138,7 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, lags.at = 
   if (n.ser > 1) ylab1 <- ylab
   for (ser in 1:n.ser) {
     for (tr in 1:n.transf) {
+      maxcorr < 0
       if (is.matrix(Y)) y <- Y[, ser]
       else if (is.list(Y)) y <- Y[[ser]]
       else y <- Y 
@@ -206,9 +208,13 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, lags.at = 
         }
         else if (graphs[j] ==  "acf") {
           rho <- stats::acf(y, lag.max = lag.max, plot = F)$acf[, ,]
+          phi <- stats::pacf(y, lag.max = lag.max, plot = F)$acf[, ,]
           rho <- rho[-1]
           k <- 1:length(rho)
-          if (max(abs(rho)) < 0.5) ylim = c(-0.5, 0.5)
+          maxcorr <- max(c(abs(c(rho, phi)))) 
+          if (maxcorr < 0.25) ylim = c(-0.25, 0.25)
+          else if (maxcorr < 0.5) ylim = c(-0.5, 0.5)
+          else if (maxcorr < 0.75) ylim = c(-0.75, 0.75)
           else ylim = c(-1, 1)
           plot(k, rho, type = "n" ,xlab = "lag", ylab = "ACF", ylim = ylim, xaxt = "n")
           if (wn.bands) abline(h = c(-1.96/sqrt(n), 1.96/sqrt(n)), lty = 2, col = "gray")
@@ -244,9 +250,14 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, lags.at = 
           lines(k, rho, type = "h")  
         }
         else if (graphs[j] ==  "pacf") {
-          phi <- stats::pacf(y, lag.max = lag.max, plot = F)$acf[, ,]
+          if (maxcorr == 0) {
+            phi <- stats::pacf(y, lag.max = lag.max, plot = F)$acf[, ,]
+            maxcorr <- max(abs(phi))
+          }
           k <- 1:length(phi)
-          if (max(abs(phi)) < 0.5) ylim = c(-0.5, 0.5)
+          if (maxcorr < 0.25) ylim = c(-0.25, 0.25)
+          else if (maxcorr < 0.5) ylim = c(-0.5, 0.5)
+          else if (maxcorr < 0.75) ylim = c(-0.75, 0.75)
           else ylim = c(-1, 1)
           plot(k, phi, type = "n", xlab = "lag", ylab = "PACF", ylim = ylim, xaxt = "n")
           abline(h = 0)
