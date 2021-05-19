@@ -675,7 +675,7 @@ function(mdl, ar = NULL, i = NULL, ma = NULL, mu = NULL, sig2 = NULL,
   ar <- newop(mdl$ar, ar)
   i <- newop(mdl$i, i)
   ma <- newop(mdl$ma, ma)
-  um(mdl$z, ar = ar, i = i, ma = ma, mu = mu, bc = bc, sig2 = mdl$sig2)
+  um(mdl$z, ar = ar, i = i, ma = ma, mu = mu, bc = bc, sig2 = mdl$sig2, ...)
   
 }
 

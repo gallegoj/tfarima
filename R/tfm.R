@@ -69,7 +69,7 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
       start1 <- start(inputs[[i]]$x)
       t0 <- (start[1] - start1[1])*s + (start1[2] - start[2] + 1)
       end1 <- end(inputs[[i]]$x)
-      t1 <- (end1[1] - start1[1])*s + (end1[2] - start[2] + 1)
+      t1 <- (end[1] - start1[1])*s + (end1[2] - start[2] + 1)
       if (t0 < 1 || (t1 - t0 + 1) != N) {
         stop("incompatible samples")
       }
@@ -243,7 +243,7 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
       x <- diffC(tf$x, mdl$noise$nabla, tf$um$bc)
       t0 <- tf$t.start
       t1 <- tf$t.end
-      if (t0 > 1 || t1 > N) x[t0:(t0+n-1)]
+      if (t0 > 1 || length(tf$x) > t1) x[t0:(t0+n-1)]
       else x
     })
   }
@@ -351,7 +351,7 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir=NULL, ...) 
                      tfm$inputs[[i]]$phi, tfm$inputs[[i]]$delay)
         t0 <- tfm$inputs[[i]]$t.start
         t1 <- tfm$inputs[[i]]$t.end
-        if (t0 > 1 || t1 > N) 
+        if (t0 > 1 || length(tfm$inputs[[i]]$x) > t1) 
           y <- y - diffC(x[t0:t1], tfm$noise$nabla, tfm$inputs[[i]]$um$bc)
         else
           y <- y - diffC(x, tfm$noise$nabla, tfm$inputs[[i]]$um$bc)
@@ -371,7 +371,7 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir=NULL, ...) 
                      tfm$inputs[[i]]$phi, tfm$inputs[[i]]$delay)
         t0 <- tfm$inputs[[i]]$t.start
         t1 <- tfm$inputs[[i]]$t.end
-        if (t0 > 1 || t1 > N)
+        if (t0 > 1 || length(tfm$inputs[[i]]$x) > t1)
           y <- y - x[t0:t1]
         else
           y <- y - x
@@ -573,8 +573,8 @@ outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
     calendar <- FALSE
     easter <- FALSE
   }
-  if ((mdl$p > 50 || mdl$q > 50) && length(resid) > 1)
-    method <- "cond"
+  if ((mdl$noise$p > 50 || mdl$noise$q > 50) && length(resid) > 1)
+    resid <- "cond"
   resid <- match.arg(resid)
   eres <- resid == "exact"
   
@@ -880,7 +880,7 @@ signal.tfm <- function(mdl, y = NULL, diff = TRUE, envir=NULL, ...) {
                      mdl$inputs[[i]]$phi, mdl$inputs[[i]]$delay)
         t0 <- mdl$inputs[[i]]$t.start
         t1 <- mdl$inputs[[i]]$t.end
-        if (t0 > 1 || t1 > N) 
+        if (t0 > 1 || length(mdl$inputs[[i]]$x) > t1) 
           y <- y + diffC(x[t0:t1], mdl$noise$nabla, mdl$inputs[[i]]$um$bc)
         else
           y <- y + diffC(x, mdl$noise$nabla, mdl$inputs[[i]]$um$bc)
@@ -900,7 +900,7 @@ signal.tfm <- function(mdl, y = NULL, diff = TRUE, envir=NULL, ...) {
                      mdl$inputs[[i]]$phi, mdl$inputs[[i]]$delay)
         t0 <- mdl$inputs[[i]]$t.start
         t1 <- mdl$inputs[[i]]$t.end
-        if (t0 > 1 || t1 > N)
+        if (t0 > 1 || length(mdl$inputs[[i]]$x) > t1)
           y <- y + x[t0:t1]
         else
           y <- y + x

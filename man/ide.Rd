@@ -10,6 +10,7 @@ ide(
   order.polreg = 0,
   lag.max = NULL,
   lags.at = NULL,
+  freq.at = NULL,
   wn.bands = TRUE,
   graphs = c("plot", "acf", "pacf"),
   set.layout = TRUE,

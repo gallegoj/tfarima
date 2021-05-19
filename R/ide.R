@@ -32,7 +32,8 @@
 #' ide(Y, transf = list(list(bc = TRUE, S = TRUE), list(bc = TRUE, d = 1, D = 1)))
 #' 
 #' @export
-ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, lags.at = NULL,
+ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, 
+                lags.at = NULL, freq.at = NULL,
                 wn.bands = TRUE, graphs = c("plot", "acf", "pacf"),
                 set.layout = TRUE, byrow = TRUE, main = "", envir=NULL, ...) {
 
@@ -158,7 +159,9 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, lags.at = 
       else bc <- FALSE
       if (d > 0) y <- diff(y, differences = d)
       if (D > 0) y <- diff(y, lag = s, differences = D)
-      if (S & s > 1) y <- ts(diffC(y, rep(1, s), FALSE), end = end(y), frequency = frequency(y))
+      if (S & s > 1) 
+        y <- ts(diffC(y, rep(1, s), FALSE), end = end(y), 
+                frequency = frequency(y))
 
       if (!is.null(i)) {
         if (inherits(i, "lagpol")) i <- i$pol
@@ -194,7 +197,8 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, lags.at = 
     
       for (j in 1:n.graphs) { 
         if (graphs[j] ==  "plot") {
-          plot(y, xlab = "t", ylab = tslabel(ylab, bc, d, D, s, S), type = "n", col = "black", ylim = c(miny, maxy))
+          plot(y, xlab = "t", ylab = tslabel(ylab, bc, d, D, s, S), type = "n", 
+               col = "black", ylim = c(miny, maxy))
           abline(h = seq(miny, maxy, sy), lty = 2, col = "gray")
           abline(h = my, col = "gray")  
           lines(y, type = "l")
@@ -298,7 +302,21 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, lags.at = 
           }
         } else if (graphs[j] ==  "pgram") {
           P <- pgramC(y, FALSE)
-          plot(P[, 1], P[, 2], type = "l", xlim = c(0, 0.5), ylab = "Periodogram", xlab = "Frequency")
+          plot(P[, 1], P[, 2], type = "l", xlim = c(0, 0.5), ylab = "Periodogram",
+               xlab = "Frequency", xaxt = "n")
+          if (length(freq.at) == 1) {
+            xticks <- (1:(freq.at/2))/freq.at
+            axis(1, at = xticks, labels = sprintf("%1.2f", xticks))
+          } else if (length(freq.at) == 2) {
+            axis(1, at = (1:(freq.at[1]/2))/freq.at[1], labels = FALSE)
+            xticks <- (1:(freq.at[2]/2))/freq.at[2]
+            axis(1, at = xticks, labels = sprintf("%1.2f",xticks))
+          } else {
+            if (s > 1 & s <= 24) {
+              xticks <- (1:(s/2))/s
+              axis(1, at = (1:(s/2))/s, labels = sprintf("%1.2f", xticks))
+            } else axis(1, at = seq(0.1, 0.5, 0.1))
+          }
           #lines(x = c(0, 6), z = c(0, 1), col = "gray", lty = 1)
           title(ylab = "Periodogram")
         } else if (graphs[j] ==  "cpgram") {
