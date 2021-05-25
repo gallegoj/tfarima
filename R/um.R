@@ -720,8 +720,8 @@ nabla.um <- function(um) {
 #'   only used when \code{dates = NULL}.
 #' @param calendar logical; if true, calendar effects are also estimated.
 #' @param easter logical; if true, Easter effect is also estimated.
-#' @param exact.res logical; if TRUE (FALSE), exact (conditional) residuals are
-#'   used to identify outliers.
+#' @param resid type of residuals (exact or conditional) used to identify 
+#' outliers.
 #' @param n.ahead a positive integer to extend the sample period of the
 #'   intervation variables with \code{n.ahead} observations, which could be
 #'   necessary to forecast the output.
