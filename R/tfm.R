@@ -149,6 +149,37 @@ diagchk.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
 }
 
 
+.diff_tfm <- function(mdl, nabla) {
+  if (mdl$kx > 0) {
+    xreg <- apply(mdl$xreg, 2, function(x) {
+      x <- diffC(x, nabla, FALSE)
+    })
+    mdl$xreg <- xreg
+  }
+  
+  if (mdl$k > 0) {
+    d <- length(nabla) - 1
+    for (j in 1:mdl$k) {
+      end <- end(mdl$inputs[[j]]$x)
+      s <- frequency(mdl$inputs[[j]]$x)
+      x <- diffC(mdl$inputs[[j]]$x, nabla, mdl$inputs[[j]]$um$bc)
+      mdl$inputs[[j]]$x <- ts(x, end = end, frequency = s)
+      n <- mdl$inputs[[j]]$t.end - mdl$inputs[[j]]$t.start + 1
+      mdl$inputs[[j]]$t.end <- mdl$inputs[[j]]$t.end - d
+      n <- n - d
+      mdl$inputs[[j]]$t.start <- mdl$inputs[[j]]$t.end - n + 1
+      mdl$inputs[[j]]$um$bc <- FALSE
+    }
+  }
+  
+  nabla <- polydivC(mdl$noise$nabla, nabla, FALSE)
+  mdl$noise$nabla <- nabla
+  mdl$noise$i <- list(as.lagpol(nabla))
+    
+  mdl
+}
+
+
 #' @rdname fit
 #' @param y a \code{ts} object.
 #' @param fit.noise logical. If TRUE parameters of the noise model are fixed.
@@ -371,7 +402,7 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir=NULL, ...) 
                      tfm$inputs[[i]]$phi, tfm$inputs[[i]]$delay)
         t0 <- tfm$inputs[[i]]$t.start
         t1 <- tfm$inputs[[i]]$t.end
-        if (t0 > 1 || length(tfm$inputs[[i]]$x) > t1)
+        if (t0 > 1 | length(tfm$inputs[[i]]$x) > t1)
           y <- y - x[t0:t1]
         else
           y <- y - x
@@ -681,6 +712,8 @@ outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
 #' @param ori the origin of prediction. By default, it is the last observation.
 #' @param n.ahead number of steps ahead.
 #' @param level confidence level.
+#' @param i transformation of the series \code{y} to be forecasted. It is a
+#' lagpol as those of a \code{\link{um}} object.  
 #' @param envir environment in which the function arguments are evaluated.
 #'    If NULL the calling environment of this function will be used.
 #' @param newdata new data for the predictors for the forecast period. This is
@@ -699,10 +732,25 @@ outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
 #' @export predict.tfm
 #' @export
 predict.tfm <- function(object, newdata=NULL, y = NULL, ori = NULL, n.ahead = NULL,
-                        level = 0.95, envir=NULL, ...) {
+                        level = 0.95, i = NULL,  envir=NULL, ...) {
   stopifnot(is.tfm(object))
   if (is.null (envir)) envir <- parent.frame ()
   y <- output.tfm(object, y, envir=envir)
+  if (!is.null(i)) {
+    i <- .lagpol0(i, "i","delta", envir=envir)
+    nabla <- polyexpand(i)
+    object <- .diff_tfm(object, nabla)
+    end <- end(y)
+    s <- frequency(y)
+    y <- as.vector(diffC(y, nabla, object$noise$bc))
+    if (object$noise$bc){
+      y <- y*100
+      object$noise$sig2 <- object$noise$sig2*100^2
+    }
+    object$noise$bc <- FALSE
+    y <- ts(y, end = end, frequency = s)
+  }
+  
   z <- noise.tfm(object, y, FALSE, envir=envir)
   if (is.null(object$noise$mu)) mu <- 0
   else mu <- object$noise$mu

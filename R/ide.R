@@ -39,10 +39,14 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
 
 
   if (is.null (envir)) envir <- parent.frame ()
-  ylab <- deparse(substitute(Y))
-  if (!exists(ylab, envir = envir)) ylab <- "y"
-
   args <- list(...)
+  if (is.null(args$ylab)) {
+    ylab <- deparse(substitute(Y))
+    if (!exists(ylab, envir = envir)) ylab <- "y"
+  } else {
+    ylab <- args$ylab
+  }
+
   graphs <- tolower(graphs)
   graphs <- unique(graphs)
   graphs <- match.arg(graphs, c("plot", "hist", "acf", "pacf", "pgram", "cpgram",
@@ -136,14 +140,18 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
     layout(m)
   }
   
-  if (n.ser > 1) ylab1 <- ylab
+  if (n.ser > 1) {
+    ylab1 <- names(Y)
+    if (length(ylab1) != n.ser)
+      ylab1 <- paste0(ylab, 1:n.ser)
+  }
   for (ser in 1:n.ser) {
     for (tr in 1:n.transf) {
       maxcorr <- 0
       if (is.matrix(Y)) y <- Y[, ser]
       else if (is.list(Y)) y <- Y[[ser]]
       else y <- Y 
-      if (n.ser > 1) ylab <- paste(ylab1, ser, sep = "") 
+      if (n.ser > 1) ylab <- ylab1[ser] 
       if (!is.ts(y)) y <- ts(y)
       s <- frequency(y)
       

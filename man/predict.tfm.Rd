@@ -11,6 +11,7 @@
   ori = NULL,
   n.ahead = NULL,
   level = 0.95,
+  i = NULL,
   envir = NULL,
   ...
 )
@@ -31,6 +32,9 @@ alternatively as a vector.}
 \item{n.ahead}{number of steps ahead.}
 
 \item{level}{confidence level.}
+
+\item{i}{transformation of the series \code{y} to be forecasted. It is a
+lagpol as those of a \code{\link{um}} object.}
 
 \item{envir}{environment in which the function arguments are evaluated.
 If NULL the calling environment of this function will be used.}

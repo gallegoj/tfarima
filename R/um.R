@@ -332,7 +332,7 @@ diagchk.um <- function(mdl, z = NULL, method = c("exact", "cond"),
                        std = TRUE, envir=NULL, ...) {
   if (is.null (envir)) envir <- parent.frame ()
   u <- residuals.um(mdl, z, envir=envir)
-  ide(u, graphs = c("plot", "hist", "acf", "pacf", "cpgram"),
+  ide(u, graphs = c("plot", "hist", "acf", "pacf", "cpgram"), ylab = "u",
       lag.max = lag.max, lags.at = lags.at, std = std, envir=envir, ...)
 }
 
@@ -452,7 +452,6 @@ display.default <- function(um, ...) {
   }
 }
 
-
 #' Easter effect
 #'
 #' \code{easter} extends the ARIMA model \code{um} by including a regression
@@ -555,7 +554,7 @@ fit.um <- function(mdl, z = NULL, method = c("exact", "cond"),
     mdl$is.adm <<- TRUE
     return(-ll)
   }
-  
+  if (mdl$bc & min(z) <= 0) mdl$bc <- FALSE
   w <- diffC(z, mdl$nabla, mdl$bc)
   b <- param.um(mdl)
   ll0 <- -logLik.arma(b)
@@ -740,7 +739,7 @@ outliers <- function (mdl, ...) { UseMethod("outliers") }
 #' @export
 outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
                         easter = FALSE, resid = c("exact", "cond"), n.ahead = 0, 
-                        p.value = 1,  envir=NULL, ...) {
+                        p.value = 1, envir=NULL, ...) {
   if (is.null (envir)) envir <- parent.frame ()
   if (is.null(z)) z <- z.um(mdl, envir=envir)
   else if(!is.ts(z)) z <- ts(z)
@@ -754,7 +753,6 @@ outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
     resid <- "cond"
   resid <- match.arg(resid)
   eres <- resid == "exact"
-  
   
   if (is.null(dates)) indx = 0  
   else if (is.numeric(dates)) {
@@ -780,7 +778,8 @@ outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
   tfm1 <- NULL
   if (calendar||easter) {
     if (calendar)
-      tfm1 <- calendar.um(mdl, z, easter = easter, n.ahead = n.ahead, envir = envir)
+      tfm1 <- calendar.um(mdl, z, easter = easter, n.ahead = n.ahead,
+                          diff = diff, envir = envir)
     else
       tfm1 <- easter.um(mdl, z, n.ahead, envir = envir)
     N <- noise.tfm(tfm1, diff = FALSE)
@@ -901,6 +900,8 @@ pi.weights.um <- function(um, lag.max = 10, var.pi = FALSE, ...) {
 #' @param ori the origin of prediction. By default, it is the last observation.
 #' @param n.ahead number of steps ahead.
 #' @param level confidence level.
+#' @param i transformation of the series \code{z} to be forecasted. It is a
+#' lagpol as those of a \code{\link{um}} object.  
 #' @param envir environment in which the function arguments are evaluated.
 #'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
@@ -914,7 +915,8 @@ pi.weights.um <- function(um, lag.max = 10, var.pi = FALSE, ...) {
 #'
 #' @export predict.um
 #' @export
-predict.um <- function(object, z = NULL, ori = NULL, n.ahead = 1, level = 0.95, envir=NULL, ...) {
+predict.um <- function(object, z = NULL, ori = NULL, n.ahead = 1, level = 0.95,
+                       i = NULL, envir=NULL, ...) {
 
   if (is.null (envir)) envir <- parent.frame ()
   if (is.null(z)) {
@@ -926,6 +928,21 @@ predict.um <- function(object, z = NULL, ori = NULL, n.ahead = 1, level = 0.95, 
 
   if (is.null(object$mu)) mu <- 0
   else mu <- object$mu
+  
+  if (!is.null(i)) {
+    i <- .lagpol0(i, "i", "delta", envir=envir)
+    nabla <- polyexpand(i)
+    nabla <- polydivC(object$nabla, nabla, FALSE)
+    object$nabla <- nabla
+    object$i <- list(as.lagpol(nabla))
+    mu <- mu*sum(nabla)
+    z <- ts(diffC(z, nabla, object$bc), end = end(z), frequency = frequency(z))
+    if (object$bc){
+      z <- z*100
+      object$sig2 <- object$sig2*100^2
+    }
+    object$bc <- FALSE
+  }
   
   if (is.null(ori)) ori <- length(z)
   if (n.ahead < 1) n.ahead <- 1
