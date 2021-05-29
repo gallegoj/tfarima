@@ -7,9 +7,6 @@
 \format{
 An object of class \code{ts} of length 156.
 }
-\source{
-\url{https://www.census.gov/retail/mrts/mrtshist.html}
-}
 \usage{
 rsales
 }

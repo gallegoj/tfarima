@@ -7,7 +7,6 @@
 #' and Outlier Effects in Time Series, Journal of the American Statistical
 #' Association, Vol. 88, No. 421, pp. 284-297
 #'
-#' @source \url{https://www.census.gov/retail/mrts/mrtshist.html}
 "rsales"
 
 #' Series C Chemical Process Temperature Readings: Every Minute.
@@ -18,7 +17,6 @@
 #' Box, G.E., Jenkins, G.M., Reinsel, G.C. and Ljung, G.M. (2015) Time Series
 #' Analysis: Forecasting and Control. John Wiley & Sons, Hoboken.
 #' 
-#' @source \url{ftp://ftp.wiley.com/public/sci_tech_med/times_series_example}
 "seriesC"
 
 #' Gas furnace data
@@ -35,25 +33,4 @@
 #' Box, G.E., Jenkins, G.M., Reinsel, G.C. and Ljung, G.M. (2015) Time Series
 #' Analysis: Forecasting and Control. John Wiley & Sons, Hoboken.
 #' 
-#' @source \url{ftp://ftp.wiley.com/public/sci_tech_med/times_series_example}
 "seriesJ"
-
-#' Wisconsin Telephone Company
-#'
-#' Monthly data from January 1951 to October 1966.
-#'
-#' @format A object of class data.frame with 215 rows and 2 columns: 
-#' \describe{
-#'   \item{X}{Monthly outward station movements.} 
-#'   \item{Y}{Montly inward station movements.} 
-#' }
-#'
-#' @references 
-#' 
-#' Thompson, H. E. and Tiao, G. C. (1971) "Analysis of Telephone
-#' Data: A Case Study of Forecasting Seasonal Time Series," Bell Journal of
-#' Economics, The RAND Corporation, vol. 2(2), pages 515-541, Autumn.
-#'
-#' @source \url{http://old-www.stat.wisc.edu/sites/default/files/TR222.pdf}
-"Wtelephone"
-

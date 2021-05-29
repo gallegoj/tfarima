@@ -1,28 +1,29 @@
 
 #' Identification plots
-#' 
-#' \code{ide} displays graphs useful to identify a tentative ARIMA 
-#' model for a time series.
+#'
+#' \code{ide} displays graphs useful to identify a tentative ARIMA model for a
+#' time series.
 #'
 #' @param Y Univariate or multivariate time series.
-#' @param transf Data transformations, list(bc = F, d = 0, D = 0, S = F),
-#' where bc is the Box-Cox logarithmic transformation, d and D are the
-#' number of nonseasonal and seasonal differences, and S is the annual 
-#' sum operator.
+#' @param transf Data transformations, list(bc = F, d = 0, D = 0, S = F), where
+#'   bc is the Box-Cox logarithmic transformation, d and D are the number of
+#'   nonseasonal and seasonal differences, and S is the annual sum operator.
 #' @param order.polreg an integer indicating the order of a polynomial trend.
 #' @param lag.max number of autocorrelations.
-#' @param lags.at the lags of the ACF/PACF at which tick-marks are to be drawn. 
-#' @param wn.bands logical. If TRUE confidence intervals for sample 
-#' autocorrelations are computed assuming a white noise series. 
-#' @param graphs graphs to be shown: plot, hist, acf, pacf, pgram, 
-#' cpgram (cummulative periodogram), rm (range-median).
+#' @param lags.at the lags of the ACF/PACF at which tick-marks are to be drawn.
+#' @param freq.at the frequencies of the (cum) periodogram at at which
+#'   tick-marks are to be drawn.
+#' @param wn.bands logical. If TRUE confidence intervals for sample
+#'   autocorrelations are computed assuming a white noise series.
+#' @param graphs graphs to be shown: plot, hist, acf, pacf, pgram, cpgram
+#'   (cummulative periodogram), rm (range-median).
 #' @param set.layout logical. If TRUE the layout is set by the function,
-#' otherwise it is set by the user.
-#' @param byrow logical. If TRUE the layout is filled by rows, otherwise it
-#' is filled by columns.
+#'   otherwise it is set by the user.
+#' @param byrow logical. If TRUE the layout is filled by rows, otherwise it is
+#'   filled by columns.
 #' @param main title of the graph.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
+#' @param envir environment in which the function arguments are evaluated. If
+#'   NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
 #' @return NULL
 #'
@@ -30,7 +31,7 @@
 #' Y <- AirPassengers
 #' ide(Y, graphs = c("plot", "rm"))
 #' ide(Y, transf = list(list(bc = TRUE, S = TRUE), list(bc = TRUE, d = 1, D = 1)))
-#' 
+#'
 #' @export
 ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, 
                 lags.at = NULL, freq.at = NULL,

@@ -7,9 +7,6 @@
 \format{
 An object of class \code{numeric} of length 226.
 }
-\source{
-\url{ftp://ftp.wiley.com/public/sci_tech_med/times_series_example}
-}
 \usage{
 seriesC
 }

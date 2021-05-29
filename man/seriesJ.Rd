@@ -11,9 +11,6 @@ A object of class data.frame with 296 rows and 2 columns:
 \item{Y}{\% CO2 in outlet gas.}
 }
 }
-\source{
-\url{ftp://ftp.wiley.com/public/sci_tech_med/times_series_example}
-}
 \usage{
 seriesJ
 }

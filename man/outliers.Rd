@@ -52,6 +52,9 @@ only used when \code{dates = NULL}.}
 
 \item{easter}{logical; if true, Easter effect is also estimated.}
 
+\item{resid}{type of residuals (exact or conditional) used to identify 
+outliers.}
+
 \item{n.ahead}{a positive integer to extend the sample period of the
 intervation variables with \code{n.ahead} observations, which could be
 necessary to forecast the output.}
@@ -64,9 +67,6 @@ If NULL the calling environment of this function will be used.}
 \item{...}{additional arguments.}
 
 \item{z}{a time series.}
-
-\item{exact.res}{logical; if TRUE (FALSE), exact (conditional) residuals are
-used to identify outliers.}
 }
 \value{
 an object of class "\code{\link{tfm}}" or a table.

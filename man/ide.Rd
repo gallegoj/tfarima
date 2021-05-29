@@ -23,10 +23,9 @@ ide(
 \arguments{
 \item{Y}{Univariate or multivariate time series.}
 
-\item{transf}{Data transformations, list(bc = F, d = 0, D = 0, S = F),
-where bc is the Box-Cox logarithmic transformation, d and D are the
-number of nonseasonal and seasonal differences, and S is the annual 
-sum operator.}
+\item{transf}{Data transformations, list(bc = F, d = 0, D = 0, S = F), where
+bc is the Box-Cox logarithmic transformation, d and D are the number of
+nonseasonal and seasonal differences, and S is the annual sum operator.}
 
 \item{order.polreg}{an integer indicating the order of a polynomial trend.}
 
@@ -34,28 +33,31 @@ sum operator.}
 
 \item{lags.at}{the lags of the ACF/PACF at which tick-marks are to be drawn.}
 
-\item{wn.bands}{logical. If TRUE confidence intervals for sample 
+\item{freq.at}{the frequencies of the (cum) periodogram at at which
+tick-marks are to be drawn.}
+
+\item{wn.bands}{logical. If TRUE confidence intervals for sample
 autocorrelations are computed assuming a white noise series.}
 
-\item{graphs}{graphs to be shown: plot, hist, acf, pacf, pgram, 
-cpgram (cummulative periodogram), rm (range-median).}
+\item{graphs}{graphs to be shown: plot, hist, acf, pacf, pgram, cpgram
+(cummulative periodogram), rm (range-median).}
 
 \item{set.layout}{logical. If TRUE the layout is set by the function,
 otherwise it is set by the user.}
 
-\item{byrow}{logical. If TRUE the layout is filled by rows, otherwise it
-is filled by columns.}
+\item{byrow}{logical. If TRUE the layout is filled by rows, otherwise it is
+filled by columns.}
 
 \item{main}{title of the graph.}
 
-\item{envir}{environment in which the function arguments are evaluated.
-If NULL the calling environment of this function will be used.}
+\item{envir}{environment in which the function arguments are evaluated. If
+NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 }
 \description{
-\code{ide} displays graphs useful to identify a tentative ARIMA 
-model for a time series.
+\code{ide} displays graphs useful to identify a tentative ARIMA model for a
+time series.
 }
 \examples{
 Y <- AirPassengers

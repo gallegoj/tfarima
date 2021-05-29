@@ -306,12 +306,14 @@ function(um, z = NULL, form = c("dif", "td"), easter = FALSE, n.ahead = 0,
 #' \code{diagchk} displays tools for diagnostic checking.
 #'
 #' @param mdl an object of class \code{um} or \code{tfm}.
-#' @param method exact or conditional residuals.   
+#' @param method exact or conditional residuals.
 #' @param lag.max number of lags for ACF/PACF.
-#' @param lags.at the lags of the ACF/PACF at which tick-marks are to be drawn. 
+#' @param lags.at the lags of the ACF/PACF at which tick-marks are to be drawn.
+#' @param freq.at the frequencies of the (cum) periodogram at at which
+#'   tick-marks are to be drawn.
 #' @param std logical. If TRUE standardized residuals are shown.
 #' @param ... additional arguments.
-#' 
+#'
 #' @export
 diagchk <- function (mdl, ...) { UseMethod("diagchk") }
 
@@ -328,12 +330,13 @@ diagchk <- function (mdl, ...) { UseMethod("diagchk") }
 #' diagchk(airl)
 #' @export
 diagchk.um <- function(mdl, z = NULL, method = c("exact", "cond"),
-                       lag.max = NULL, lags.at = NULL, 
+                       lag.max = NULL, lags.at = NULL, freq.at = NULL,
                        std = TRUE, envir=NULL, ...) {
   if (is.null (envir)) envir <- parent.frame ()
   u <- residuals.um(mdl, z, envir=envir)
   ide(u, graphs = c("plot", "hist", "acf", "pacf", "cpgram"), ylab = "u",
-      lag.max = lag.max, lags.at = lags.at, std = std, envir=envir, ...)
+      lag.max = lag.max, lags.at = lags.at, freq.at = freq.at,
+      std = std, envir=envir, ...)
 }
 
 
@@ -1413,9 +1416,9 @@ print.summary.um <- function(x, stats = TRUE,
     w.left <- 20
     w.right <- 10
     cat(format("Total nobs", width = w.left, justify = "left"),
-        format(x$N, digits = 0, width = w.right, justify = "right"), 
+        format(x$N, digits = NULL, width = w.right, justify = "right"), 
         format("Effective nobs", width = w.left, justify = "left"),
-        format(x$n, digits = 0, width = w.right, justify = "right"), "\n")
+        format(x$n, digits = NULL, width = w.right, justify = "right"), "\n")
     
     cat(format("log likelihood", width = w.left, justify = "left"),
         format(x$logLik, digits = digits, width = w.right, justify = "right"),

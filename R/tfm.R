@@ -142,10 +142,13 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
 #'    If NULL the calling environment of this function will be used.
 #' @export
 diagchk.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
-                        lag.max = NULL, std = TRUE, envir = NULL, ...) {
+                        lag.max = NULL, lags.at = NULL, freq.at = NULL,
+                        std = TRUE, envir = NULL, ...) {
   if (is.null (envir)) envir <- parent.frame ()
   u <- residuals.tfm(mdl, y, method, envir = envir)
-  ide(u, graphs = c("plot", "hist", "acf", "pacf", "cpgram"), lag.max = lag.max, std = std, envir=envir, ...)
+  ide(u, graphs = c("plot", "hist", "acf", "pacf", "cpgram"), ylab = "u",
+      lag.max = lag.max, lags.at = lags.at, freq.at = freq.at,
+      std = std, envir=envir, ...)
 }
 
 
