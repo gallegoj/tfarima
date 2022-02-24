@@ -234,6 +234,8 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
       for (i in 1:mdl$k) {
         x <- filterC(X[[i]], mdl$inputs[[i]]$theta,
                      mdl$inputs[[i]]$phi, mdl$inputs[[i]]$delay)
+        if (t0[i] > 1 || t1[i] > 1) x[t0[i]:t1[i]]
+        else x
         ystar <- ystar - x
       }
     }
@@ -273,12 +275,18 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
   }
   
   if (mdl$k > 0) {
+    t0 <- rep(1, mdl$k)
+    t1 <- rep(1, mdl$k)
+    i <- 1
     X <- lapply(mdl$inputs, function(tf) {
       x <- diffC(tf$x, mdl$noise$nabla, tf$um$bc)
-      t0 <- tf$t.start
-      t1 <- tf$t.end
-      if (t0 > 1 || length(tf$x) > t1) x[t0:(t0+n-1)]
-      else x
+      if (t0 > 1 || length(tf$x) > t1) {
+        t0[i] <<- tf$t.start
+        t1[i] <<- tf$t.start + n - 1
+        x[t0:(t0+n-1)]
+      } else {
+        x
+      }
     })
   }
 
@@ -290,7 +298,7 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
                      opt$convergence), domain = NA)
 
   mdl <- update.tfm(mdl, opt$par)
-  wstar <- noise.tfm(mdl, diff = TRUE, envir=envir)
+  wstar <- noise.tfm(mdl, y, diff = TRUE, envir=envir)
   if (!is.null(mdl$noise$mu)) wstar <- wstar - mdl$noise$mu
   if (method == "cond")
     res <- condresC(wstar, mdl$noise$phi, mdl$noise$theta, TRUE)
@@ -381,14 +389,15 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir=NULL, ...) 
     }
     if (tfm$k > 0) {
       for (i in 1:tfm$k) {
-        x <- filterC(tfm$inputs[[i]]$x, tfm$inputs[[i]]$theta,
+        x <- diffC(tfm$inputs[[i]]$x, tfm$noise$nabla, tfm$inputs[[i]]$um$bc)
+        x <- filterC(x, tfm$inputs[[i]]$theta,
                      tfm$inputs[[i]]$phi, tfm$inputs[[i]]$delay)
         t0 <- tfm$inputs[[i]]$t.start
         t1 <- tfm$inputs[[i]]$t.end
         if (t0 > 1 || length(tfm$inputs[[i]]$x) > t1) 
-          y <- y - diffC(x[t0:t1], tfm$noise$nabla, tfm$inputs[[i]]$um$bc)
+          y <- y - x[t0:(t0+n-1)]
         else
-          y <- y - diffC(x, tfm$noise$nabla, tfm$inputs[[i]]$um$bc)
+          y <- y - x
       }
     }
   }
@@ -447,7 +456,7 @@ setinputs.tfm <- function(tfm, xreg = NULL, inputs = NULL, ...) {
     if (!is.null(tfm$inputs) && length(tfm$inputs) > 1) 
       inputs <- c(inputs, tfm$inputs)  
   } else inputs <- tfm$inputs
-  tfm(tfm$output, xreg, inputs, tfm$noise)
+  tfm(xreg = xreg, inputs = inputs, noise = tfm$noise, ...)
   
 }
 
