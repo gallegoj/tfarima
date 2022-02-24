@@ -645,6 +645,7 @@ outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
   if (is.null(mdl$noise$mu)) mu <- 0
   else mu <- mdl$noise$mu
   
+  tfm1 <- NULL
   if (calendar||easter) {
     if (calendar)
       tfm1 <- calendar.um(mdl$noise, N, easter = easter, 
