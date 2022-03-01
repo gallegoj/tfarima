@@ -53,8 +53,8 @@ tf <- function(x = NULL, delay = 0,  w0 = 0, ar = NULL, ma = NULL,
   if (par.prefix == "") par.prefix <- x.name
   pos <- regexpr("\\$", par.prefix)[1] 
   if (pos > -1) par.prefix <- substr(par.prefix, pos+1, nchar(par.prefix))
-  else if (regexpr("\\[", par.prefix)[1] > -1) stop("wrong preffix for parameters")
-  else if (regexpr("\\,", par.prefix)[1] > -1) stop("wrong preffix for parameters")
+  else if (regexpr("\\[", par.prefix)[1] > -1) stop("wrong prefix for parameters")
+  else if (regexpr("\\,", par.prefix)[1] > -1) stop("wrong prefix for parameters")
   
   if (!is.ts(x)) {
     stopifnot(is.numeric(x))
@@ -251,18 +251,19 @@ output.tf <- function(tf) {
 #' 
 #' @param y output, a ts object or a numeric vector.
 #' @param x input, a ts object or a numeric vector.
-#' @param p order of the AR polynomial, double.
-#' @param q order of the MA polynomial, double.
+#' @param p order of the AR polynomial, integer
+#' @param q order of the MA polynomial, integer.
 #' @param delay integer.
 #' @param um.y univariate model for output, um object or NULL.
 #' @param um.x univariate model for input, um object or NULL.
 #' @param n.back number of backcasts.
+#' @param par.prefix prefix name for parameters.
 #' @param envir environment in which the function arguments are evaluated.
 #'    If NULL the calling environment of this function will be used.
 #' @return A "tf" S3 object
 #' @export
 tfest <- function(y, x, delay = 0, p = 1, q = 2, um.y = NULL, um.x = NULL,
-                  n.back = NULL, envir=NULL) {
+                  n.back = NULL, par.prefix = "", envir=NULL) {
 
   stopifnot(p >= 0, q >= 0, delay >= 0)
   if (is.null(um.y)) stop("Univariate model for output required")
@@ -274,7 +275,8 @@ tfest <- function(y, x, delay = 0, p = 1, q = 2, um.y = NULL, um.x = NULL,
   if (s != frequency(x)) stop("incompatible series")
   x.copy <- x
   if (is.null(n.back)) n.back  <- length(x)/4
-  tf.x <- tf(x, delay = delay, ar = p, ma = q, um = um.x, par.prefix = x.name)
+  if (par.prefix == "") par.prefix <- x.name
+  tf.x <- tf(x, delay = delay, ar = p, ma = q, um = um.x, par.prefix = par.prefix)
   tf.x$x.name <- x.name
   if (is.null(um.y)) um.y <- um()
   else um.y$param <- NULL

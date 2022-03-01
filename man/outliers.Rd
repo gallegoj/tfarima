@@ -39,7 +39,7 @@ outliers(mdl, ...)
 \arguments{
 \item{mdl}{an object of class \code{\link{um}} or \code{\link{tfm}}.}
 
-\item{y}{an object of class \code{ts}}
+\item{y}{an object of class \code{ts}, optional.}
 
 \item{dates}{a list of dates c(year, season). If \code{dates = NULL}, an
 iterative detection process is conducted.}

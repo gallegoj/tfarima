@@ -233,6 +233,7 @@ as.character.lagpol <- function(lp, digits = 2, pol = FALSE, eq = FALSE, ...) {
   d <- length(p) - 1
   names(p) <- 0:d
   p <- p[p != 0]
+  if (length(p) == 0) return("0")
   
   signs <- ifelse(p < 0, "- ", "+ ")
   if (signs[1] == "+ ") signs[1] <- ""

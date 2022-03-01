@@ -23,9 +23,9 @@ tfest(
 
 \item{delay}{integer.}
 
-\item{p}{order of the AR polynomial, double.}
+\item{p}{order of the AR polynomial, integer}
 
-\item{q}{order of the MA polynomial, double.}
+\item{q}{order of the MA polynomial, integer.}
 
 \item{um.y}{univariate model for output, um object or NULL.}
 

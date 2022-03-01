@@ -41,6 +41,29 @@ outlierDates <- function(x, c = 3) {
   d[abs(x) > c, ]
 }
 
+#' Value of a time series at a date
+#' 
+#' \code{tsvalue} select a value from a time series by date.
+#' 
+#' @param x an \code{ts} object.
+#' @param date the time of the specific observation, c(year, month/quarter).     
+#'
+#' @return 
+#' 
+#' The value of the observation, double.
+#'
+#' @export
+tsvalue <- function(x, date) {
+  stopifnot(is.ts(x))
+  start <- start(x)
+  s <- frequency(x)
+  n <- length(x)
+  if (s > 1) t <- (date[1] - start[1] + 1)*s - (start[2] - 1) - (s - date[2])
+  else t <- (date[1] - start[1] + 1)*s
+  stopifnot(t > 0 || t <= n)
+  x[n]
+}
+
 YearSeason <- function(x, year.digits = 4) {
   if (!is.ts(x)) x <- as.ts(x)
   freq <- frequency(x)
