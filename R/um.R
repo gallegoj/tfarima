@@ -276,8 +276,8 @@ calendar <- function (um, ...) { UseMethod("calendar") }
 #' @rdname calendar
 #' @export
 calendar.um <-
-function(um, z = NULL, form = c("dif", "td"), easter = FALSE, n.ahead = 0,
-         p.value = 1, envir=NULL, ...)
+function(um, z = NULL, form = c("dif", "td", "wd", "lom", "null"), easter = FALSE, 
+         leap.year = FALSE, n.ahead = 0, p.value = 1, envir=NULL, ...)
 {
   if (is.null (envir)) envir <- parent.frame ()
   if (is.null(z)) z <- z.um(um, envir=envir)
@@ -285,7 +285,7 @@ function(um, z = NULL, form = c("dif", "td"), easter = FALSE, n.ahead = 0,
   form <- match.arg(form)
 
   n.ahead <- abs(n.ahead)
-  xreg <- CalendarVar(z, form, easter, n.ahead)
+  xreg <- CalendarVar(z, form, easter, leap.year, n.ahead)
   tfm1 <- tfm(xreg = xreg, noise = um, envir=envir)
   if (p.value < 0.999) {
     p <- summary.tfm(tfm1, p.values = TRUE)
@@ -716,6 +716,8 @@ nabla.um <- function(um) {
 #'
 #' @param mdl an object of class \code{\link{um}} or \code{\link{tfm}}.
 #' @param z a time series.
+#' @param types a vector with the initials of the outliers to be detected,
+#'   c("AO", "LS", "TC", "IO").
 #' @param dates a list of dates c(year, season). If \code{dates = NULL}, an
 #'   iterative detection process is conducted.
 #' @param c a positive constant to compare the z-ratio of the effect of an
@@ -723,8 +725,8 @@ nabla.um <- function(um) {
 #'   only used when \code{dates = NULL}.
 #' @param calendar logical; if true, calendar effects are also estimated.
 #' @param easter logical; if true, Easter effect is also estimated.
-#' @param resid type of residuals (exact or conditional) used to identify 
-#' outliers.
+#' @param resid type of residuals (exact or conditional) used to identify
+#'   outliers.
 #' @param n.ahead a positive integer to extend the sample period of the
 #'   intervation variables with \code{n.ahead} observations, which could be
 #'   necessary to forecast the output.
@@ -740,9 +742,11 @@ outliers <- function (mdl, ...) { UseMethod("outliers") }
 #' um1 <- um(Y, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 #' outliers(um1)
 #' @export
-outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
-                        easter = FALSE, resid = c("exact", "cond"), n.ahead = 0, 
+outliers.um <- function(mdl, z = NULL, types = c("AO", "LS", "TC", "IO"), 
+                        dates = NULL, c = 3, calendar = FALSE, easter = FALSE, 
+                        resid = c("exact", "cond"), n.ahead = 0, 
                         p.value = 1, envir=NULL, ...) {
+  
   if (is.null (envir)) envir <- parent.frame ()
   if (is.null(z)) z <- z.um(mdl, envir=envir)
   else if(!is.ts(z)) z <- ts(z)
@@ -756,7 +760,10 @@ outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
     resid <- "cond"
   resid <- match.arg(resid)
   eres <- resid == "exact"
-  
+  types <- toupper(types)
+  types <- match.arg(c("AO", "LS", "TC", "IO"), types, several.ok = TRUE)
+  types <- sapply(c("AO", "LS", "TC", "IO"), function(x) (x %in% types)*1L)
+
   if (is.null(dates)) indx = 0  
   else if (is.numeric(dates)) {
     if (length(dates) == 2 && (dates[2] >= 1 && dates[2] <= freq)) {
@@ -778,6 +785,7 @@ outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
   if (is.null(mdl$mu)) mu <- 0
   else mu <- mdl$mu
   
+  
   tfm1 <- NULL
   if (calendar||easter) {
     if (calendar)
@@ -787,7 +795,7 @@ outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
       tfm1 <- easter.um(mdl, z, n.ahead, envir = envir)
     N <- noise.tfm(tfm1, diff = FALSE)
     A <- outliersC(N, FALSE,  mu, tfm1$noise$phi, tfm1$noise$nabla, 
-                   tfm1$noise$theta, indx, eres, abs(c))
+                   tfm1$noise$theta, types, indx, eres, abs(c))
   } else { 
     A <- outliersC(z, mdl$bc,  mu, mdl$phi, mdl$nabla, mdl$theta, indx, eres, abs(c))
   }

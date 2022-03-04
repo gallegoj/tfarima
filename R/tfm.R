@@ -624,9 +624,10 @@ print.summary.tfm <- function(x, stats = TRUE,
 #' @param envir environment in which the function arguments are evaluated.
 #'    If NULL the calling environment of this function will be used.
 #' @export
-outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
-                         easter = FALSE, resid = c("exact", "cond"),
-                         n.ahead = NULL, p.value = 1, envir=NULL, ...) {
+outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"), 
+                         dates = NULL,  c = 3, calendar = FALSE, easter = FALSE, 
+                         resid = c("exact", "cond"), n.ahead = NULL, 
+                         p.value = 1, envir=NULL, ...) {
   if (is.null (envir)) envir <- parent.frame ()
   if (is.null(n.ahead)) n.ahead = 0
   else n.ahead <- abs(n.ahead)
@@ -644,6 +645,9 @@ outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
     resid <- "cond"
   resid <- match.arg(resid)
   eres <- resid == "exact"
+  types <- toupper(types)
+  types <- match.arg(c("AO", "LS", "TC", "IO"), types, several.ok = TRUE)
+  types <- sapply(c("AO", "LS", "TC", "IO"), function(x) (x %in% types)*1L)
   
   if (is.null(dates)) indx = 0  
   else if (is.numeric(dates)) {
@@ -677,10 +681,10 @@ outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
       tfm1 <- easter.um(mdl$noise, N, n.ahead, envir = envir)
     N <- noise.tfm(tfm1, diff = FALSE, envir=envir)
     A <- outliersC(N, FALSE,  mu, tfm1$noise$phi, tfm1$noise$nabla, 
-                   tfm1$noise$theta, indx, eres, abs(c))
+                   tfm1$noise$theta, types, indx, eres, abs(c))
   } else {
     A <- outliersC(N, FALSE,  mu, mdl$noise$phi, mdl$noise$nabla, 
-                   mdl$noise$theta, indx, eres, abs(c))
+                   mdl$noise$theta, types, indx, eres, abs(c))
   }
   
   if (ncol(A) == 1) {

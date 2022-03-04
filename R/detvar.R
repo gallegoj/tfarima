@@ -28,30 +28,49 @@
 #'
 #' @export
 CalendarVar <- 
-function(x, form = c("dif", "lom", "td"), easter = FALSE, n.ahead = 0) 
+function(x, form = c("dif", "lom", "td", "wd", "wkdy6", "null"), 
+         easter = FALSE, leap.year = TRUE, n.ahead = 0) 
 {
+
   form <- tolower(form)[1]
-  Sun <- num.days(x, 0, n.ahead = n.ahead) - 4
-  Mon <- num.days(x, 1, n.ahead = n.ahead) - 4
-  Tue <- num.days(x, 2, n.ahead = n.ahead) - 4
-  Wed <- num.days(x, 3, n.ahead = n.ahead) - 4
-  Thu <- num.days(x, 4, n.ahead = n.ahead) - 4
-  Fri <- num.days(x, 5, n.ahead = n.ahead) - 4
-  Sat <- num.days(x, 6, n.ahead = n.ahead) - 4
-  Lom <- month.length(x, n.ahead) - 28
+  if (form != "null") {  
+    Sun <- num.days(x, 0, n.ahead = n.ahead) - 4
+    Mon <- num.days(x, 1, n.ahead = n.ahead) - 4
+    Tue <- num.days(x, 2, n.ahead = n.ahead) - 4
+    Wed <- num.days(x, 3, n.ahead = n.ahead) - 4
+    Thu <- num.days(x, 4, n.ahead = n.ahead) - 4
+    Fri <- num.days(x, 5, n.ahead = n.ahead) - 4
+    Sat <- num.days(x, 6, n.ahead = n.ahead) - 4
+    Lom <- month.length(x, n.ahead) - 28
+
+    if (form == "td") {
+      xreg <- data.frame(Sun, Mon, Tue, Wed, Thu, Fri, Sat)
+    } else if (form == "lom") {
+      xreg <- data.frame(Lom, Mon, Tue, Wed, Thu, Fri, Sat)
+    } else if (form == "wd") {
+      wd <- (Mon + Tue + Wed + Thu + Fri) - 5*(Sat+Sun)/2
+      xreg <- data.frame(weekdays = wd)
+    } else {
+      xreg <- data.frame(Lom, Mon_Sun = Mon - Sun, Tue_Sun = Tue - Sun,
+                         Wed_Sun = Wed - Sun, Thu_Sun = Thu - Sun,
+                         Fri_Sun = Fri - Sun, Sat_Sun = Sat - Sun)
+    }
+  } else form <- NULL
   
-  if (form == "td") {
-    xreg <- data.frame(Sun, Mon, Tue, Wed, Thu, Fri, Sat)
-  } else if (form == "lom") {
-    xreg <- data.frame(Lom, Mon, Tue, Wed, Thu, Fri, Sat)
-  } else {
-    xreg <- data.frame(Lom, Mon_Sun = Mon - Sun, Tue_Sun = Tue - Sun,
-                       Wed_Sun = Wed - Sun, Thu_Sun = Thu - Sun,
-                       Fri_Sun = Fri - Sun, Sat_Sun = Sat - Sun)
-  }
   if (easter) {
     Easter <- EasterVar(x, n.ahead = n.ahead)
-    xreg <- data.frame(Easter, xreg)
+    if (is.null(form))
+      xreg <- data.frame(Easter)
+    else
+      xreg <- data.frame(Easter, xreg)
+  }
+  
+  if (leap.year) {
+    ly <- leap.year(x, n.ahead = n.ahead)
+    if (is.null(form))
+      xreg <- data.frame(leapyear = ly)
+    else
+      xreg <- data.frame(leapyear = ly, xreg)
   }
   
   xreg
@@ -116,9 +135,7 @@ easter.date <- function(year) {
     day <- day -31
     month <- 4
   }
-  
   c(month, day)
-  
 }
 
 EasterVar <- function(Y, len = 4, n.ahead = 0) {
@@ -194,6 +211,27 @@ month.length <- function(Y, n.ahead = 0) {
   
   x
 
+}
+
+leap.year <- function(Y, n.ahead = 0) {
+  if (frequency(Y) != 12) stop("function only implemented for monthly ts")
+  start <- start(Y)
+  n <- length(Y) + n.ahead
+  x <- ts(double(n), start = start, frequency = 12)
+  y <- start[1]
+  m <- start[2]
+  for (t in 1:n) {
+    if (m == 2) {
+      if( (y%%400 == 0) || (y%%100 == 0) || (y%%4 == 0)) x[t] <- 0.75
+      else x[t] <- -0.25
+    } 
+    m <- m + 1
+    if (m > 12) {
+      m <- 1
+      y <- y +1
+    }
+  }
+  x
 }
 
 num.days <- function(Y, day, n.ahead = 0) {

@@ -108,6 +108,7 @@ void tempchangeC(int tau, arma::colvec &x, const arma::colvec &y, double &b,
 //   [[Rcpp::export]]
 arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colvec &phi,
                     const arma::colvec &nabla, const arma::colvec &theta, 
+                    const arma::ucolvec &types, 
                     arma::ucolvec &timing, bool eres, double c) {
   
   int t, tau, i, N, T, k, iter;
@@ -148,22 +149,31 @@ arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colve
         if (fabs(d2) > c||T < N) {
           A(t, 0) = timing(t);
           A(t, 1) = 1; 
-          A(t, 2) = d1; 
-          A(t, 3) = d2; 
+          if (types[3] == 1) {
+            A(t, 2) = d1; 
+            A(t, 3) = d2; 
+          } else {
+            A(t, 2) = 0; 
+            A(t, 3) = 0; 
+          }
           if (tau < N-1) {
-            tratioC(tau, x1, a, d1, d2);
-            if ( fabs(d2) > fabs(A(t, 3)) ) {
-              A(t, 1) = 2; 
-              A(t, 2) = d1; 
-              A(t, 3) = d2; 
+            if (types[0] == 1) {
+              tratioC(tau, x1, a, d1, d2);
+              if ( fabs(d2) > fabs(A(t, 3)) ) {
+                A(t, 1) = 2; 
+                A(t, 2) = d1; 
+                A(t, 3) = d2; 
+              }
             }
-            tratioC(tau, x2, a, d1, d2);
-            if (fabs(d2) > fabs(A(t, 3)) ) {
-              A(t, 1) = 3; 
-              A(t, 2) = d1; 
-              A(t, 3) = d2; 
+            if (types[1] == 1) {
+              tratioC(tau, x2, a, d1, d2);
+              if (fabs(d2) > fabs(A(t, 3)) ) {
+                A(t, 1) = 3; 
+                A(t, 2) = d1; 
+                A(t, 3) = d2; 
+              }
             }
-            if ((int)A(t, 1) < 3) {
+            if ((int)A(t, 1) < 3 & types[2] == 1) {
               x3 = x1;
               d1 = A(t, 2); d2 = A(t, 3);
               tempchangeC(tau, x3, a, d1, d2, A(t, 4));
@@ -174,6 +184,7 @@ arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colve
               } else A(t, 4) = 0;
             }
           } else A(t, 1) = 2;
+          
           if (A(t, 1) == 1) {
             a(tau) -= A(t, 2);
           } else if (A(t, 1) == 2) {
