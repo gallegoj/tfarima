@@ -263,7 +263,7 @@ output.tf <- function(tf) {
 #' @return A "tf" S3 object
 #' @export
 tfest <- function(y, x, delay = 0, p = 1, q = 2, um.y = NULL, um.x = NULL,
-                  n.back = NULL, par.prefix = "", envir=NULL) {
+                  n.back = NULL, par.prefix = "", envir = NULL) {
 
   stopifnot(p >= 0, q >= 0, delay >= 0)
   if (is.null(um.y)) stop("Univariate model for output required")
@@ -280,7 +280,7 @@ tfest <- function(y, x, delay = 0, p = 1, q = 2, um.y = NULL, um.x = NULL,
   tf.x$x.name <- x.name
   if (is.null(um.y)) um.y <- um()
   else um.y$param <- NULL
-  tfm.x <- tfm(deparse(substitute(y)), inputs = tf.x, noise = um.y, envir=envir)
+  tfm.x <- tfm(y, inputs = tf.x, noise = um.y, envir = envir)
   return(tfm.x$inputs[[1]])
 
 }

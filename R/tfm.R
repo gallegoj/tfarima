@@ -22,7 +22,7 @@
 #'
 #' @export
 tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
-                envir=NULL, ...) {
+                envir = NULL, ...) {
   stopifnot(is.um(noise))
   if (is.null (envir)) envir <- parent.frame ()
 
@@ -50,9 +50,10 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
     txt <- deparse(substitute(output))
     noise$z <- txt
   }
-  
+
   N <- length(output)
   stopifnot(N > noise$d)
+  if (!is.ts(output)) output <- as.ts(output)
   start <- start(output)
   end <- end(output)
   s <- frequency(output)
@@ -64,6 +65,8 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
   if (k > 0) {
     for (i in 1:k) {
       stopifnot(inherits(inputs[[i]], "tf"))
+      if (!is.ts(inputs[[i]]$x)) 
+        inputs[[i]]$x <- ts(inputs[[i]]$x, start = start, frequency = s)
       if (frequency(inputs[[i]]$x) != s) stop("invalid frequency for input")
       # Check sample period for input: start1 <= start and end1 >= end
       start1 <- start(inputs[[i]]$x)
@@ -100,14 +103,12 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
     if (!is.ts(xreg)) xreg <- ts(xreg, start = start, frequency = s)
     if (frequency(xreg) != s) stop("invalid frequency for xreg inputs")
     # Check sample period for X: start1 <= start and end1 >= end
+    xreg <- window(xreg, start = start)
     start1 <- start(xreg)
-    t0 <- (start[1] - start1[1])*s + (start[2] - start1[2] + 1)
-    end1 <- end(xreg)
-    t1 <- (end1[1] - start1[1])*s + (end1[2] - start1[2] + 1)
-    if (t0 < 1 || (t1 - t0 + 1) < N) {
+    if (start1[1] != start[1] || start1[2] != start[2])
       stop("incompatible samples")
-    }
-    if (t0 > 1) xreg <- xreg[t0:t1, ]
+    if (nrow(xreg) < N)
+      stop("insufficient obs. for xreg")
     colnames(xreg) <- cn
     X <- apply(xreg, 2, function(x) {
       x <- diffC(x, noise$nabla, FALSE)
@@ -133,6 +134,20 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
 
   return(mod)
 
+}
+
+#' Coefficients of a transfer function model
+#'
+#' \code{coef} extracts the "coefficients" from a TF model.
+#'
+#' @param object a \code{tfm} object.
+#' @param ... other arguments.
+#'
+#' @return A numeric vector.
+#'
+#' @export
+coef.tfm <- function(object, ...) {
+  param.tfm(object)
 }
 
 
@@ -433,6 +448,8 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir = NULL, ...
 #' @param tfm a \code{tfm} object.
 #' @param xreg a matrix of inputs.
 #' @param inputs a list of tf objects.
+#' @param y an optional ts object.
+#' @param envir an environment.
 #' @param ... further arguments to be passed to particular methods
 #' 
 #' @return A \code{tfm} object.
@@ -442,19 +459,23 @@ setinputs <- function (tfm, ...) { UseMethod("setinputs") }
 
 #' @rdname setinputs
 #' @export
-setinputs.tfm <- function(tfm, xreg = NULL, inputs = NULL, ...) {
+setinputs.tfm <- function(tfm, xreg = NULL, inputs = NULL, y = NULL, 
+                          envir = NULL, ...) {
   stopifnot(is.tfm(tfm))
   if (!is.null(xreg)) {
-    if (!is.null(tfm$xreg))
-      xreg <- cbind(xreg, tfm$xreg)
+    if (!is.null(tfm$xreg)) {
+      name <- c(colnames(tfm$xreg), colnames(xreg))
+      xreg <- cbind(tfm$xreg, xreg)
+      colnames(xreg) <- name
+    }
   } else xreg <- tfm$xreg
   
   if (!is.null(inputs)) {
-    if (!is.null(tfm$inputs) && length(tfm$inputs) > 1) 
-      inputs <- c(inputs, tfm$inputs)  
+    if (is.list(tfm$inputs) && length(tfm$inputs) > 0) 
+      inputs <- c(tfm$inputs, inputs)  
   } else inputs <- tfm$inputs
-  tfm(xreg = xreg, inputs = inputs, noise = tfm$noise, ...)
-  
+  tfm(output = y, xreg = xreg, inputs = inputs, noise = tfm$noise, envir = envir,
+      ...)
 }
 
 
@@ -606,10 +627,12 @@ print.summary.tfm <- function(x, stats = TRUE,
 outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
                          easter = FALSE, resid = c("exact", "cond"),
                          n.ahead = NULL, p.value = 1, envir=NULL, ...) {
-
   if (is.null (envir)) envir <- parent.frame ()
   if (is.null(n.ahead)) n.ahead = 0
   else n.ahead <- abs(n.ahead)
+  y <- output.tfm(mdl, y, envir)
+  if (!mdl$kx > 0)
+    n.ahead <- length(y) - nrow(mdl$xreg)
   N <- noise.tfm(mdl, y, diff = FALSE, envir=envir)
   start <- start(N)
   freq <- frequency(N)
@@ -621,7 +644,6 @@ outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
     resid <- "cond"
   resid <- match.arg(resid)
   eres <- resid == "exact"
-  
   
   if (is.null(dates)) indx = 0  
   else if (is.numeric(dates)) {
@@ -683,31 +705,64 @@ outliers.tfm <- function(mdl, y = NULL, dates = NULL, c = 3, calendar = FALSE,
   
   n <- length(N)
   if (!is.null(n.ahead)) n <- n + n.ahead
-  tfi <- lapply(1:nrow(df), function(i) {
-    p <- double(n)
-    p[df[i, 1]] <- 1
-    p <- ts(p, start = start, frequency = freq)
-    prefix <- paste(df[i, 3], df[i, 2], sep = "")
-    if (df[i, 3] == "IO") tf(p, w0 = df[i, 4], ma = mdl$noise$ma, ar = c(mdl$noise$i, mdl$noise$ar), par.prefix = prefix)
-    else if (df[i, 3] == "AO") tf(p, w0 = df[i, 4], par.prefix = prefix)
-    else if (df[i, 3] == "TC") tf(p, w0 = df[i, 4], ar = 1, par.prefix = prefix)
-    else if (df[i, 3] == "LS") {
-      p <- cumsum(p)
-      p <- ts(p, start = start, frequency = freq)
-      tf(p, w0 = df[i, 4], par.prefix = prefix)
-    } else stop("unkown input")
-  })
   
-  if (calendar||easter) {
-    if (is.null(mdl$xreg)) xreg <- tfm1$xreg
-    else xreg <- merge(mdl$xreg, tfm1$xreg)
-  } else xreg <- mdl$xreg
+  i <- df[, 3] == "AO" | df[, 3] == "LS"
+  if (any(i)) {
+    names <- c()
+    X <- sapply((1:nrow(df))[i], function(k) {
+      p <- double(n)
+      p[df[k, 1]] <- 1
+      names <<- c(names, paste0(df[k, 3], df[k, 2]))
+      if (df[k, 3] == "AO") p
+      else cumsum(p)
+    })
+    if (is.vector(X)) X <- matrix(X, ncol = 1)
+    X <- ts(X, start = start, frequency = freq)
+    colnames(X) <- names
+  } else X <- NULL
+
+  if (any(!i)) {
+    tfi <- lapply((1:nrow(df))[!i], function(k) {
+      p <- double(n)
+      p[df[k, 1]] <- 1
+      p <- ts(p, start = start, frequency = freq)
+      prefix <- paste(df[k, 3], df[k, 2], sep = "")
+      if (df[k, 3] == "IO") tf(p, w0 = df[k, 4], ma = mdl$noise$ma, ar = c(mdl$noise$i, mdl$noise$ar), par.prefix = prefix)
+      else if (df[k, 3] == "TC") tf(p, w0 = df[k, 4], ar = 1, par.prefix = prefix)
+      else stop("unkown input")
+    })
+  } else tfi <- NULL 
+  
+  if (mdl$kx > 0) {
+    names <- colnames(mdl$xreg)
+    xreg <- mdl$xreg
+    if (calendar||easter) {
+      names <- c(names, colnames(tfm1$xreg))
+      xreg <- cbind(xreg, tfm1$xreg)
+    }
+    if (any(i)) {
+      names <- c(names, colnames(X))
+      xreg <- cbind(xreg, X)
+    }
+    colnames(xreg) <- names
+  } else if (calendar||easter) {
+    names <- colnames(tfm1$xreg)
+    xreg <- tfm1$xreg
+    if (any(i)) {
+      names <- c(names, colnames(X))
+      xreg <- cbind(xreg, X)
+    }
+    colnames(xreg) <- names
+  } else if (any(i))
+    xreg <- X
+  else
+    xreg <- NULL
   
   if (is.null(tfi)) tfi <- mdl$inputs
   else if (!is.null(mdl$inputs)) tfi <- list.tf(mdl$inputs, tfi)
-  
   mdl$noise$bc <- bc
-  tfm1 <- tfm(xreg = xreg, inputs = tfi, noise = mdl$noise, fit = TRUE)
+  tfm1 <- tfm(y, xreg = xreg, inputs = tfi, noise = mdl$noise, fit = TRUE, 
+              envir = envir)
   if (p.value < 0.999) 
     tfm1 <- varsel.tfm(tfm1, p.value = p.value)
   
@@ -740,10 +795,12 @@ intervention <- function (mdl, ...) { UseMethod("intervention") }
 intervention.tfm <- function(mdl, y = NULL, type, time, n.ahead = 0, 
                              envir = NULL, ...) {
   stopifnot(is.tfm(mdl))
+  if (is.null(envir)) envir <- parent.frame()
   type <- toupper(type)
+  y <- output.tfm(mdl, y, envir = envir)
   if (any(type == "IO")) 
-    u <- residuals(mdl, y)
-  y <- noise.tfm(mdl, y, diff = FALSE, exp = TRUE, envir = envir)
+    u <- residuals(mdl, y, envir = envir)
+  n <- noise.tfm(mdl, y, diff = FALSE, exp = TRUE, envir = envir)
   s <- frequency(y)
   k1 <- length(type)
   # convert time to list of dates
@@ -813,7 +870,7 @@ intervention.tfm <- function(mdl, y = NULL, type, time, n.ahead = 0,
         tfm1 <- setinputs(mdl, xreg = x, ...)
       } else {
         if (type[k] == "TC") {
-          tf <- tfest(y, x, p = 1, q = 0, um.y = mdl$noise, 
+          tf <- tfest(n, x, p = 1, q = 0, um.y = mdl$noise, 
                       par.prefix = names[k], envir = envir)
         } else { # "IO"
           tf <- tf(x, w0 = tsvalue(u, time[[k]]), ma = mdl$noise$ma,
@@ -840,17 +897,18 @@ intervention.tfm <- function(mdl, y = NULL, type, time, n.ahead = 0,
         }
         ltf <- lapply( (1:k1)[!i], function(k) {
           x <- X[, k]
-          if (type == "TC") {
-            tf <- tfest(y, x, p = 1, q = 0, um.y = mdl$noise, envir = envir)
+          x <- ts(x, start = start(y), frequency = frequency(y))
+          if (type[k] == "TC") {
+            tf <- tfest(n, x, p = 1, q = 0, um.y = mdl$noise, 
+                        par.prefix = names[k]) # Don't use envir
             tf$x.name <- names[k]
           } else { # "IO"
             tf <- tf(x, w0 = tsvalue(u, time[[k]]), ma = mdl$noise$ma,
-                     ar = c(mdl$noise$i, mdl$noise$ar), par.prefix = names[k], 
-                     envir = envir)
+                     ar = c(mdl$noise$i, mdl$noise$ar), par.prefix = names[k])
           }
           return(tf)
         })
-        return(setinputs(mdl, xreg = X1, inputs = ltf, ...))
+        return(setinputs(mdl, xreg = X1, inputs = ltf, y = y, envir = envir, ...))
       }
   }
 }

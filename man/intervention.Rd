@@ -7,12 +7,14 @@
 \usage{
 intervention(mdl, ...)
 
-\method{intervention}{tfm}(mdl, type, time, n.ahead = 0, envir = NULL, ...)
+\method{intervention}{tfm}(mdl, y = NULL, type, time, n.ahead = 0, envir = NULL, ...)
 }
 \arguments{
 \item{mdl}{an object of class \code{\link{um}} or \code{\link{tfm}}.}
 
 \item{...}{additional arguments.}
+
+\item{y}{a "ts" object, optional.}
 
 \item{type}{the type intervention (pulse, step, ramp) or the type of outlier
 (AO, LS, TC, IO).}
@@ -30,6 +32,5 @@ NULL the parent environment of this function will be used.}
 an object of class "\code{\link{tfm}}" or a table.
 }
 \description{
-\code{intervention} estimates the effect of a intervention causing an outlier
-at a known time.
+\code{intervention} estimates the effect of a intervention at a known time.
 }

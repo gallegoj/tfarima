@@ -7,7 +7,7 @@
 \usage{
 setinputs(tfm, ...)
 
-\method{setinputs}{tfm}(tfm, xreg = NULL, inputs = NULL, ...)
+\method{setinputs}{tfm}(tfm, xreg = NULL, inputs = NULL, y = NULL, envir = NULL, ...)
 }
 \arguments{
 \item{tfm}{a \code{tfm} object.}
@@ -17,6 +17,10 @@ setinputs(tfm, ...)
 \item{xreg}{a matrix of inputs.}
 
 \item{inputs}{a list of tf objects.}
+
+\item{y}{an optional ts object.}
+
+\item{envir}{an environment.}
 }
 \value{
 A \code{tfm} object.

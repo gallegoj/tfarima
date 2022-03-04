@@ -13,6 +13,7 @@ tfest(
   um.y = NULL,
   um.x = NULL,
   n.back = NULL,
+  par.prefix = "",
   envir = NULL
 )
 }
@@ -32,6 +33,8 @@ tfest(
 \item{um.x}{univariate model for input, um object or NULL.}
 
 \item{n.back}{number of backcasts.}
+
+\item{par.prefix}{prefix name for parameters.}
 
 \item{envir}{environment in which the function arguments are evaluated.
 If NULL the calling environment of this function will be used.}

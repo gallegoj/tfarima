@@ -3,6 +3,7 @@
 S3method(autocorr,um)
 S3method(autocov,um)
 S3method(calendar,um)
+S3method(coef,tfm)
 S3method(diagchk,tfm)
 S3method(diagchk,um)
 S3method(display,default)
