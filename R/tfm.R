@@ -339,7 +339,7 @@ logLik.tfm <-function(object, y = NULL, method = c("exact", "cond"), envir=NULL,
   if (method == "exact") ll <- ellarmaC(w, object$noise$phi, object$noise$theta)
   else ll <- cllarmaC(w, object$noise$phi, object$noise$theta)
   
-  return(c(ll, param.tfm(object)))
+  return(ll)
   
 }
 
@@ -768,7 +768,7 @@ outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"),
   tfm1 <- tfm(y, xreg = xreg, inputs = tfi, noise = mdl$noise, fit = TRUE, 
               envir = envir)
   if (p.value < 0.999) 
-    tfm1 <- varsel.tfm(tfm1, p.value = p.value)
+    tfm1 <- varsel.tfm(tfm1, y, p.value = p.value, envir = envir)
   
   return(tfm1)
   
@@ -1055,7 +1055,7 @@ predict.tfm <- function(object, newdata=NULL, y = NULL, ori = NULL, n.ahead = NU
 
 #' @export
 print.tfm <- function(x, ...) {
-  print(c(param.tfm(x), sig2 = x$noise$sig2), ...)
+  print(summary(x, short = TRUE, ...))
 }
 
 
@@ -1233,16 +1233,20 @@ tsdiag.tfm <- function(object, gof.lag = 10, ...)
 #' \code{varsel} omits non-significant inputs from a transfer function model.
 #'
 #' @param tfm a \code{tfm} object.
+#' @param y a "ts" object.
 #' @param p.value probability value to decide whether or not to omit an input.
-#' @param ... additional arguments.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
+#' @param ... other arguments.
 #' @return A \code{tfm} object or a "um" if no input is significant at that level.
 #' @export
 varsel <- function (tfm, ...) { UseMethod("varsel") }
 
 #' @rdname varsel
 #' @export
-varsel.tfm <- function(tfm, p.value = 0.10, ...) {
-  p <- summary.tfm(tfm, p.value = TRUE)
+varsel.tfm <- function(tfm, y = NULL, p.value = 0.10, envir, ...) {
+  if (is.null (envir)) envir <- parent.frame()
+  p <- summary.tfm(tfm, y, p.value = TRUE, envir = envir)
   b <- param.tfm(tfm)
   nms <- names(b)
   names(p) <- nms
@@ -1274,8 +1278,7 @@ varsel.tfm <- function(tfm, p.value = 0.10, ...) {
   
   if (is.null(xreg) && is.null(tfi)) return(tfm$noise)
   
-  tfm(xreg = xreg, inputs = tfi, noise = tfm$noise)
-  
+  tfm(xreg = xreg, inputs = tfi, noise = tfm$noise, envir, ...)
 }
 
 

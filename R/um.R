@@ -276,8 +276,9 @@ calendar <- function (um, ...) { UseMethod("calendar") }
 #' @rdname calendar
 #' @export
 calendar.um <-
-function(um, z = NULL, form = c("dif", "td", "wd", "lom", "null"), easter = FALSE, 
-         leap.year = FALSE, n.ahead = 0, p.value = 1, envir=NULL, ...)
+function(um, z = NULL, form = c("dif", "td", "lom",  "wd", "wd2", "wd3", "null"),
+         easter = FALSE, leap.year = FALSE, n.ahead = 0, p.value = 1, 
+         envir=NULL, ...)
 {
   if (is.null (envir)) envir <- parent.frame ()
   if (is.null(z)) z <- z.um(um, envir=envir)
@@ -793,7 +794,7 @@ outliers.um <- function(mdl, z = NULL, types = c("AO", "LS", "TC", "IO"),
                           diff = diff, envir = envir)
     else
       tfm1 <- easter.um(mdl, z, n.ahead, envir = envir)
-    N <- noise.tfm(tfm1, diff = FALSE)
+    N <- noise.tfm(tfm1, z, diff = FALSE, envir = envir)
     A <- outliersC(N, FALSE,  mu, tfm1$noise$phi, tfm1$noise$nabla, 
                    tfm1$noise$theta, types, indx, eres, abs(c))
   } else { 
@@ -1059,7 +1060,10 @@ plot.predict.um <- function(x, n.back = 0, xlab = "Time", ylab = "z", main = "",
 print.um <- function(x, ...) {
   stopifnot(inherits(x, "um"))
   if (is.null(names(x$sig2))) names(x$sig2) <- "sig2"
-  print( c(unlist(x$param), x$sig2) )
+  if (is.null(x$optim))
+    print( c(unlist(x$param), x$sig2) )
+  else
+    print(summary(x, short = TRUE, ...))
 }
 
 
@@ -1285,7 +1289,10 @@ summary.um <- function(object, z = NULL, method = c("exact", "cond"),
   stopifnot(inherits(object, "um"))
   if (is.null (envir)) envir <- parent.frame ()
   model.name <- deparse(substitute(object))
-
+  args <- list(...)
+  if(is.null(args[["table"]])) table <- FALSE
+  else table <- args[["table"]]
+  
   if (is.null(z)) {
     if (is.null(object$z)) stop("argument z required")
     else {
@@ -1360,6 +1367,7 @@ summary.um <- function(object, z = NULL, method = c("exact", "cond"),
   X <- cbind(b, g, se, z, p)
   colnames(X) <- c("Estimate", "Gradient", "Std. Error", "z Value", "Pr(>|z|)")
   rownames(X) <- b.names
+  if (table) return(X)
   
   tss <- var(z)*(N-1)
   mean.resid <- mean(res)
@@ -1403,9 +1411,18 @@ summary.um <- function(object, z = NULL, method = c("exact", "cond"),
 
 
 #' @export
-print.summary.um <- function(x, stats = TRUE, 
+print.summary.um <- function(x, stats = TRUE, short = FALSE,
                              digits = max(3L, getOption("digits") - 3L), ...) {
   stopifnot(inherits(x, "summary.um")||inherits(x, "summary.tfm"), ...) 
+  
+  if (short) {
+    print(x$table[, c(1, 3)])
+    cat("\nlog likelihood: ", x$logLik)
+    cat("\nResidual standard error: ", x$sd.resid)
+    cat("\naic:", x$aic)
+    return(invisible(NULL))
+  }
+  
   cat("\nModel:\n", x$model.name, " <- ", deparse(x$call, width.cutoff = 75L), "\n")
   cat("\nTime series:\n")
   if (!is.null(x$start)) {

@@ -28,7 +28,7 @@
 #'
 #' @export
 CalendarVar <- 
-function(x, form = c("dif", "lom", "td", "wd", "wkdy6", "null"), 
+function(x, form = c("dif", "td", "lom",  "wd", "wd2", "wd3", "null"), 
          easter = FALSE, leap.year = TRUE, n.ahead = 0) 
 {
 
@@ -43,23 +43,36 @@ function(x, form = c("dif", "lom", "td", "wd", "wkdy6", "null"),
     Sat <- num.days(x, 6, n.ahead = n.ahead) - 4
     Lom <- month.length(x, n.ahead) - 28
 
-    if (form == "td") {
+    if (form == "dif") {
+      xreg <- data.frame(Lom, Mon_Sun = Mon - Sun, Tue_Sun = Tue - Sun,
+                         Wed_Sun = Wed - Sun, Thu_Sun = Thu - Sun,
+                         Fri_Sun = Fri - Sun, Sat_Sun = Sat - Sun)
+    } else if (form == "td") {
       xreg <- data.frame(Sun, Mon, Tue, Wed, Thu, Fri, Sat)
-    } else if (form == "lom") {
+    } else if (form == "td0") {
       xreg <- data.frame(Lom, Mon, Tue, Wed, Thu, Fri, Sat)
+    } else if (form == "lom") {
+      xreg <- data.frame(Lom)
     } else if (form == "wd") {
       wd <- (Mon + Tue + Wed + Thu + Fri) - 5*(Sat+Sun)/2
       xreg <- data.frame(weekdays = wd)
+    } else if (form == "wd2") {
+      wd <- (Mon + Tue + Wed + Thu + Fri) - 5*(Sat+Sun)/2
+      xreg <- data.frame(Lom, weekdays = wd)
+    } else if (form == "wd3") {
+      wd <- (Mon + Tue + Wed + Thu + Fri) - 6*Sun
+      wd2 <- (Mon + Tue + Wed + Thu + Fri) - Sat
+      xreg <- data.frame(Lom, weekdays_Sat = wd2, weekdays_Sun = wd)
     } else {
       xreg <- data.frame(Lom, Mon_Sun = Mon - Sun, Tue_Sun = Tue - Sun,
                          Wed_Sun = Wed - Sun, Thu_Sun = Thu - Sun,
                          Fri_Sun = Fri - Sun, Sat_Sun = Sat - Sun)
     }
-  } else form <- NULL
+  } else xreg <- NULL
   
   if (easter) {
     Easter <- EasterVar(x, n.ahead = n.ahead)
-    if (is.null(form))
+    if (is.null(xreg))
       xreg <- data.frame(Easter)
     else
       xreg <- data.frame(Easter, xreg)
@@ -67,7 +80,7 @@ function(x, form = c("dif", "lom", "td", "wd", "wkdy6", "null"),
   
   if (leap.year) {
     ly <- leap.year(x, n.ahead = n.ahead)
-    if (is.null(form))
+    if (is.null(xreg))
       xreg <- data.frame(leapyear = ly)
     else
       xreg <- data.frame(leapyear = ly, xreg)
@@ -107,10 +120,9 @@ function(x, form = c("dif", "lom", "td", "wd", "wkdy6", "null"),
 InterventionVar <- function(Y, date, type = c("P", "S", "R"), n.ahead = 0) {
   type <- match.arg(type)
   start <- start(Y)
-  frequency <- frequency(Y)
+  s <- frequency(Y)
   nY <- length(Y) + n.ahead
-  x <- ts(integer(nY), start = start, frequency = frequency)
-  s <- frequency
+  x <- ts(integer(nY), start = start, frequency = s)
   if (s > 1) n <- (date[1] - start[1] + 1)*s - (start[2] - 1) - (s - date[2])
   else n <- (date[1] - start[1] + 1)*s
   stopifnot(n > 0 || n <= nY)
@@ -122,6 +134,74 @@ InterventionVar <- function(Y, date, type = c("P", "S", "R"), n.ahead = 0) {
   }
   x
 }
+
+#' Trigonometric variables
+#'
+#' \code{sincos} creates an full set of trigonometric variables.
+#'
+#' @param Y an object of class \code{ts} used to determine the sample period and
+#'   frequency.
+#'
+#' @return A matrix of trigonometric variables.
+#'
+#' @examples
+#' 
+#' Y <- AirPassengers
+#' P58 <- sincos(Y)
+#'
+#' @export
+sincos <- function(Y, n.ahead = 0) {
+  start <- start(Y)
+  s <- frequency(Y)
+  stopifnot(s>1)
+  n <- length(Y) + n.ahead
+  t <- 2*pi*(start[2]:(start[2] + nY))/s
+  k = floor((s-1)/2)
+  x <- NULL
+  names <- c()
+  if (s > 2) {
+    for (j in 1:k) { 
+        X <- cbind(X, cos(j*t), sin(j*t))
+        names <- c(names, paste0("c", j), paste0("s", ref))
+    }
+  }
+  if (s %% 2 == 0) {
+    X <- cbind(X, cos(s*t/2))
+    names <- c(names, paste0("c", s/2))
+  }
+  colnames(X) <- names
+  X <- ts(X, start = start, frequency = s)
+}
+
+#' Seasonal dummies
+#'
+#' \code{sincos} creates an full set of seasonal dummies.
+#'
+#' @param Y an object of class \code{ts} used to determine the sample period and
+#'   frequency.
+#'
+#' @return A matrix of trigonometric variables.
+#'
+#' @examples
+#' 
+#' Y <- AirPassengers
+#' P58 <- sincos(Y)
+#'
+#' @export
+sdummies <- function(Y, ref = 1, n.ahead = 0) {
+  start <- start(Y)
+  s <- frequency(Y)
+  stopifnot(s>1)
+  stopifnot(ref >=1 && ref <= s)
+  n <- length(Y) + n.ahead
+  m <- cycle(Y)
+  d <- (m == ref)*1L
+  i <- (1:s)[-ref]
+  D <- sapply(i, function(x) (m==s) - d)
+  colnames(D) <- paste0("D", i, paste0("_D", ref))
+  D <- ts(D, start = start, frequency = s)
+}
+
 
 easter.date <- function(year) {
   a <- year %% 19
