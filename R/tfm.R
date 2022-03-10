@@ -1,20 +1,22 @@
 #' Transfer function models
-#' 
-#' \code{tfm} creates a multiple input transfer function model.     
+#'
+#' \code{tfm} creates a multiple input transfer function model.
 #'
 #' @param output a ts object or a numeric vector.
 #' @param xreg a matrix of regressors.
 #' @param inputs a list of tf objects.
 #' @param noise a um object for the noise.
 #' @param fit logical. If TRUE, model is fitted.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
+#' @param envir environment in which the function arguments are evaluated. If
+#'   NULL the calling environment of this function will be used.
+#' @param new.name logical. Argument used internally: if TRUE a new name is
+#'   assigned to the output, otherwise it keeps its name saved in noise$z.
 #' @param ... additional arguments.
 #'
 #' @return An object of the class \code{tfm}.
-#' 
+#'
 #' @seealso \code{\link{tf}} and \code{\link{um}}.
-#' 
+#'
 #' @references
 #'
 #' Box, G.E., Jenkins, G.M., Reinsel, G.C. and Ljung, G.M. (2015) Time Series
@@ -22,7 +24,8 @@
 #'
 #' @export
 tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
-                envir = NULL, ...) {
+                envir = NULL, new.name = TRUE,  ...) {
+  call <- match.call()
   stopifnot(is.um(noise))
   if (is.null (envir)) envir <- parent.frame ()
 
@@ -36,20 +39,15 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
   } else k <- 0
   
   if (is.null(output)) {
-    if (is.um(noise)) {
-      if (is.null(noise$z)) stop("missing output")
-      else {
-        txt <- noise$z
-        output <- eval(parse(text = txt), envir)
-      }
-    }
+    if (is.null(noise$z)) stop("missing output")
+    else output <- eval(parse(text = noise$z), envir)
   } else if (is.character(output)) {
-    txt <- output
-    output <- eval(parse(text = txt), envir)
+    noise$z <- output
+    output <- eval(parse(text = noise$z), envir)
   } else if (is.numeric(output)) {
-    txt <- deparse(substitute(output))
-    noise$z <- txt
-  }
+    if (new.name)
+      noise$z <- deparse(substitute(output))
+  } else stop("invalid output")
 
   N <- length(output)
   stopifnot(N > noise$d)
@@ -119,18 +117,18 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
     b <- reg$coefficients
     names(b) <- cn
     param <- c(b, param)
-  } else if (k == 0) stop("missing inputs")
-  else kx <- 0
+  } else kx <- 0
   
   if (is.um(noise)) {
     param <- param[!names(param) %in% names(noise$param)]
     param <- c(param, noise$param)
   }
   
-  mod <- list(output = txt, xreg = xreg, inputs = inputs, noise = noise,
-              param = param, kx = kx, k = k, optim = NULL, method = NULL)
+  mod <- list(output = output, xreg = xreg, inputs = inputs, noise = noise,
+              param = param, kx = kx, k = k, optim = NULL, method = NULL,
+              call = call)
   class(mod) <- "tfm"
-  if (fit) mod <- fit.tfm(mod, output, envir=envir, ...)
+  if (fit) mod <- fit.tfm(mod, envir = envir, ...)
 
   return(mod)
 
@@ -209,7 +207,7 @@ diagchk.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
 #' @export
 fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
                     optim.method = "BFGS", show.iter = FALSE,
-                    fit.noise = TRUE, envir=NULL, ...){
+                    fit.noise = TRUE, envir = NULL, ...){
 
   stopifnot(inherits(mdl, "tfm"))
   if (is.null (envir)) envir <- parent.frame ()
@@ -230,15 +228,7 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
   method <- match.arg(method)
   mdl$noise$method <- method
   exact <- method == "exact"
-  if (is.null(y)) {
-    if (is.null(mdl$output)) stop("output required")
-    else {
-      y <- eval(parse(text = mdl$output), envir)
-    }
-  }
 
-  if (!is.ts(y)) y <- as.ts(y)
-  
   noiseTFM <- function() {
     if (is.null(mdl$noise$mu)) ystar <- w
     else ystar <- w - mdl$noise$mu
@@ -271,7 +261,8 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
     mdl$noise$is.adm <<- TRUE
     return(-ll)
   }
-  
+
+  y <- output.tfm(mdl, y, envir)
   start <- start(y)
   end <- end(y)
   s <- frequency(y)
@@ -505,12 +496,6 @@ summary.tfm <- function(object, y = NULL, method = c("exact", "cond"),
   else p.values <- args[["p.values"]]
   if(is.null(args[["table"]])) table <- FALSE
   else table <- args[["table"]]
-  
-  if (is.null(y)) {
-    if (is.null(object$output)) stop("argument y required")
-    else if (is.ts(object$output)) y <- object$ouput
-    else y <- eval(parse(text = object$output), envir)
-  }
 
   method <- match.arg(method)
   if (!is.null(object$noise$method)) method <- object$noise$method
@@ -534,6 +519,7 @@ summary.tfm <- function(object, y = NULL, method = c("exact", "cond"),
     as.vector(res)
   }
   
+  y <- output.tfm(object, y, envir)
   w <- diffC(y, object$noise$nabla, object$noise$bc)
   N <- length(y)
   n <- length(w)
@@ -599,7 +585,7 @@ summary.tfm <- function(object, y = NULL, method = c("exact", "cond"),
     res <- ts(res, end = end(y), frequency = frequency(y))
   out <- list(call = object$call, model.name = model.name, 
               ml.method = object$noise$method,
-              z = object$output, aic = aic, bic = bic, gradient = g, 
+              z = object$noise$z, aic = aic, bic = bic, gradient = g, 
               var.coef = varb, logLik = ll, N = N, n = n, 
               mean.resid = mean.resid, sd.resid = sd.resid, 
               z.mean.resid = z.mean.resid, p.mean.resid = p.mean.resid,
@@ -613,9 +599,39 @@ summary.tfm <- function(object, y = NULL, method = c("exact", "cond"),
 }
 
 #' @export
-print.summary.tfm <- function(x, stats = TRUE, 
+print.summary.tfm <- function(x, stats = TRUE, short = FALSE,
                               digits = max(3L, getOption("digits") - 3L), ...) {
-  print.summary.um(x, stats, digits, ...)
+  print.summary.um(x, stats, digits, short = short, ...)
+}
+
+#' @rdname calendar
+#' @export
+calendar.tfm <-
+  function(mdl, y = NULL, form = c("dif", "td", "td7", "td6", "wd"),
+           ref = 0, lom = TRUE, lpyear = TRUE, easter = FALSE, len = 4, 
+           easter.mon = FALSE, n.ahead = 0, p.value = 1, envir = NULL, ...)
+{
+  if (is.null (envir)) envir <- parent.frame ()
+  if (is.null(y)) y <- output.tfm(mdl, y, envir = envir)
+  else mdl$noise$z <- deparse(substitute(y))
+  if (frequency(y) != 12) stop("function only implemented for monthly ts")
+
+  if (is.null(n.ahead)) n.ahead <- 0  
+  n.ahead <- abs(n.ahead)
+  xreg <- CalendarVar(y, form, ref, lom, lpyear, easter, len, easter.mon, n.ahead)
+  tfm1 <- setinputs.tfm(mdl, xreg, y = y)
+  if (p.value < 0.999) {
+    p <- summary.tfm(tfm1, p.values = TRUE)
+    p <- (p[1:ncol(xreg)] <= p.value)
+    if (all(p)) return(tfm1)
+    if (any(p)) {
+      xreg <- xreg[, p]
+      tfm1 <- tfm(y, xreg = xreg, noise = tfm1$noise, envir = envir, new.name = FALSE, ...)
+      return(tfm1)
+    }
+    return(tfm1$noise)
+  }
+  return(tfm1)
 }
 
 
@@ -627,12 +643,12 @@ print.summary.tfm <- function(x, stats = TRUE,
 outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"), 
                          dates = NULL,  c = 3, calendar = FALSE, easter = FALSE, 
                          resid = c("exact", "cond"), n.ahead = NULL, 
-                         p.value = 1, envir=NULL, ...) {
+                         p.value = 1, tc.fix = TRUE, envir=NULL, ...) {
   if (is.null (envir)) envir <- parent.frame ()
-  if (is.null(n.ahead)) n.ahead = 0
+  if (is.null(n.ahead)) n.ahead <- 0L
   else n.ahead <- abs(n.ahead)
   y <- output.tfm(mdl, y, envir)
-  if (!mdl$kx > 0)
+  if (mdl$kx > 0)
     n.ahead <- length(y) - nrow(mdl$xreg)
   N <- noise.tfm(mdl, y, diff = FALSE, envir=envir)
   start <- start(N)
@@ -645,6 +661,16 @@ outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"),
     resid <- "cond"
   resid <- match.arg(resid)
   eres <- resid == "exact"
+  if (is.numeric(types)) {
+    if (length(types) == 1) {
+      if (types == 1)types <- "AO"
+      else if (types == 2) types <- c("AO", "LS")
+      else if (types == 3) types <- c("AO", "LS", "TC")
+      else types <- c("AO", "LS", "TC", "IO")
+    } else {
+      types <- c("AO", "LS", "TC", "IO")[types]
+    }    
+  }
   types <- toupper(types)
   types <- match.arg(c("AO", "LS", "TC", "IO"), types, several.ok = TRUE)
   types <- sapply(c("AO", "LS", "TC", "IO"), function(x) (x %in% types)*1L)
@@ -676,9 +702,9 @@ outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"),
   if (calendar||easter) {
     if (calendar)
       tfm1 <- calendar.um(mdl$noise, N, easter = easter, 
-                          n.ahead = n.ahead, envir=envir)
+                          n.ahead = n.ahead, envir=envir, ...)
     else
-      tfm1 <- easter.um(mdl$noise, N, n.ahead, envir = envir)
+      tfm1 <- easter.um(mdl$noise, N, n.ahead, envir = envir, ...)
     N <- noise.tfm(tfm1, diff = FALSE, envir=envir)
     A <- outliersC(N, FALSE,  mu, tfm1$noise$phi, tfm1$noise$nabla, 
                    tfm1$noise$theta, types, indx, eres, abs(c))
@@ -707,10 +733,11 @@ outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"),
     } else as.character(year)
   })
   
-  n <- length(N)
-  if (!is.null(n.ahead)) n <- n + n.ahead
-  
-  i <- df[, 3] == "AO" | df[, 3] == "LS"
+  n <- length(N) + n.ahead
+  if (tc.fix)
+    i <- df[, 3] == "AO" | df[, 3] == "LS" | df[, 3] == "TC" 
+  else
+    i <- df[, 3] == "AO" | df[, 3] == "LS"
   if (any(i)) {
     names <- c()
     X <- sapply((1:nrow(df))[i], function(k) {
@@ -718,7 +745,11 @@ outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"),
       p[df[k, 1]] <- 1
       names <<- c(names, paste0(df[k, 3], df[k, 2]))
       if (df[k, 3] == "AO") p
-      else cumsum(p)
+      else if (df[k, 3] == "LS") cumsum(p)
+      else {
+        p <- cumsum(p)
+        p*(0.7^(cumsum(p)-1))
+      }
     })
     if (is.vector(X)) X <- matrix(X, ncol = 1)
     X <- ts(X, start = start, frequency = freq)
@@ -1055,7 +1086,7 @@ predict.tfm <- function(object, newdata=NULL, y = NULL, ori = NULL, n.ahead = NU
 
 #' @export
 print.tfm <- function(x, ...) {
-  print(summary(x, short = TRUE, ...))
+  print(summary(x), short = TRUE, ...)
 }
 
 
@@ -1244,13 +1275,15 @@ varsel <- function (tfm, ...) { UseMethod("varsel") }
 
 #' @rdname varsel
 #' @export
-varsel.tfm <- function(tfm, y = NULL, p.value = 0.10, envir, ...) {
+varsel.tfm <- function(tfm, y = NULL, p.value = 0.10, envir = NULL, ...) {
   if (is.null (envir)) envir <- parent.frame()
-  p <- summary.tfm(tfm, y, p.value = TRUE, envir = envir)
+  if (is.null(y)) y <- output.tfm(tfm, y, envir)
+  else tfm$noise$z <- deparse(substitute(y))
+  
+  p <- summary.tfm(tfm, y, p.values = TRUE)
   b <- param.tfm(tfm)
   nms <- names(b)
   names(p) <- nms
-  
   if (!is.null(tfm$xreg)) {
     P <- (p[1:ncol(tfm$xreg)] <= p.value)
     if (all(P)) xreg <- tfm$xreg
@@ -1258,7 +1291,6 @@ varsel.tfm <- function(tfm, y = NULL, p.value = 0.10, envir, ...) {
       xreg <- tfm$xreg[, P]
     } else xreg <- NULL
   } else xreg <- NULL
-  
   if (tfm$k > 0) {
     tfi <- lapply(tfm$inputs, function(tf) {
       if (p[as.character(tf$w0.expr)] < p.value) {
@@ -1278,13 +1310,8 @@ varsel.tfm <- function(tfm, y = NULL, p.value = 0.10, envir, ...) {
   
   if (is.null(xreg) && is.null(tfi)) return(tfm$noise)
   
-  tfm(xreg = xreg, inputs = tfi, noise = tfm$noise, envir, ...)
+  tfm(y, xreg = xreg, inputs = tfi, noise = tfm$noise, new.name = FALSE, ...)
 }
-
-
-
-
-
 
 is.tfm <- function(tfm) {
   inherits(tfm, "tfm")
@@ -1297,17 +1324,16 @@ param.tfm <- function(tfm) {
 
 output.tfm <- function(tfm, y = NULL, envir = NULL) {
   if (is.null(y)) {
+    if (is.ts(tfm$output)) return(tfm$output)
     if (is.null(tfm$output)) stop("argment y required")
-    if (is.ts(tfm$output)) y <- tfm$ouput
     else {
       if (is.null (envir)) envir <- parent.frame ()
       y <- eval(parse(text = tfm$output), envir)
     }
-  } else {
-    if (!is.numeric(y)) stop("output must be a numeric vector")
-  }
-  if (!is.ts(y)) y <- ts(y)
-  y
+  }  
+  if (is.ts(y)) return(y)
+  if (!is.numeric(y)) stop("output must be a numeric vector")
+  ts(y)
 } 
 
 update.tfm <- function(tfm, param) {

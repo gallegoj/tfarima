@@ -236,65 +236,75 @@ autocorr.um <- function(um, lag.max = 10, par = FALSE, ...) {
   }
 }
 
-#' Calendar effects
+#'Calendar effects
 #'
-#' \code{calendar} extends the ARIMA model \code{um} by estimating a transfer
-#' function model with seven deterministic variables to capture the calendar
-#' variation in a monthly time series. Two equivalent representations are
-#' available: (1) D1, D2, ..., D7, (2) L, D1-D7, ..., D6-D7 where D1, D2, ...,
-#' D7 are deterministic variables representing the number of Mondays, Tuesdays,
-#' ..., Sundays, L = D1 + D2 + ... + D7 is the of the month. Optionally, a
-#' deterministic variable to estimate the Easter effect can also be included.
+#'\code{calendar} extends the ARIMA model \code{um} by including a set of
+#'deterministic variables to capture the calendar variation in a monthly time
+#'series. Two equivalent representations are available: (i) D0, D1, ..., D6,
+#'(ii) L, D1-D0, ..., D6-D0 where D0, D2, ..., D6 are deterministic variables
+#'representing the number of Sundays, Mondays, ..., Saturdays, L = D0 + D1 + ...
+#'+ D6 is the of the month. Alternatively, the Leap Year indicator (LPY) can be
+#'included instead of L. The seven trading days can also be compacted into two
+#'variables: week days and weekends. Optionally, a deterministic variable to
+#'estimate the Easter effect can also be included, see "\code{\link{easter}}".
 #'
-#' @param um an object of class \code{\link{um}}.
-#' @param z a time series.
-#' @param form representation for calendar effects: \code{form = td} form (1)
-#'   above, \code{form = dif} form (1).
-#' @param easter logical. If \code{TRUE} an Easter effect is also estimated.
-#' @param n.ahead a positive integer to extend the sample period of the
-#'   deterministic variables with \code{n.ahead} observations, which could be
-#'   necessary to forecast the output.
-#' @param p.value estimates with a p-value greater than p.value are omitted.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#' @param ... additional arguments.
+#'@param um an object of class \code{\link{um}}.
+#'@param z a time series.
+#'@param form representation for calendar effects: (1) \code{form = dif}, L,
+#'  D1-D0, ..., D6-D0; (2) \code{form = td}, LPY, D1-D0, ..., D6-D0; (3)
+#'  \code{form = td7}, D0, D2, ..., D6; (4) \code{form = td6}, D1, D2, ..., D6;
+#'  (5) \code{form = wd}, (D1+...+D5) - 2(D6+D0)/5.
+#'@param ref a integer indicating the the reference day. By default, ref = 0.
+#'@param lom,lpyear a logical value indicating whether or not to include the
+#'  lom/lead year indicator.
+#'@param easter logical. If \code{TRUE} an Easter effect is also estimated.
+#'@param len the length of the Easter, integer.
+#'@param easter.mon logical. TRUE indicates that Easter Monday is a public
+#'  holiday.
+#'@param n.ahead a positive integer to extend the sample period of the
+#'  deterministic variables with \code{n.ahead} observations, which could be
+#'  necessary to forecast the output.
+#'@param p.value estimates with a p-value greater than p.value are omitted.
+#'@param envir environment in which the function arguments are evaluated. If
+#'  NULL the calling environment of this function will be used.
+#'@param ... other arguments.
 #'
-#' @return An object of class "\code{\link{tfm}}".
-#' 
-#' @references W. R. Bell & S. C. Hillmer (1983) Modeling Time Series with
-#' Calendar Variation, Journal of the American Statistical Association, 78:383,
-#' 526-534, DOI: 10.1080/01621459.1983.10478005
+#'@return An object of class "\code{\link{tfm}}".
+#'
+#'@references W. R. Bell & S. C. Hillmer (1983) Modeling Time Series with
+#'  Calendar Variation, Journal of the American Statistical Association, 78:383,
+#'  526-534, DOI: 10.1080/01621459.1983.10478005
 #'
 #' @examples
 #' Y <- tfarima::rsales
 #' um1 <- um(Y, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 #' tfm1 <- calendar(um1)
-#' 
-#' @export
+#'
+#'@export
 calendar <- function (um, ...) { UseMethod("calendar") }
 
 #' @rdname calendar
 #' @export
 calendar.um <-
-function(um, z = NULL, form = c("dif", "td", "lom",  "wd", "wd2", "wd3", "null"),
-         easter = FALSE, leap.year = FALSE, n.ahead = 0, p.value = 1, 
-         envir=NULL, ...)
+function(um, z = NULL, form = c("dif", "td", "td7", "td6", "wd"),
+         ref = 0, lom = TRUE, lpyear = TRUE, easter = FALSE, len = 4, 
+         easter.mon = FALSE, n.ahead = 0, p.value = 1, envir = NULL, ...)
 {
   if (is.null (envir)) envir <- parent.frame ()
-  if (is.null(z)) z <- z.um(um, envir=envir)
+  if (is.null(z)) z <- z.um(um, envir = envir)
+  else um$z <- deparse(substitute(z))
   if (frequency(z) != 12) stop("function only implemented for monthly ts")
-  form <- match.arg(form)
 
   n.ahead <- abs(n.ahead)
-  xreg <- CalendarVar(z, form, easter, leap.year, n.ahead)
-  tfm1 <- tfm(xreg = xreg, noise = um, envir=envir)
+  xreg <- CalendarVar(z, form, ref, lom, lpyear, easter, len, easter.mon, n.ahead)
+  tfm1 <- tfm(z, xreg = xreg, noise = um, new.name = FALSE, envir = envir, ...)
   if (p.value < 0.999) {
     p <- summary.tfm(tfm1, p.values = TRUE)
     p <- (p[1:ncol(xreg)] <= p.value)
     if (all(p)) return(tfm1)
     if (any(p)) {
       xreg <- xreg[, p]
-      tfm1 <- tfm(xreg = xreg, noise = tfm1$noise, envir=envir)
+      tfm1 <- tfm(z, xreg = xreg, noise = tfm1$noise, envir=envir, new.name = FALSE, ...)
       return(tfm1)
     }
     return(um)
@@ -463,12 +473,14 @@ display.default <- function(um, ...) {
 #'
 #' @param um an object of class \code{\link{um}}.
 #' @param z a time series.
+#' @param len a positive integer specifying the duration of the Easter.
+#' @param easter.mon logical. If TRUE Easter Monday is also taken into account. 
 #' @param n.ahead a positive integer to extend the sample period of the
 #'   Easter regression variable with \code{n.ahead} observations, which could be
 #'   necessary to forecast the output.
 #' @param envir environment in which the function arguments are evaluated.
 #'    If NULL the calling environment of this function will be used.
-#' @param ... additional arguments.
+#' @param ... other arguments.
 #'
 #' @return An object of class "\code{\link{tfm}}".
 #' 
@@ -481,15 +493,22 @@ easter <- function (um, ...) { UseMethod("easter") }
 
 #' @rdname easter
 #' @export
-easter.um <- function(um, z = NULL, n.ahead = 0, envir=NULL, ...) {
+easter.um <- function(um, z = NULL, len = 4, easter.mon = FALSE, n.ahead = 0, 
+                      envir = NULL, ...) {
+  call <- match.call()
   if (is.null (envir)) envir <- parent.frame ()
-  if (is.null(z)) z <- z.um(um, envir=envir)
+  if (is.null(z)) 
+    z <- z.um(um, envir = envir)
+  else
+    um$z <- deparse(substitute(z))
+  
   if (frequency(z) != 12) stop("function only implemented for monthly ts")
-
   n.ahead <- abs(n.ahead)
-  easter <- EasterVar(z, n.ahead = n.ahead)
-  tfm(xreg = easter, noise = um, envir=envir)
-
+  xreg <- matrix(EasterVar(z, len, easter.mon, n.ahead = n.ahead), ncol = 1)
+  colnames(xreg) <- paste0("Easter", len, ifelse(easter.mon, "M", ""))
+  tfm1 <- tfm(z, xreg = xreg, noise = um, envir = envir, new.name = FALSE)
+  tfm1$call <- call
+  tfm1
 }
 
 
@@ -746,98 +765,11 @@ outliers <- function (mdl, ...) { UseMethod("outliers") }
 outliers.um <- function(mdl, z = NULL, types = c("AO", "LS", "TC", "IO"), 
                         dates = NULL, c = 3, calendar = FALSE, easter = FALSE, 
                         resid = c("exact", "cond"), n.ahead = 0, 
-                        p.value = 1, envir=NULL, ...) {
-  
+                        p.value = 1, tc.fix = TRUE, envir = NULL, ...) {
   if (is.null (envir)) envir <- parent.frame ()
-  if (is.null(z)) z <- z.um(mdl, envir=envir)
-  else if(!is.ts(z)) z <- ts(z)
-  start <- start(z)
-  freq <- frequency(z)
-  if( freq < 2) {
-    calendar <- FALSE
-    easter <- FALSE
-  }
-  if ((mdl$p > 50 || mdl$q > 50) && length(resid) > 1)
-    resid <- "cond"
-  resid <- match.arg(resid)
-  eres <- resid == "exact"
-  types <- toupper(types)
-  types <- match.arg(c("AO", "LS", "TC", "IO"), types, several.ok = TRUE)
-  types <- sapply(c("AO", "LS", "TC", "IO"), function(x) (x %in% types)*1L)
-
-  if (is.null(dates)) indx = 0  
-  else if (is.numeric(dates)) {
-    if (length(dates) == 2 && (dates[2] >= 1 && dates[2] <= freq)) {
-      indx <- (dates[1] - start[1] + 1)*freq - (start[2] - 1) - (freq - dates[2])
-    } 
-    else {
-      indx <- dates
-    }
-  } else if (is.list(dates)) { 
-    indx <- sapply(dates, function(x) {
-      if (freq > 1)
-        (x[1] - start[1] + 1)*freq - (start[2] - 1) - (freq - x[2])
-      else 
-        (date[1] - start[1] + 1)*freq
-    })
-  } else stop("invalid stop argument")
-  indx <- unique(indx)
-  
-  if (is.null(mdl$mu)) mu <- 0
-  else mu <- mdl$mu
-  
-  
-  tfm1 <- NULL
-  if (calendar||easter) {
-    if (calendar)
-      tfm1 <- calendar.um(mdl, z, easter = easter, n.ahead = n.ahead,
-                          diff = diff, envir = envir)
-    else
-      tfm1 <- easter.um(mdl, z, n.ahead, envir = envir)
-    N <- noise.tfm(tfm1, z, diff = FALSE, envir = envir)
-    A <- outliersC(N, FALSE,  mu, tfm1$noise$phi, tfm1$noise$nabla, 
-                   tfm1$noise$theta, types, indx, eres, abs(c))
-  } else { 
-    A <- outliersC(z, mdl$bc,  mu, mdl$phi, mdl$nabla, mdl$theta, indx, eres, abs(c))
-  }
-  if (ncol(A) == 1) {
-    warning("no outlier")
-    if (is.null(tfm1)) return(mdl)
-    else return(tfm1)
-  }
-  
-  df <- data.frame(obs = A[, 1], date = YearSeason(z, 2)[A[, 1]],
-                   type = A[, 2], effect = A[, 3], t.ratio = A[, 4], 
-                   w1 = A[, 5], t.w1 = A[, 6])
-  df[[3]] <- factor(df[[3]], levels = 1:4, labels = c("IO", "AO", "LS", "TC"))
-  
-  n <- length(z)
-  if (!is.null(n.ahead)) n <- n + n.ahead
-  
-  tfi <- lapply(1:nrow(df), function(i) {
-    p <- double(n)
-    p[df[i, 1]] <- 1
-    p <- ts(p, start = start, frequency = freq)
-    prefix <- paste(df[i, 3], df[i, 2], sep = "")
-    if (df[i, 3] == "IO") 
-      tf(p, w0 = df[i, 4], ma = mdl$ma, ar = c(mdl$i, mdl$ar), par.prefix = prefix)
-    else if (df[i, 3] == "AO") 
-      tf(p, w0 = df[i, 4], par.prefix = prefix)
-    else if (df[i, 3] == "TC") 
-      tf(p, w0 = df[i, 4], ar = "1 - 0.6B", par.prefix = prefix)
-    else if (df[i, 3] == "LS") {
-      p <- cumsum(p)
-      p <- ts(p, start = start, frequency = freq)
-      tf(p, w0 = df[i, 4], par.prefix = prefix)
-    } else stop("unkown input")
-  })
-
-  if (calendar||easter) xreg <- tfm1$xreg
-  else xreg <- NULL
-  tfm1 <- tfm(xreg = xreg, inputs = tfi, noise = mdl, envir=envir, ...)
-  if (p.value < 0.999)
-    tfm1 <- varsel.tfm(tfm1, p.value = p.value)
-  tfm1
+  tfm1 <- tfm(noise = mdl, fit = FALSE, envir = envir)
+  outliers.tfm(tfm1, y, types, dates, c, calendar, easter, resid, n.ahead, 
+               p.value, tc.fix, envir, ...)
 }
 
 
@@ -1063,7 +995,7 @@ print.um <- function(x, ...) {
   if (is.null(x$optim))
     print( c(unlist(x$param), x$sig2) )
   else
-    print(summary(x, short = TRUE, ...))
+    print(summary(x), short = TRUE, ...)
 }
 
 

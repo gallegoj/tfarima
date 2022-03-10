@@ -4,21 +4,42 @@
 \alias{CalendarVar}
 \title{Calendar variables}
 \usage{
-CalendarVar(x, form = c("dif", "lom", "td"), easter = FALSE, n.ahead = 0)
+CalendarVar(
+  x,
+  form = c("dif", "td", "td7", "td6", "wd", "wd2", "null"),
+  ref = 0,
+  lom = TRUE,
+  lpyear = TRUE,
+  easter = FALSE,
+  len = 4,
+  easter.mon = FALSE,
+  n.ahead = 0
+)
 }
 \arguments{
 \item{x}{an object of class \code{ts} used to determine the sample period and
 frequency.}
 
-\item{form}{a character indicated the set of calendar variables.}
+\item{form}{a character indicated the set of calendar variables: td, td7,
+td6, wd.}
+
+\item{ref}{a non-negative integer indicating the reference day.}
+
+\item{lom}{logical. If TRUE length of the month effect is also estimated.}
+
+\item{lpyear}{logical. If TRUE a leap year effect is also estimated.}
 
 \item{easter}{logical. If TRUE an additional deterministic variable is
 generated to capture Easter effects.}
 
+\item{len}{duration of the Easter, integer.}
+
+\item{easter.mon}{logical. It is TRUE if Holy Monday is a public holiday.}
+
 \item{n.ahead}{number of additional observations to extend the sample period.}
 }
 \value{
-A matrix of explanatory variables.
+An object of class \code{mts} or \code{ts}.
 }
 \description{
 \code{CalendarVar} creates a set of deterministic variables to capture

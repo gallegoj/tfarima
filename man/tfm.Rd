@@ -11,6 +11,7 @@ tfm(
   noise,
   fit = TRUE,
   envir = NULL,
+  new.name = TRUE,
   ...
 )
 }
@@ -25,8 +26,11 @@ tfm(
 
 \item{fit}{logical. If TRUE, model is fitted.}
 
-\item{envir}{environment in which the function arguments are evaluated.
-If NULL the calling environment of this function will be used.}
+\item{envir}{environment in which the function arguments are evaluated. If
+NULL the calling environment of this function will be used.}
+
+\item{new.name}{logical. Argument used internally: if TRUE a new name is
+assigned to the output, otherwise it keeps its name saved in noise$z.}
 
 \item{...}{additional arguments.}
 }

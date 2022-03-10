@@ -9,6 +9,7 @@
 \method{outliers}{tfm}(
   mdl,
   y = NULL,
+  types = c("AO", "LS", "TC", "IO"),
   dates = NULL,
   c = 3,
   calendar = FALSE,
@@ -16,6 +17,7 @@
   resid = c("exact", "cond"),
   n.ahead = NULL,
   p.value = 1,
+  tc.fix = TRUE,
   envir = NULL,
   ...
 )
@@ -25,6 +27,7 @@ outliers(mdl, ...)
 \method{outliers}{um}(
   mdl,
   z = NULL,
+  types = c("AO", "LS", "TC", "IO"),
   dates = NULL,
   c = 3,
   calendar = FALSE,
@@ -32,6 +35,7 @@ outliers(mdl, ...)
   resid = c("exact", "cond"),
   n.ahead = 0,
   p.value = 1,
+  tc.fix = TRUE,
   envir = NULL,
   ...
 )
@@ -40,6 +44,9 @@ outliers(mdl, ...)
 \item{mdl}{an object of class \code{\link{um}} or \code{\link{tfm}}.}
 
 \item{y}{an object of class \code{ts}, optional.}
+
+\item{types}{a vector with the initials of the outliers to be detected,
+c("AO", "LS", "TC", "IO").}
 
 \item{dates}{a list of dates c(year, season). If \code{dates = NULL}, an
 iterative detection process is conducted.}
@@ -52,7 +59,7 @@ only used when \code{dates = NULL}.}
 
 \item{easter}{logical; if true, Easter effect is also estimated.}
 
-\item{resid}{type of residuals (exact or conditional) used to identify 
+\item{resid}{type of residuals (exact or conditional) used to identify
 outliers.}
 
 \item{n.ahead}{a positive integer to extend the sample period of the

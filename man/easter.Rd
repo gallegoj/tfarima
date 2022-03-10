@@ -7,14 +7,26 @@
 \usage{
 easter(um, ...)
 
-\method{easter}{um}(um, z = NULL, n.ahead = 0, envir = NULL, ...)
+\method{easter}{um}(
+  um,
+  z = NULL,
+  len = 4,
+  easter.mon = FALSE,
+  n.ahead = 0,
+  envir = NULL,
+  ...
+)
 }
 \arguments{
 \item{um}{an object of class \code{\link{um}}.}
 
-\item{...}{additional arguments.}
+\item{...}{other arguments.}
 
 \item{z}{a time series.}
+
+\item{len}{a positive integer specifying the duration of the Easter.}
+
+\item{easter.mon}{logical. If TRUE Easter Monday is also taken into account.}
 
 \item{n.ahead}{a positive integer to extend the sample period of the
 Easter regression variable with \code{n.ahead} observations, which could be
