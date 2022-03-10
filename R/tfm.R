@@ -441,7 +441,7 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir = NULL, ...
 #' @param inputs a list of tf objects.
 #' @param y an optional ts object.
 #' @param envir an environment.
-#' @param ... further arguments to be passed to particular methods
+#' @param ... other arguments.
 #' 
 #' @return A \code{tfm} object.
 #' 
@@ -450,23 +450,24 @@ setinputs <- function (tfm, ...) { UseMethod("setinputs") }
 
 #' @rdname setinputs
 #' @export
-setinputs.tfm <- function(tfm, xreg = NULL, inputs = NULL, y = NULL, 
+setinputs.tfm <- function(mdl, xreg = NULL, inputs = NULL, y = NULL, 
                           envir = NULL, ...) {
-  stopifnot(is.tfm(tfm))
+  if (is.null (envir)) envir <- parent.frame ()
+  stopifnot(is.tfm(mdl))
+  if (!is.null(y)) mdl$noise$z <- deparse(substitute(y))
+  y <- output.tfm(mdl, y, envir)
   if (!is.null(xreg)) {
-    if (!is.null(tfm$xreg)) {
-      name <- c(colnames(tfm$xreg), colnames(xreg))
-      xreg <- cbind(tfm$xreg, xreg)
+    if (mdl$kx > 0) {
+      name <- c(colnames(mdl$xreg), colnames(xreg))
+      xreg <- cbind(mdl$xreg, xreg)
       colnames(xreg) <- name
     }
-  } else xreg <- tfm$xreg
+  } else xreg <- mdl$xreg
   
-  if (!is.null(inputs)) {
-    if (is.list(tfm$inputs) && length(tfm$inputs) > 0) 
-      inputs <- c(tfm$inputs, inputs)  
-  } else inputs <- tfm$inputs
-  tfm(output = y, xreg = xreg, inputs = inputs, noise = tfm$noise, envir = envir,
-      ...)
+  if (!is.null(inputs) && mdl$k > 0) inputs <- c(mdl$inputs, inputs)  
+  else inputs <- mdl$inputs
+  tfm(output = y, xreg = xreg, inputs = inputs, noise = mdl$noise, 
+      new.name = FALSE, envir = envir, ...)
 }
 
 
@@ -647,6 +648,7 @@ outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"),
   if (is.null (envir)) envir <- parent.frame ()
   if (is.null(n.ahead)) n.ahead <- 0L
   else n.ahead <- abs(n.ahead)
+  if (!is.null(y)) mdl$noise$z <- deparse(substitute(y))
   y <- output.tfm(mdl, y, envir)
   if (mdl$kx > 0)
     n.ahead <- length(y) - nrow(mdl$xreg)
@@ -797,9 +799,9 @@ outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"),
   else if (!is.null(mdl$inputs)) tfi <- list.tf(mdl$inputs, tfi)
   mdl$noise$bc <- bc
   tfm1 <- tfm(y, xreg = xreg, inputs = tfi, noise = mdl$noise, fit = TRUE, 
-              envir = envir)
+              new.name = FALSE, envir = envir)
   if (p.value < 0.999) 
-    tfm1 <- varsel.tfm(tfm1, y, p.value = p.value, envir = envir)
+    tfm1 <- varsel.tfm(tfm1, NULL, p.value = p.value, envir = envir)
   
   return(tfm1)
   

@@ -20,7 +20,6 @@
 #' @param n.ahead number of additional observations to extend the sample period.
 #'
 #' @return An object of class \code{mts} or \code{ts}.
-#'
 #' @references
 #'
 #' Bell, W.R. and Hillmer, S.C. (1983) “Modeling time series with calendar
@@ -149,28 +148,35 @@ InterventionVar <- function(Y, date, type = c("P", "S", "R"), n.ahead = 0) {
 #'
 #' @param Y an object of class \code{ts} used to determine the sample period and
 #'   frequency.
+#' @param constant logical indicator to include a column of ones.
+#' @param n.ahead number of additional observations to extend the sample period.
 #'
 #' @return A matrix of trigonometric variables.
 #'
 #' @examples
-#' 
+#'
 #' Y <- AirPassengers
 #' P58 <- sincos(Y)
 #'
 #' @export
-sincos <- function(Y, n.ahead = 0) {
+sincos <- function(Y, n.ahead = 0, constant = FALSE) {
   start <- start(Y)
   s <- frequency(Y)
   stopifnot(s>1)
   n <- length(Y) + n.ahead
-  t <- 2*pi*(start[2]:(start[2] + nY))/s
+  t <- 2*pi*(start[2]:(start[2] + n - 1))/s
   k = floor((s-1)/2)
-  x <- NULL
-  names <- c()
+  if (constant) {
+    X <- rep(1, n)
+    names <- c("constant")
+  } else {
+    X <- NULL
+    names <- c()
+  }
   if (s > 2) {
     for (j in 1:k) { 
         X <- cbind(X, cos(j*t), sin(j*t))
-        names <- c(names, paste0("c", j), paste0("s", ref))
+        names <- c(names, paste0("c", j), paste0("s", j))
     }
   }
   if (s %% 2 == 0) {
@@ -183,20 +189,23 @@ sincos <- function(Y, n.ahead = 0) {
 
 #' Seasonal dummies
 #'
-#' \code{sincos} creates an full set of seasonal dummies.
+#' \code{sdummies} creates an full set of seasonal dummies.
 #'
 #' @param Y an object of class \code{ts} used to determine the sample period and
 #'   frequency.
+#' @param ref the reference season, positive integer
+#' @param constant logical indicator to include a column of ones.
+#' @param n.ahead number of additional observations to extend the sample period.
 #'
 #' @return A matrix of trigonometric variables.
 #'
 #' @examples
-#' 
+#'
 #' Y <- AirPassengers
 #' P58 <- sincos(Y)
 #'
 #' @export
-sdummies <- function(Y, ref = 1, n.ahead = 0) {
+sdummies <- function(Y, ref = 1, constant = FALSE, n.ahead = 0) {
   start <- start(Y)
   s <- frequency(Y)
   stopifnot(s>1)
@@ -205,8 +214,13 @@ sdummies <- function(Y, ref = 1, n.ahead = 0) {
   m <- cycle(Y)
   d <- (m == ref)*1L
   i <- (1:s)[-ref]
-  D <- sapply(i, function(x) (m==s) - d)
-  colnames(D) <- paste0("D", i, paste0("_D", ref))
+  D <- sapply(i, function(k) (m==k) - d)
+  names <- paste0("D", i, paste0("_D", ref))
+  if (constant) {
+    D <- cbind(rep(1, n), D)
+    names <- c("constant", names)
+  }
+  colnames(D) <- names
   D <- ts(D, start = start, frequency = s)
 }
 

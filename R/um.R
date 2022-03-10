@@ -236,6 +236,17 @@ autocorr.um <- function(um, lag.max = 10, par = FALSE, ...) {
   }
 }
 
+#' @rdname setinputs
+#' @export
+setinputs.um <- function(mdl, xreg = NULL, inputs = NULL, y = NULL, 
+                          envir = NULL, ...) {
+  if (is.null (envir)) envir <- parent.frame ()
+  if (!is.null(y)) mdl$z <- deparse(substitute(y))
+  y <- z.um(mdl, z = y, envir = envir)
+  tfm1 <- tfm(output = y, noise = mdl, fit = FALSE, new.name = FALSE)
+  setinputs.tfm(tfm1, xreg, inputs)  
+}
+
 #'Calendar effects
 #'
 #'\code{calendar} extends the ARIMA model \code{um} by including a set of
@@ -767,8 +778,10 @@ outliers.um <- function(mdl, z = NULL, types = c("AO", "LS", "TC", "IO"),
                         resid = c("exact", "cond"), n.ahead = 0, 
                         p.value = 1, tc.fix = TRUE, envir = NULL, ...) {
   if (is.null (envir)) envir <- parent.frame ()
-  tfm1 <- tfm(noise = mdl, fit = FALSE, envir = envir)
-  outliers.tfm(tfm1, y, types, dates, c, calendar, easter, resid, n.ahead, 
+  if (!is.null(z)) mdl$z <- deparse(substitute(z))
+  z <- z.um(mdl, z, envir)
+  tfm1 <- tfm(z, noise = mdl, fit = FALSE, new.name = FALSE, envir = envir)
+  outliers.tfm(tfm1, NULL, types, dates, c, calendar, easter, resid, n.ahead, 
                p.value, tc.fix, envir, ...)
 }
 
