@@ -433,21 +433,6 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir = NULL, ...
   y
 }
 
-
-#' \code{setinputs} adds new inputs into a transfer function model.     
-#'
-#' @param tfm a \code{tfm} object.
-#' @param xreg a matrix of inputs.
-#' @param inputs a list of tf objects.
-#' @param y an optional ts object.
-#' @param envir an environment.
-#' @param ... other arguments.
-#' 
-#' @return A \code{tfm} object.
-#' 
-#' @export
-setinputs <- function (tfm, ...) { UseMethod("setinputs") }
-
 #' @rdname setinputs
 #' @export
 setinputs.tfm <- function(mdl, xreg = NULL, inputs = NULL, y = NULL, 

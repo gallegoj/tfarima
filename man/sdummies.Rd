@@ -4,17 +4,23 @@
 \alias{sdummies}
 \title{Seasonal dummies}
 \usage{
-sdummies(Y, ref = 1, n.ahead = 0)
+sdummies(Y, ref = 1, constant = FALSE, n.ahead = 0)
 }
 \arguments{
 \item{Y}{an object of class \code{ts} used to determine the sample period and
 frequency.}
+
+\item{ref}{the reference season, positive integer}
+
+\item{constant}{logical indicator to include a column of ones.}
+
+\item{n.ahead}{number of additional observations to extend the sample period.}
 }
 \value{
 A matrix of trigonometric variables.
 }
 \description{
-\code{sincos} creates an full set of seasonal dummies.
+\code{sdummies} creates an full set of seasonal dummies.
 }
 \examples{
 

@@ -22,11 +22,11 @@
   ...
 )
 
-calendar(um, ...)
+calendar(mdl, ...)
 
 \method{calendar}{um}(
-  um,
-  z = NULL,
+  mdl,
+  y = NULL,
   form = c("dif", "td", "td7", "td6", "wd"),
   ref = 0,
   lom = TRUE,
@@ -41,6 +41,10 @@ calendar(um, ...)
 )
 }
 \arguments{
+\item{mdl}{an object of class \code{\link{um}} or \code{\link{tfm}}.}
+
+\item{y}{a time series.}
+
 \item{form}{representation for calendar effects: (1) \code{form = dif}, L,
 D1-D0, ..., D6-D0; (2) \code{form = td}, LPY, D1-D0, ..., D6-D0; (3)
 \code{form = td7}, D0, D2, ..., D6; (4) \code{form = td6}, D1, D2, ..., D6;
@@ -68,10 +72,6 @@ necessary to forecast the output.}
 NULL the calling environment of this function will be used.}
 
 \item{...}{other arguments.}
-
-\item{um}{an object of class \code{\link{um}}.}
-
-\item{z}{a time series.}
 }
 \value{
 An object of class "\code{\link{tfm}}".

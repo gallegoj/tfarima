@@ -236,6 +236,34 @@ autocorr.um <- function(um, lag.max = 10, par = FALSE, ...) {
   }
 }
 
+#' Coefficients of a univariate model
+#'
+#' \code{coef} extracts the "coefficients" from a um object.
+#'
+#' @param object a \code{um} object.
+#' @param ... other arguments.
+#'
+#' @return A numeric vector.
+#'
+#' @export
+coef.um <- function(object, ...) {
+  param.um(object)
+}
+
+#' \code{setinputs} adds new inputs into a transfer function model.     
+#'
+#' @param mdl a \code{umm} or \code{tfm} object.
+#' @param xreg a matrix of inputs.
+#' @param inputs a list of tf objects.
+#' @param y an optional ts object.
+#' @param envir an environment.
+#' @param ... other arguments.
+#' 
+#' @return A \code{tfm} object.
+#' 
+#' @export
+setinputs <- function (mdl, ...) { UseMethod("setinputs") }
+
 #' @rdname setinputs
 #' @export
 setinputs.um <- function(mdl, xreg = NULL, inputs = NULL, y = NULL, 
@@ -259,8 +287,8 @@ setinputs.um <- function(mdl, xreg = NULL, inputs = NULL, y = NULL,
 #'variables: week days and weekends. Optionally, a deterministic variable to
 #'estimate the Easter effect can also be included, see "\code{\link{easter}}".
 #'
-#'@param um an object of class \code{\link{um}}.
-#'@param z a time series.
+#'@param mdl an object of class \code{\link{um}} or \code{\link{tfm}}.
+#'@param y a time series.
 #'@param form representation for calendar effects: (1) \code{form = dif}, L,
 #'  D1-D0, ..., D6-D0; (2) \code{form = td}, LPY, D1-D0, ..., D6-D0; (3)
 #'  \code{form = td7}, D0, D2, ..., D6; (4) \code{form = td6}, D1, D2, ..., D6;
@@ -292,33 +320,33 @@ setinputs.um <- function(mdl, xreg = NULL, inputs = NULL, y = NULL,
 #' tfm1 <- calendar(um1)
 #'
 #'@export
-calendar <- function (um, ...) { UseMethod("calendar") }
+calendar <- function (mdl, ...) { UseMethod("calendar") }
 
 #' @rdname calendar
 #' @export
 calendar.um <-
-function(um, z = NULL, form = c("dif", "td", "td7", "td6", "wd"),
+function(mdl, y = NULL, form = c("dif", "td", "td7", "td6", "wd"),
          ref = 0, lom = TRUE, lpyear = TRUE, easter = FALSE, len = 4, 
          easter.mon = FALSE, n.ahead = 0, p.value = 1, envir = NULL, ...)
 {
   if (is.null (envir)) envir <- parent.frame ()
-  if (is.null(z)) z <- z.um(um, envir = envir)
-  else um$z <- deparse(substitute(z))
-  if (frequency(z) != 12) stop("function only implemented for monthly ts")
+  if (is.null(y)) y <- z.um(mdl, envir = envir)
+  else mdl$z <- deparse(substitute(y))
+  if (frequency(y) != 12) stop("function only implemented for monthly ts")
 
   n.ahead <- abs(n.ahead)
-  xreg <- CalendarVar(z, form, ref, lom, lpyear, easter, len, easter.mon, n.ahead)
-  tfm1 <- tfm(z, xreg = xreg, noise = um, new.name = FALSE, envir = envir, ...)
+  xreg <- CalendarVar(y, form, ref, lom, lpyear, easter, len, easter.mon, n.ahead)
+  tfm1 <- tfm(y, xreg = xreg, noise = mdl, new.name = FALSE, envir = envir, ...)
   if (p.value < 0.999) {
     p <- summary.tfm(tfm1, p.values = TRUE)
     p <- (p[1:ncol(xreg)] <= p.value)
     if (all(p)) return(tfm1)
     if (any(p)) {
       xreg <- xreg[, p]
-      tfm1 <- tfm(z, xreg = xreg, noise = tfm1$noise, envir=envir, new.name = FALSE, ...)
+      tfm1 <- tfm(y, xreg = xreg, noise = tfm1$noise, envir=envir, new.name = FALSE, ...)
       return(tfm1)
     }
-    return(um)
+    return(mdl)
   }
   return(tfm1)
 }
@@ -746,7 +774,7 @@ nabla.um <- function(um) {
 #' Chen and Liu (1993) is conducted.
 #'
 #' @param mdl an object of class \code{\link{um}} or \code{\link{tfm}}.
-#' @param z a time series.
+#' @param y an object of class \code{ts}, optional.
 #' @param types a vector with the initials of the outliers to be detected,
 #'   c("AO", "LS", "TC", "IO").
 #' @param dates a list of dates c(year, season). If \code{dates = NULL}, an
@@ -762,7 +790,11 @@ nabla.um <- function(um) {
 #'   intervation variables with \code{n.ahead} observations, which could be
 #'   necessary to forecast the output.
 #' @param p.value estimates with a p-value greater than p.value are omitted.
-#' @param ... additional arguments.
+#' @param tc.fix a logical value indicating if the AR coefficient in the
+#'   transfer function of the TC is estimated or fix.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
+#' @param ... other arguments.
 #' @return an object of class "\code{\link{tfm}}" or a table.
 #' @export
 outliers <- function (mdl, ...) { UseMethod("outliers") }
@@ -773,14 +805,14 @@ outliers <- function (mdl, ...) { UseMethod("outliers") }
 #' um1 <- um(Y, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 #' outliers(um1)
 #' @export
-outliers.um <- function(mdl, z = NULL, types = c("AO", "LS", "TC", "IO"), 
+outliers.um <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"), 
                         dates = NULL, c = 3, calendar = FALSE, easter = FALSE, 
                         resid = c("exact", "cond"), n.ahead = 0, 
                         p.value = 1, tc.fix = TRUE, envir = NULL, ...) {
   if (is.null (envir)) envir <- parent.frame ()
-  if (!is.null(z)) mdl$z <- deparse(substitute(z))
-  z <- z.um(mdl, z, envir)
-  tfm1 <- tfm(z, noise = mdl, fit = FALSE, new.name = FALSE, envir = envir)
+  if (!is.null(y)) mdl$z <- deparse(substitute(y))
+  y <- z.um(mdl, y, envir)
+  tfm1 <- tfm(y, noise = mdl, fit = FALSE, new.name = FALSE, envir = envir)
   outliers.tfm(tfm1, NULL, types, dates, c, calendar, easter, resid, n.ahead, 
                p.value, tc.fix, envir, ...)
 }
@@ -1159,8 +1191,9 @@ sim <- function (mdl, ...) { UseMethod("sim") }
 #'    If NULL the calling environment of this function will be used.
 #' @rdname sim
 #' @param z0 initial conditions for the nonstationary series.
+#' @param n0 remove the n0 first observation, integer.
 #' @export
-sim.um <- function(mdl, n = 100, z0 = NULL, seed = NULL, envir=NULL, ...) {
+sim.um <- function(mdl, n = 100, z0 = NULL, n0 = 0, seed = NULL, envir=NULL, ...) {
   stopifnot(inherits(mdl, "um"), n > length(mdl$nabla))
   if (is.null (envir)) envir <- parent.frame ()
   if (is.null(mdl$mu)) mu <- 0
@@ -1170,10 +1203,13 @@ sim.um <- function(mdl, n = 100, z0 = NULL, seed = NULL, envir=NULL, ...) {
     else z0 <- eval(parse(text = mdl$z), envir)
   }
   if (!is.null(seed)) set.seed(seed)
-  a <- rnorm(n, 0, sqrt(mdl$sig2))
+  if (n0 < 0) n0 <- abs(n0)
+  a <- rnorm(n + abs(n0), 0, sqrt(mdl$sig2))
   z <- simC(a, mdl$bc, mu, mdl$phi, mdl$nabla, mdl$theta, z0)
   z <- as.numeric(z)
-  if (is.ts(z0)) z <- ts(z, start = start(z0), frequency = frequency(z0))  
+  if (n0 > 0) z <- z[-(1:n0)]
+  if (is.ts(z0)) z <- ts(z, start = start(z0), frequency = frequency(z0)) 
+  else z <- ts(z)
   return(z)
 }  
 

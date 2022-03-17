@@ -64,10 +64,6 @@ function(x, form = c("dif", "td", "td7", "td6", "wd",  "wd2", "null"), ref = 0,
       xreg <- matrix(rowSums(xreg[,2:6])-5*rowSums(xreg[,c(1, 7)])/2, ncol = 1)
       names <- "wkdays_wknd"
       if (lpyear) lom <- FALSE
-    } else if (form == "wd3") {
-      wd <- (Mon + Tue + Wed + Thu + Fri) - 6*Sun
-      wd2 <- (Mon + Tue + Wed + Thu + Fri) - Sat
-      xreg <- data.frame(weekdays_Sat = wd2, weekdays_Sun = wd)
     } else {
       stop("invalid option for tranding days")
     }
@@ -351,7 +347,7 @@ extra.days <- function(x, day, n.ahead = 0) {
     colnames(X) <- c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
     return(ts(X, start = start(x), frequency = 12))
   }
-  if (frequency(y) != 12) stop("function only implemented for monthly ts")
+  if (frequency(x) != 12) stop("function only implemented for monthly ts")
   start <- start(x)
   n <- length(x) + n.ahead
   x <- ts(rep(4, n), start = start, frequency = 12)

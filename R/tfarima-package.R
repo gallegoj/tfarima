@@ -41,7 +41,7 @@
 #' @importFrom Rcpp evalCpp
 #' @importFrom numDeriv jacobian
 #' @importFrom stats Box.test acf as.ts bartlett.test cycle density dnorm end
-#' @importFrom stats frequency is.ts lm median na.pass optim plot.ts pnorm
+#' @importFrom stats frequency is.ts is.mts lm median na.pass optim plot.ts pnorm
 #' @importFrom stats printCoefmat qnorm resid residuals rnorm sd start time
 #' @importFrom stats ts tsdiag update var window
 #' @importFrom graphics plot abline axis layout lcm legend lines mtext par

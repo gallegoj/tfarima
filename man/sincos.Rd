@@ -4,11 +4,15 @@
 \alias{sincos}
 \title{Trigonometric variables}
 \usage{
-sincos(Y, n.ahead = 0)
+sincos(Y, n.ahead = 0, constant = FALSE)
 }
 \arguments{
 \item{Y}{an object of class \code{ts} used to determine the sample period and
 frequency.}
+
+\item{n.ahead}{number of additional observations to extend the sample period.}
+
+\item{constant}{logical indicator to include a column of ones.}
 }
 \value{
 A matrix of trigonometric variables.

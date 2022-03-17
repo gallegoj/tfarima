@@ -26,7 +26,7 @@ outliers(mdl, ...)
 
 \method{outliers}{um}(
   mdl,
-  z = NULL,
+  y = NULL,
   types = c("AO", "LS", "TC", "IO"),
   dates = NULL,
   c = 3,
@@ -68,12 +68,13 @@ necessary to forecast the output.}
 
 \item{p.value}{estimates with a p-value greater than p.value are omitted.}
 
+\item{tc.fix}{a logical value indicating if the AR coefficient in the
+transfer function of the TC is estimated or fix.}
+
 \item{envir}{environment in which the function arguments are evaluated.
 If NULL the calling environment of this function will be used.}
 
-\item{...}{additional arguments.}
-
-\item{z}{a time series.}
+\item{...}{other arguments.}
 }
 \value{
 an object of class "\code{\link{tfm}}" or a table.
