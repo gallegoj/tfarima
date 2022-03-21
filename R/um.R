@@ -15,19 +15,19 @@
 #' @param sig2 variance of the error.
 #' @param bc logical. If TRUE logs are taken.
 #' @param fit logical. If TRUE, model is fitted.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
+#' @param envir the environment in which to look for the time series z when it
+#'   is passed as a character string.
 #' @param ... additional arguments.
 #'
 #' @return An object of class \code{um}.
-#' 
+#'
 #' @references
 #'
 #' Box, G.E.P., Jenkins, G.M., Reinsel, G.C. and Ljung, G.M. (2015) Time Series
 #' Analysis: Forecasting and Control. John Wiley & Sons, Hoboken.
 #'
 #' @examples
-#' 
+#'
 #' ar1 <- um(ar = "(1 - 0.8B)")
 #' ar2 <- um(ar = "(1 - 1.4B + 0.8B^2)")
 #' ma1 <- um(ma = "(1 - 0.8B)")
@@ -35,11 +35,10 @@
 #' arma11 <- um(ar = "(1 - 1.4B + 0.8B^2)", ma = "(1 - 0.8B)")
 #'
 #' @export
-um <- function(z = NULL, ar = NULL, i = NULL, ma = NULL, mu = NULL,
-               sig2 = 1.0, bc = FALSE, fit = TRUE, envir=NULL, ...) {
+um <- function(z = NULL, ar = NULL, i = NULL, ma = NULL, mu = NULL, sig2 = 1.0, 
+               bc = FALSE, fit = TRUE, envir = parent.frame (), ...) {
 
   call <- match.call()
-  if (is.null (envir)) envir <- parent.frame ()
   if (is.numeric(z)){
     z <- deparse(substitute(z))
   }
@@ -409,7 +408,8 @@ diagchk.um <- function(mdl, z = NULL, method = c("exact", "cond"),
 #' display(list(um1, um2))
 #' 
 #' @export 
-display <- function (um, ...) { UseMethod("display") }
+display <- function (um, ...)
+UseMethod("display")
 
 #' @rdname display
 #' @export
@@ -766,6 +766,38 @@ nabla.um <- function(um) {
   as.lagpol(um$nabla)
 }
 
+#' Intervention analysis/Outlier treatment
+#'
+#' \code{intervention} estimates the effect of a intervention at a known time.
+#'
+#' @param mdl an object of class \code{\link{um}} or \code{\link{tfm}}.
+#' @param y a "ts" object, optional.
+#' @param type the type intervention (pulse, step, ramp) or the type of outlier
+#'   (AO, LS, TC, IO).
+#' @param time the date of the intervention, in format c(year, season).
+#' @param n.ahead a positive integer to extend the sample period of the
+#'   intervention variable with \code{n.ahead} observations, which could be
+#'   necessary to forecast the output.
+#' @param envir the environment in which to look for the time series z when it
+#'   is passed as a character string.
+#' @param ... additional arguments.
+#' @return an object of class "\code{\link{tfm}}" or a table.
+#'
+#' @export
+intervention <- function (mdl, ...) { UseMethod("intervention") }
+
+#' @rdname intervention
+#' @export
+intervention.um <- function(mdl, y = NULL, type, time, n.ahead = 0, 
+                             envir = parent.frame (), ...) {
+  if (!is.null(y)) mdl$z <- deparse(substitute(y))
+  y <- z.um(mdl, y, envir)
+  tfm1 <- tfm(y, noise = mdl, fit = FALSE, new.name = FALSE, envir = envir)
+  intervention.tfm(tfm1, NULL, types, dates, c, calendar, easter, resid, n.ahead, 
+               p.value, tc.fix, envir, ...)
+}
+  
+
 #' Outliers detection at known/unknown dates
 #'
 #' \code{outliers} performs a detection of four types of anomalies (AO, TC, LS
@@ -787,7 +819,7 @@ nabla.um <- function(um) {
 #' @param resid type of residuals (exact or conditional) used to identify
 #'   outliers.
 #' @param n.ahead a positive integer to extend the sample period of the
-#'   intervation variables with \code{n.ahead} observations, which could be
+#'   intervention variables with \code{n.ahead} observations, which could be
 #'   necessary to forecast the output.
 #' @param p.value estimates with a p-value greater than p.value are omitted.
 #' @param tc.fix a logical value indicating if the AR coefficient in the

@@ -792,25 +792,6 @@ outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"),
   
 }
 
-#' Intervention analysis/Outlier treatment
-#'
-#' \code{intervention} estimates the effect of a intervention at a known time.
-#'
-#' @param mdl an object of class \code{\link{um}} or \code{\link{tfm}}.
-#' @param y a "ts" object, optional.
-#' @param type the type intervention (pulse, step, ramp) or the type of outlier
-#'   (AO, LS, TC, IO).
-#' @param time the date of the intervention, in format c(year, season).
-#' @param n.ahead a positive integer to extend the sample period of the
-#'   intervention variable with \code{n.ahead} observations, which could be
-#'   necessary to forecast the output.
-#' @param envir environment in which the function arguments are evaluated. If
-#'   NULL the parent environment of this function will be used.
-#' @param ... additional arguments.
-#' @return an object of class "\code{\link{tfm}}" or a table.
-#'
-#' @export
-intervention <- function (mdl, ...) { UseMethod("intervention") }
 
 #' @rdname intervention
 #' @export

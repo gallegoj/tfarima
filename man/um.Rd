@@ -13,7 +13,7 @@ um(
   sig2 = 1,
   bc = FALSE,
   fit = TRUE,
-  envir = NULL,
+  envir = parent.frame(),
   ...
 )
 }
@@ -34,8 +34,8 @@ um(
 
 \item{fit}{logical. If TRUE, model is fitted.}
 
-\item{envir}{environment in which the function arguments are evaluated.
-If NULL the calling environment of this function will be used.}
+\item{envir}{the environment in which to look for the time series z when it
+is passed as a character string.}
 
 \item{...}{additional arguments.}
 }

@@ -63,7 +63,7 @@ only used when \code{dates = NULL}.}
 outliers.}
 
 \item{n.ahead}{a positive integer to extend the sample period of the
-intervation variables with \code{n.ahead} observations, which could be
+intervention variables with \code{n.ahead} observations, which could be
 necessary to forecast the output.}
 
 \item{p.value}{estimates with a p-value greater than p.value are omitted.}
