@@ -436,8 +436,7 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir = NULL, ...
 #' @rdname setinputs
 #' @export
 setinputs.tfm <- function(mdl, xreg = NULL, inputs = NULL, y = NULL, 
-                          envir = NULL, ...) {
-  if (is.null (envir)) envir <- parent.frame ()
+                          envir = parent.frame (), ...) {
   stopifnot(is.tfm(mdl))
   if (!is.null(y)) mdl$noise$z <- deparse(substitute(y))
   y <- output.tfm(mdl, y, envir)
@@ -450,7 +449,7 @@ setinputs.tfm <- function(mdl, xreg = NULL, inputs = NULL, y = NULL,
   } else xreg <- mdl$xreg
   
   if (!is.null(inputs) && mdl$k > 0) inputs <- c(mdl$inputs, inputs)  
-  else inputs <- mdl$inputs
+  else if(mdl$k > 0) inputs <- mdl$inputs
   tfm(output = y, xreg = xreg, inputs = inputs, noise = mdl$noise, 
       new.name = FALSE, envir = envir, ...)
 }
@@ -796,9 +795,8 @@ outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"),
 #' @rdname intervention
 #' @export
 intervention.tfm <- function(mdl, y = NULL, type, time, n.ahead = 0, 
-                             envir = NULL, ...) {
+                             envir = parent.frame(), ...) {
   stopifnot(is.tfm(mdl))
-  if (is.null(envir)) envir <- parent.frame()
   type <- toupper(type)
   y <- output.tfm(mdl, y, envir = envir)
   if (any(type == "IO")) 
@@ -823,7 +821,7 @@ intervention.tfm <- function(mdl, y = NULL, type, time, n.ahead = 0,
   } else if (is.vector(time)) {
     k2 <- length(time)
     if (k2 == 1) {
-      if (s == 1) stop("invalid time argument")
+      if (s != 1) stop("invalid time argument")
       time <- list(c(time, 1))
     } else if (k2 == 2) {
       stopifnot(time[2] >= 1 && time[2] <=s)
@@ -875,6 +873,7 @@ intervention.tfm <- function(mdl, y = NULL, type, time, n.ahead = 0,
         if (type[k] == "TC") {
           tf <- tfest(n, x, p = 1, q = 0, um.y = mdl$noise, 
                       par.prefix = names[k], envir = envir)
+          tf$x.name <- names[k]
         } else { # "IO"
           tf <- tf(x, w0 = tsvalue(u, time[[k]]), ma = mdl$noise$ma,
                    ar = c(mdl$noise$i, mdl$noise$ar), par.prefix = names[k], 
@@ -882,7 +881,13 @@ intervention.tfm <- function(mdl, y = NULL, type, time, n.ahead = 0,
         }
         tfm1 <- setinputs(mdl, inputs = tf, ...)
       }
-      summary(tfm1, table = TRUE)[names[k], ]
+      if (type[k] == "TC") {
+        s <- summary(tfm1, table = TRUE)
+        d <- s[paste0(names[k], ".d1"), 1]
+        name <- names[k]
+        names[k] <<- paste0(names[k], "(", format(d, digits = 2), ")")
+        s[name, ]
+      } else summary(tfm1, table = TRUE)[names[k], ]
     })
     colnames(tbl) <- names
     return(tbl)
@@ -903,7 +908,7 @@ intervention.tfm <- function(mdl, y = NULL, type, time, n.ahead = 0,
           x <- ts(x, start = start(y), frequency = frequency(y))
           if (type[k] == "TC") {
             tf <- tfest(n, x, p = 1, q = 0, um.y = mdl$noise, 
-                        par.prefix = names[k]) # Don't use envir
+                        par.prefix = names[k]) 
             tf$x.name <- names[k]
           } else { # "IO"
             tf <- tf(x, w0 = tsvalue(u, time[[k]]), ma = mdl$noise$ma,

@@ -793,8 +793,7 @@ intervention.um <- function(mdl, y = NULL, type, time, n.ahead = 0,
   if (!is.null(y)) mdl$z <- deparse(substitute(y))
   y <- z.um(mdl, y, envir)
   tfm1 <- tfm(y, noise = mdl, fit = FALSE, new.name = FALSE, envir = envir)
-  intervention.tfm(tfm1, NULL, types, dates, c, calendar, easter, resid, n.ahead, 
-               p.value, tc.fix, envir, ...)
+  intervention.tfm(tfm1, NULL, type, time, n.ahead, envir, ...)
 }
   
 
@@ -1213,7 +1212,7 @@ roots.um <- function(x, opr = c("arma", "ar", "ma", "i", "arima"), ...) {
 #' @param mdl an object of class \code{um} or \code{tfm}.
 #' @param n number of observations.
 #' @param seed an integer.
-#' @param ... additional arguments.
+#' @param ... other arguments.
 #' @return 
 #' An object of class \code{ts}.
 #' @export
@@ -1224,10 +1223,11 @@ sim <- function (mdl, ...) { UseMethod("sim") }
 #' @rdname sim
 #' @param z0 initial conditions for the nonstationary series.
 #' @param n0 remove the n0 first observation, integer.
+#' @param a vector of innovations, optional.
 #' @export
-sim.um <- function(mdl, n = 100, z0 = NULL, n0 = 0, seed = NULL, envir=NULL, ...) {
+sim.um <- function(mdl, n = 100, z0 = NULL, n0 = 0, a = NULL, seed = NULL, 
+                   envir = parent.frame(), ...) {
   stopifnot(inherits(mdl, "um"), n > length(mdl$nabla))
-  if (is.null (envir)) envir <- parent.frame ()
   if (is.null(mdl$mu)) mu <- 0
   else mu <- mdl$mu
   if (is.null(z0)) {
@@ -1236,7 +1236,9 @@ sim.um <- function(mdl, n = 100, z0 = NULL, n0 = 0, seed = NULL, envir=NULL, ...
   }
   if (!is.null(seed)) set.seed(seed)
   if (n0 < 0) n0 <- abs(n0)
-  a <- rnorm(n + abs(n0), 0, sqrt(mdl$sig2))
+  if (!is.null(a)) {
+    stopifnot(length(a) == (n+n0) )
+  } else a <- rnorm(n + abs(n0), 0, sqrt(mdl$sig2))
   z <- simC(a, mdl$bc, mu, mdl$phi, mdl$nabla, mdl$theta, z0)
   z <- as.numeric(z)
   if (n0 > 0) z <- z[-(1:n0)]
