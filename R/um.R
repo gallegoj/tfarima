@@ -1744,21 +1744,6 @@ sum_um <- function(...) {
   
 }
 
-#' State space form
-#'
-#' \code{ssform} creates the state space form of the eventual forecast function
-#' of an ARIMA model.
-#'
-#' @param um an object of class \code{um}.
-#'
-#' @return A list of matrices
-#'
-#' @export
-ssform <- function(um, ...) {
-  return(1)
-}
-
-
 #' Unscramble MA polynomial
 #'
 #' @param um an object of class \code{um}.
