@@ -239,9 +239,8 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
       for (i in 1:mdl$k) {
         x <- filterC(X[[i]], mdl$inputs[[i]]$theta,
                      mdl$inputs[[i]]$phi, mdl$inputs[[i]]$delay)
-        if (t0[i] > 1 || t1[i] > 1) x[t0[i]:t1[i]]
-        else x
-        ystar <- ystar - x
+        if (t0[i] > 1 || t1[i] > 1) ystar <- ystar - x[t0[i]:t1[i]]
+        else ystar <- ystar - x
       }
     }
     ystar
@@ -251,15 +250,14 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
     mdl <<- update.tfm(mdl, b)
     if (mdl$noise$is.adm) {
       wstar <- noiseTFM()
-      if (exact) ll <- ellarmaC(wstar, mdl$noise$phi, mdl$noise$theta)
-      else ll <- cllarmaC(wstar, mdl$noise$phi, mdl$noise$theta)
+      if (exact) ll <- -ellarmaC(wstar, mdl$noise$phi, mdl$noise$theta)
+      else ll <- -cllarmaC(wstar, mdl$noise$phi, mdl$noise$theta)
     } else {
       ll <- ll0
     }
-    
-    if (show.iter) print(c(ll, b))
+    if (show.iter) print(c(loglik = ll, b))
     mdl$noise$is.adm <<- TRUE
-    return(-ll)
+    return(ll)
   }
 
   y <- output.tfm(mdl, y, envir)
@@ -286,18 +284,15 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
     i <- 1
     X <- lapply(mdl$inputs, function(tf) {
       x <- diffC(tf$x, mdl$noise$nabla, tf$um$bc)
-      if (tf$t.start > 1 || length(tf$x) > tf$t.end) {
-        t0[i] <<- tf$t.start
-        t1[i] <<- tf$t.start + n - 1
-        x[t0[i]:(t0[i]+n-1)]
-      } else {
-        x
-      }
+      t0[i] <<- tf$t.start
+      t1[i] <<- tf$t.start + n - 1
+      x
     })
   }
 
   b <- param.tfm(mdl)
-  ll0 <- -logLikTFM(b)
+  ll0 <- 1.797693e+308
+  ll0 <- logLikTFM(b)
   opt <- optim(b, logLikTFM, method = optim.method, hessian = F)
   if(opt$convergence > 0)
     warning(gettextf("possible convergence problem: optim gave code = %d",
@@ -329,7 +324,6 @@ logLik.tfm <-function(object, y = NULL, method = c("exact", "cond"), envir=NULL,
     w <- w - object$noise$mu
   if (method == "exact") ll <- ellarmaC(w, object$noise$phi, object$noise$theta)
   else ll <- cllarmaC(w, object$noise$phi, object$noise$theta)
-  
   return(ll)
   
 }
@@ -1310,15 +1304,10 @@ output.tfm <- function(tfm, y = NULL, envir = NULL) {
 } 
 
 update.tfm <- function(tfm, param) {
-  
   tfm$param[] <- param
-  
   tfm$inputs <- lapply(tfm$inputs, update.tf, param = param)
-  
   tfm$noise <- update.um(tfm$noise, param)
-  
   return(tfm)
-  
 }
 
 

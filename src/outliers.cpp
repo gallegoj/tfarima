@@ -155,7 +155,6 @@ arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colve
   for (t = T - 1; t > - 1; t--) {
     if (A(t, 0) < 0.5) A.shed_row(t);
   }
-  
   k = A.n_rows;
   if (k > 1) {
     vec x(k, fill::zeros);
@@ -166,6 +165,7 @@ arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colve
     int j = 0;
     for (t = t1; t < N; t++) {
       for (j = 0; j < k; j++) {
+        x(j) = 0;
         switch((int)A(j, 1)) {
         case 1:
           if ((int)A(j, 0) == t+1) x(j) = 1;

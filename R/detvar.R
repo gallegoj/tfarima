@@ -371,22 +371,19 @@ extra.days <- function(x, day, n.ahead = 0) {
       }
     } else {
       if (d == 5L) {
-        if(day == 5L || day == 6L || d==0L) x[t] <- 5
+        if(day == 5L || day == 6L || day == 0L) x[t] <- 5
       } else if (d == 6L) {
         if(day == 6L || day == 0L || day == 1L) x[t] <- 5
       } else{
         if(day == d || day == d + 1 || day == d + 2) x[t] <- 5
       }         
     }
-    
     m <- m + 1
     if (m > 12) {
       m <- 1
-      y <- y +1
+      y <- y + 1
     }
   }
-  
   x - 4
-  
 }
 

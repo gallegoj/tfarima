@@ -95,7 +95,6 @@ um <- function(z = NULL, ar = NULL, i = NULL, ma = NULL, mu = NULL, sig2 = 1.0,
   
 }
 
-
 #' Convert \code{arima} into \code{um}.
 #'
 #' \code{as.um} converts an object of class \code{arima} into an object 
@@ -587,7 +586,7 @@ fit.um <- function(mdl, z = NULL, method = c("exact", "cond"),
   stopifnot(inherits(mdl, "um"))
   if (is.null (envir)) envir <- parent.frame ()
   if (!is.stationary.um(mdl)) stop("Non-stationary AR preestimates")
-  if (!is.invertible.um(mdl)) stop("Non-invertible MA preestimates")
+  if (!is.invertible.um(mdl)) warning("Non-invertible MA preestimates")
   if ((mdl$p > 50 || mdl$q > 50) && length(method) > 1) method <- "cond"
   method <- match.arg(method)
   exact <- method == "exact"
@@ -1743,6 +1742,20 @@ sum_um <- function(...) {
   
   um(ar = list.ar, i = list.i, ma = ma, sig2 = sig2)
   
+}
+
+#' State space form
+#'
+#' \code{ssform} creates the state space form of the eventual forecast function
+#' of an ARIMA model.
+#'
+#' @param um an object of class \code{um}.
+#'
+#' @return A list of matrices
+#'
+#' @export
+ssform <- function(um, ...) {
+  return(1)
 }
 
 

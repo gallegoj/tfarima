@@ -528,7 +528,10 @@ polyexpand <- function(...) {
   nm <- names(param)
   nm <- nm[startsWith(nm, coef.name)]
   if (!is.null(nm)) {
-    max(as.numeric(gsub(coef.name, "", nm)))
+    i <- as.numeric(gsub(coef.name, "", nm)) 
+    i <- i[is.numeric(i)]
+    if (length(i) > 0) return(max(i))
+    else return(0)
   } else {
     0
   }
