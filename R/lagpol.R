@@ -93,11 +93,12 @@ as.lagpol <- function(pol, p = 1) {
   pol <- as.numeric(pol)
   stopifnot(pol[1] == 1)
   k <- length(pol) - 1
-  if (k == 0) return(lagpol(NULL))
+  if (k == 0) return(NULL)
   pol[1] <- 0
   lags <- pol != 0
   pol <- -pol[lags]
   lags <- (0:k)[lags]
+  if (length(lags) < 1) return(NULL)
   names(pol) <- paste("a", lags, sep = "")
   lp <- lagpol(pol, lags = lags, p = p)
   return(lp)

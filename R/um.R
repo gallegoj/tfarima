@@ -168,7 +168,7 @@ as.um <- function(arima) {
 #'
 #' \code{autocov} computes the autocovariances of an ARMA model.
 #'
-#' @param um an object of class \code{um}.
+#' @param mdl an object of class \code{um} or \code{stsm}.
 #' @param lag.max maximum lag for autocovariances.
 #' @param ... additional arguments.
 #'  
@@ -183,13 +183,13 @@ as.um <- function(arima) {
 #' autocov(ar1, lag.max = 13)
 #' 
 #' @export
-autocov <- function (um, ...) { UseMethod("autocov") }
+autocov <- function (mdl, ...) { UseMethod("autocov") }
 
 #' @rdname autocov
 #' @export
-autocov.um <- function(um, lag.max = 10, ...) {
-  stopifnot(inherits(um, "um"))
-  g <- as.numeric( tacovC(um$phi, um$theta, um$sig2, lag.max) )
+autocov.um <- function(mdl, lag.max = 10, ...) {
+  stopifnot(inherits(mdl, "um"))
+  g <- as.numeric( tacovC(mdl$phi, mdl$theta, mdl$sig2, lag.max) )
   names(g) <- paste("gamma", 0:lag.max, sep = "")
   g
 }
@@ -1742,6 +1742,59 @@ sum_um <- function(...) {
   
   um(ar = list.ar, i = list.i, ma = ma, sig2 = sig2)
   
+}
+
+#' Structural form for an ARIMA model
+#'
+#' \code{sform} finds the structural form for an ARIMA model from its the eventual
+#' forecast function.
+#'
+#' @param mdl an object of class \code{um}.
+#'
+#' @return An object of class \code{stsm}
+#'
+#' @export
+sform <- function (mdl, ...) { UseMethod("sform") }
+
+#' @rdname sform
+#' @param fSv optional function to create the covariance matrix.
+#' @param par vector of parameters for function fSv.
+#' @param ... other arguments.
+#' 
+#' @examples
+#' 
+#' airl <- um(i = list(1, c(1, 12)), ma = "(1 - 0.86B)(1 - 0.8B12)")
+#' sf <- sform(airl)
+#' sf
+#' 
+#' @export
+#' 
+sform.um <- function(mdl, fSv = NULL, par = NULL, ...) {
+  if (is.null(mdl$mu)) mu <- 0
+  else mu <- mdl$mu
+  ariroots <- unlist( lapply(mdl$i, function(x) roots(x, FALSE)) )
+  R <- sortrootsC(1/ariroots)
+  C <- decompFC(R, mu)
+  psi <- psi.weights(mdl, lag.max = ncol(C), var.psi = TRUE)[-1]
+  C1 <- C[-nrow(C), ]
+  C2 <- C[-1, ]
+  c1 <- C[1, ]
+  iC1 <- solve(C1)
+  C <- iC1 %*% C2
+  b <- as.vector(c1 %*% solve(C))
+  d <- as.vector(iC1 %*% psi)
+  C[abs(C) < .Machine$double.eps] <- 0
+  b[abs(b) < .Machine$double.eps] <- 0
+  s2u <- (1 - sum(b*d))*mdl$sig2
+  if (is.null(fSv)){
+    psi <- unname(psi)
+    s2v <- sqrt(mdl$sig2)*psi
+    return(stsm(NULL, b, C, .sPsi, s2v, s2u, bc = mdl$bc))
+  } else if (!is.null(par)) {
+    g <- autocov(mdl, lag.max = length(b))
+    mdl1 <- stsm(NULL, b, C, fSv, par, s2u)
+    return(fit2autocov(mdl1, g))
+  }
 }
 
 #' Unscramble MA polynomial

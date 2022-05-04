@@ -484,6 +484,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// llrfC
+double llrfC(const arma::colvec& w, const arma::colvec& d, const arma::mat& A, const arma::mat& Sv, double s2u, bool s2star);
+RcppExport SEXP _tfarima_llrfC(SEXP wSEXP, SEXP dSEXP, SEXP ASEXP, SEXP SvSEXP, SEXP s2uSEXP, SEXP s2starSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::colvec& >::type w(wSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type d(dSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Sv(SvSEXP);
+    Rcpp::traits::input_parameter< double >::type s2u(s2uSEXP);
+    Rcpp::traits::input_parameter< bool >::type s2star(s2starSEXP);
+    rcpp_result_gen = Rcpp::wrap(llrfC(w, d, A, Sv, s2u, s2star));
+    return rcpp_result_gen;
+END_RCPP
+}
 // tacovC
 arma::colvec tacovC(const arma::colvec& phi, const arma::colvec& theta, double sigma2, int nlags);
 RcppExport SEXP _tfarima_tacovC(SEXP phiSEXP, SEXP thetaSEXP, SEXP sigma2SEXP, SEXP nlagsSEXP) {
@@ -548,6 +564,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_tfarima_simC", (DL_FUNC) &_tfarima_simC, 7},
     {"_tfarima_spectrumC", (DL_FUNC) &_tfarima_spectrumC, 4},
     {"_tfarima_pgramC", (DL_FUNC) &_tfarima_pgramC, 2},
+    {"_tfarima_llrfC", (DL_FUNC) &_tfarima_llrfC, 6},
     {"_tfarima_tacovC", (DL_FUNC) &_tfarima_tacovC, 4},
     {"_tfarima_pacorrC", (DL_FUNC) &_tfarima_pacorrC, 3},
     {NULL, NULL, 0}

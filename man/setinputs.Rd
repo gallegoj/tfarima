@@ -6,7 +6,14 @@
 \alias{setinputs.um}
 \title{\code{setinputs} adds new inputs into a transfer function model.}
 \usage{
-\method{setinputs}{tfm}(mdl, xreg = NULL, inputs = NULL, y = NULL, envir = NULL, ...)
+\method{setinputs}{tfm}(
+  mdl,
+  xreg = NULL,
+  inputs = NULL,
+  y = NULL,
+  envir = parent.frame(),
+  ...
+)
 
 setinputs(mdl, ...)
 

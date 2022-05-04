@@ -10,7 +10,16 @@
 
 sim(mdl, ...)
 
-\method{sim}{um}(mdl, n = 100, z0 = NULL, n0 = 0, seed = NULL, envir = NULL, ...)
+\method{sim}{um}(
+  mdl,
+  n = 100,
+  z0 = NULL,
+  n0 = 0,
+  a = NULL,
+  seed = NULL,
+  envir = parent.frame(),
+  ...
+)
 }
 \arguments{
 \item{mdl}{an object of class \code{um} or \code{tfm}.}
@@ -21,11 +30,13 @@ sim(mdl, ...)
 
 \item{seed}{an integer.}
 
-\item{...}{additional arguments.}
+\item{...}{other arguments.}
 
 \item{z0}{initial conditions for the nonstationary series.}
 
 \item{n0}{remove the n0 first observation, integer.}
+
+\item{a}{vector of innovations, optional.}
 
 \item{envir}{environment in which the function arguments are evaluated.
 If NULL the calling environment of this function will be used.}

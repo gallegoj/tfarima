@@ -141,6 +141,10 @@ pgramC <- function(y, cpgram) {
     .Call(`_tfarima_pgramC`, y, cpgram)
 }
 
+llrfC <- function(w, d, A, Sv, s2u, s2star) {
+    .Call(`_tfarima_llrfC`, w, d, A, Sv, s2u, s2star)
+}
+
 tacovC <- function(phi, theta, sigma2, nlags) {
     .Call(`_tfarima_tacovC`, phi, theta, sigma2, nlags)
 }

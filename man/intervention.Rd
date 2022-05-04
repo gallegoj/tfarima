@@ -6,7 +6,15 @@
 \alias{intervention.um}
 \title{Intervention analysis/Outlier treatment}
 \usage{
-\method{intervention}{tfm}(mdl, y = NULL, type, time, n.ahead = 0, envir = NULL, ...)
+\method{intervention}{tfm}(
+  mdl,
+  y = NULL,
+  type,
+  time,
+  n.ahead = 0,
+  envir = parent.frame(),
+  ...
+)
 
 intervention(mdl, ...)
 
