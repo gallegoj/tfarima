@@ -26,7 +26,7 @@ bool bandchol(const arma::mat &A, arma::mat &L, double &detL)
         for (k = 1; k < n; k++)
           if(i+k < n)
             dot += L(j+i,i+k)*L(j,k);
-          L(j+i,i) = A(j+i,i) - dot;
+        L(j+i,i) = A(j+i,i) - dot;
       }
     }
     L(j,0) = sqrt(L(j,0));
@@ -34,7 +34,7 @@ bool bandchol(const arma::mat &A, arma::mat &L, double &detL)
     for(i = 1; i < n; i++)
       if(j+i < m)
         L(j+i, i) /= L(j,0);
-      detL *= L(j, 0);
+    detL *= L(j, 0);
   }
   
   if(detL <= 0.0)
@@ -44,7 +44,7 @@ bool bandchol(const arma::mat &A, arma::mat &L, double &detL)
 
 void bandcholsol(const arma::mat &L, arma::colvec &x)
 {
-  int i, j, k, m, n, nc;
+  int i, k, m, n;
   double sum;
   m = L.n_rows;
   n = L.n_cols;

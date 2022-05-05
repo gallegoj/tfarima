@@ -43,7 +43,7 @@ stsm <- function(y, b, C, fSv, s2v, s2u = 1, xreg = NULL, bc = FALSE, fit = TRUE
     if (!is.null(xreg)) {
       if (is.matrix(xreg))
         stopifnot(nrow(xreg) == length(y))
-      else if (is.vector(xreg)) {
+      else if (is.vector(xreg)||is.ts(xreg)) {
         stopifnot(length(xreg) == length(y))
         xreg <- matrix(xreg, ncol = 1)
       } else stop("wrong xreg argument")
@@ -167,6 +167,7 @@ bsm <- function(y, bc = FALSE, seas = c("hd", "ht", "hs"),
       }
   } else {
     diag(Sv)[3:k] <- s2v[3]
+    #Sv[k, k] <- 0.5*s2v[3]
   }
   Sv
 }
@@ -241,50 +242,55 @@ autocov.stsm <- function(mdl, ...) {
 #' @export
 fit.stsm <- function(mdl, method = "BFGS", show.iter = FALSE, ...) {
   
-  .is2 <- function(par) {
-    i <- ipar[par == max(par)][1]
-    ipar[i] <<- is2
-    is2 <<- i
-    s2 <<- s2/s2[is2]
-    par <- s2[ipar]
+  .s2i <- function(par) {
+    if (!is.null(mdl$xreg))
+      s2star <- llrfC(w - X %*% par[-(1:k)], lf[[1]], lf[[2]], mdl$Sv, mdl$s2u, TRUE)
+    else
+      s2star <- llrfC(w, lf[[1]], lf[[2]], mdl$Sv, mdl$s2u, TRUE)
+    s2 <<- s2*s2star
+    pos <- c(s2i, s2pos)
+    s2i <<- pos[s2[pos] == max(s2)][1]
+    s2 <<- s2/s2[s2i]
+    s2pos <<- pos[pos != s2i]
+    par[1:k] <- log(s2[s2pos])
     par
   }
   
   .upmdl <- function(par) {
-    par <- exp(par[1:k])
-    # if (max(par) > 10) 
-    #   par <- .is2(par)
-    s2[ipar] <<- par
-    mdl$Sv <<- do.call(mdl$fSv, c(list(s2[-1], k = lb), mdl$dots)) 
-    mdl$s2u <<- s2[1]
-    invisible(NULL)
+    s2[s2pos] <<- exp(par[1:k])
+    if (max(s2) > 1000) {
+      return(FALSE)
+    }
+    mdl$Sv <<- do.call(mdl$fSv, c(list(s2[-s2k], k = lb), mdl$dots)) 
+    mdl$s2u <<- s2[s2k]
+    TRUE
   }
   
   .loglikrf <- function(par) {
-    .upmdl(par)
+    if(!.upmdl(par))
+      return(ll0)
     if (!is.null(mdl$xreg))
       ll <- -llrfC(w - X %*% par[-(1:k)], lf[[1]], lf[[2]], mdl$Sv, mdl$s2u, FALSE)
     else
       ll <- -llrfC(w, lf[[1]], lf[[2]], mdl$Sv, mdl$s2u, FALSE)
     if (show.iter)
-      print(c(-ll, par))
+      print(c(-ll, s2))
     ll
   }
   
   lb <- length(mdl$b)
   if (is.null(names(mdl$s2u)))
-    s2 <- c(irr = mdl$s2u, mdl$s2v)
+    s2 <- c(mdl$s2v, irr = mdl$s2u)
   else
-    s2 <- c(mdl$s2u, mdl$s2v)
+    s2 <- c(mdl$s2v, mdl$s2u)
   
-  ls2 <- length(s2)
-  is2 <- (1:ls2)[s2 == max(s2)][1]
-  s2 <- s2/s2[is2]
-  ipar <- (1:ls2)[s2 > .Machine$double.eps][-is2]
-  par <- log(s2[ipar])
+  s2k <- length(s2)
+  s2i <- (1:s2k)[s2 == max(s2)][1]
+  s2 <- s2/s2[s2i]
+  s2pos <- (1:s2k)[s2 > .Machine$double.eps][-s2i]
+  par <- log(s2[s2pos])
   k <- length(par)
   
-  .upmdl(par)
   lf <- .LeverrierFaddeev(mdl$b, mdl$C)
   w <- diffC(mdl$y, lf[[1]], mdl$bc)
   if (!is.null(mdl$xreg)) {
@@ -293,18 +299,25 @@ fit.stsm <- function(mdl, method = "BFGS", show.iter = FALSE, ...) {
     names(a) <- paste0("a", 1:length(a))
     par <- c(par, a)
   }
+  ll0 <- .loglikrf(par)
   opt <- optim(par, .loglikrf, hessian = TRUE, method = method)
+  if (max(s2) > 1) {
+    ll0 <- opt$value
+    par <- .s2i(opt$par)
+    opt <- optim(par, .loglikrf, hessian = TRUE, method = method)
+  }
   if (!is.null(mdl$xreg)) {
-    ll <- llrfC(w - X %*% par[-(1:k)], lf[[1]], lf[[2]], mdl$Sv, mdl$s2u, TRUE)
+    s2star <- llrfC(w - X %*% par[-(1:k)], lf[[1]], lf[[2]], mdl$Sv, mdl$s2u, TRUE)
     mdl$a <- par[-(1:k)]
   } else
     s2star <- llrfC(w, lf[[1]], lf[[2]], mdl$Sv, mdl$s2u, TRUE)
-  s2[ipar] <- exp(opt$par[1:k])
+  s2[s2pos] <- exp(opt$par[1:k])
   s2 <- s2*s2star
-  mdl$Sv <- do.call(mdl$fSv, c(list(s2[-1], k = lb), mdl$dots)) 
-  mdl$s2u <- s2[1]
-  mdl$s2v <- s2[-1]
+  mdl$Sv <- do.call(mdl$fSv, c(list(s2[-s2k], k = lb), mdl$dots)) 
+  mdl$s2u <- s2[s2k]
+  mdl$s2v <- s2[-s2k]
   mdl$optim <- opt
+  mdl$s2i <- s2i
   mdl
 }
 
@@ -388,11 +401,11 @@ fit2autocov.stsm <- function(mdl, g, method = "BFGS", show.iter = FALSE, ...) {
 #' @export
 print.stsm <- function(x, ...) {
   if (!is.null(x$optim)) {
-    s2 <- c(x$s2u, x$s2v)
-    print(cbind(Var = s2, Ratio = s2/max(s2)))
+    s2 <- c(x$s2v, x$s2u)
+    print(cbind(Var = s2, Ratio = s2/s2[x$s2i]))
     cat("\nlog likelihood: ", -x$optim$value)
   } else if (!is.null(x$opt)) {
-      s2 <- c(x$s2u, x$s2v)
+      s2 <- c(x$s2v, x$s2u)
       print(cbind(Var = s2, Ratio = s2/max(s2)))
       cat("\nlog likelihood: ", x$opt$logLik)
       cat("\nValue obj. func.: ", x$opt$value)
