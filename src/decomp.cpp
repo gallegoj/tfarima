@@ -112,6 +112,8 @@ arma::mat deceffBC(const arma::colvec &y, const bool &bc, const double &mu,
   p = phi.n_elem - 1;
   d = nabla.n_elem - 1;
   r = p + d;
+  vec yh(r);
+  vec b(r);
   
   if (type == 2) {
     vec yc = flipud(y);
@@ -150,8 +152,8 @@ arma::mat deceffBC(const arma::colvec &y, const bool &bc, const double &mu,
   
   vec psi = polyratioC(theta, polymultC(phi, nabla), r);
   psi.shed_row(0);
-  vec yh(r), b(r);
-  for(j = 0; j < r; j++) yh(j) = Y(r + j, 0);
+  for(j = 0; j < r; j++) 
+    yh(j) = Y(r + j, 0);
 
   for (j = 0; j < r; j++) {
     for (i = 0; i < r; i++) {

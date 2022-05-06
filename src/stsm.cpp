@@ -54,7 +54,7 @@ void bandcholsol(const arma::mat &L, arma::colvec &x)
     for (k=i-1; k>-1; k--)
       if(i-k < n)
         sum -= L(i,i-k)*x(k);
-      x(i) = sum/L(i,0);
+    x(i) = sum/L(i,0);
   }
 }
 
