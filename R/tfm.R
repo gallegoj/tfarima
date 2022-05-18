@@ -285,7 +285,9 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
     X <- lapply(mdl$inputs, function(tf) {
       x <- diffC(tf$x, mdl$noise$nabla, tf$um$bc)
       t0[i] <<- tf$t.start
-      t1[i] <<- tf$t.start + n - 1
+      if (length(x) > n)
+        t1[i] <<- tf$t.start + n - 1
+      i <<- i + 1
       x
     })
   }
@@ -413,7 +415,7 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir = NULL, ...
                      tfm$inputs[[i]]$phi, tfm$inputs[[i]]$delay)
         t0 <- tfm$inputs[[i]]$t.start
         t1 <- tfm$inputs[[i]]$t.end
-        if (t0 > 1 | length(tfm$inputs[[i]]$x) > t1)
+        if (t0 > 1 || length(tfm$inputs[[i]]$x) > t1)
           y <- y - x[t0:t1]
         else
           y <- y - x
