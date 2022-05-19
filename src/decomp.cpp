@@ -22,7 +22,7 @@ arma::mat decompHC(const arma::mat &T, const double mu) {
   for (j=0; j<nr; j++) {
     freq = T(j, 3);
     order = (int)T(j, 5);
-    if (simeqC(freq, 0)) {
+    if (simeqC(freq, 0.0)) {
       coef = T(j, 0);
       if (simeqC(coef, 1.0)) {
         l = 0;
@@ -115,16 +115,16 @@ arma::mat deceffBC(const arma::colvec &y, const bool &bc, const double &mu,
   vec yh(r);
   vec b(r);
   
-  if (type == 2) {
+  if (abs(type) == 2) {
     vec yc = flipud(y);
-    B = deceffBC(yc, bc, mu, phi, nabla, theta, sig2, F, 1);
+    B = deceffBC(yc, bc, mu, phi, nabla, theta, sig2, F, abs(type)/type);
     B = flipud(B);
     return(B);  
   } else if (type > 2) {
-    B = (deceffBC(y, bc, mu, phi, nabla, theta, sig2, F, 1) + 
-            deceffBC(y, bc, mu, phi, nabla, theta, sig2, F, 2))/2;
+    B = (deceffBC(y, bc, mu, phi, nabla, theta, sig2, F, -1) + 
+            deceffBC(y, bc, mu, phi, nabla, theta, sig2, F, -2))/2;
     for (i = 0; i < r; i++) {
-      for (j = 0; j < p; j++) {
+      for (j = 0; j < r; j++) {
         B(i, j) *= 2;
         B(N - 1 - i, j) *= 2;
       }
@@ -133,11 +133,11 @@ arma::mat deceffBC(const arma::colvec &y, const bool &bc, const double &mu,
   }  
   
   if (mu != 0) r += 1;
-  
   if (r != (int)F.n_cols || r+1 != (int)F.n_rows) Rcpp::stop("Wrong matrix F");
   
   mat F1(r, r), F2(r, r), F3(r, r);
   B.zeros(N, r+1);
+
   mat Y;
   if (bc)
     Y = forecastC(log(y), false, mu, phi, nabla, theta, sig2, r, r);
@@ -173,20 +173,18 @@ arma::mat deceffBC(const arma::colvec &y, const bool &bc, const double &mu,
   }
 
   // Initial values
-  
-  F3 = solve(F2, F1);
-  psi = solve(F2, F1*psi);
-  
-  for(j = 0; j < r; j++) 
-    b(j) = B(r, j);
-  
-  for (i = r - 1; i > -1; i--) {
-    B(i, r) = a(i);
-    b = F3*b - psi*a(i);
-    for (j = p; j < r; j++)
-      B(i, j) = b(j);
+  if (type > 0) {
+    F3 = solve(F2, F1);
+    psi = solve(F2, F1*psi);
+    for(j = 0; j < r; j++) 
+      b(j) = B(r, j);
+    for (i = r - 1; i > -1; i--) {
+      B(i, r) = a(i);
+      b = F3*b - psi*a(i);
+      for (j = p; j < r; j++)
+        B(i, j) = b(j);
+    }
   }
-  
   return B;
   
 }

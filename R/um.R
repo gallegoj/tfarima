@@ -1772,7 +1772,7 @@ sform <- function (mdl, ...) { UseMethod("sform") }
 sform.um <- function(mdl, fSv = NULL, par = NULL, ...) {
   if (is.null(mdl$mu)) mu <- 0
   else mu <- mdl$mu
-  ariroots <- unlist( lapply(mdl$i, function(x) roots(x, FALSE)) )
+  ariroots <- unlist( lapply( c(mdl$ar, mdl$i), function(x) roots(x, FALSE)) )
   R <- sortrootsC(1/ariroots)
   C <- decompFC(R, mu)
   psi <- psi.weights(mdl, lag.max = ncol(C), var.psi = TRUE)[-1]
@@ -1786,6 +1786,7 @@ sform.um <- function(mdl, fSv = NULL, par = NULL, ...) {
   C[abs(C) < .Machine$double.eps] <- 0
   b[abs(b) < .Machine$double.eps] <- 0
   s2u <- (1 - sum(b*d))*mdl$sig2
+  if (s2u < 0) s2u <- 0
   if (is.null(fSv)){
     psi <- unname(psi)
     s2v <- sqrt(mdl$sig2)*psi
