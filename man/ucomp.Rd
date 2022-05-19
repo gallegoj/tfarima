@@ -10,7 +10,7 @@
   mdl,
   y = NULL,
   method = c("mixed", "forecast", "backcast"),
-  envir = envir,
+  envir = NULL,
   ...
 )
 

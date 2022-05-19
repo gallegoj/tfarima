@@ -666,6 +666,15 @@ logLik.um <-function(object, z = NULL, method = c("exact", "cond"), ...) {
   return(ll)
 }
 
+#' @export
+AIC.um <- function(object, z = NULL, method = c("exact", "cond"), ..., k = 2) {
+  method <- match.arg(method)
+  w <- w.um(object, z, TRUE)
+  if (method == "exact") ll <- ellarmaC(w, object$phi, object$theta)
+  else ll <- cllarmaC(w, object$phi, object$theta)
+  b <- param.um(object)
+  aic <- (-2.0*ll+k*length(b))/length(w)
+}
 
 #' Modifying a TF or an ARIMA model
 #'
@@ -1017,7 +1026,7 @@ print.predict.um <- function(x, rows = NULL, ...) {
 
 #' @export
 plot.predict.um <- function(x, n.back = 0, xlab = "Time", ylab = "z", main = "",
-                            symbol= TRUE, col = c("black", "blue", "red"), ...) {
+                            symbol= TRUE, pch = 16, col = c("black", "blue", "red"), ...) {
   n.back <- as.integer(n.back)
   n2 <- length(x$z)
   if (n.back > 0)  {
@@ -1049,7 +1058,7 @@ plot.predict.um <- function(x, n.back = 0, xlab = "Time", ylab = "z", main = "",
     lines(z, col = col[1])
   }
   
-  if (symbol) lines(zf, type = "o", pch = 16, cex = 0.6, col = col[2])
+  if (symbol) lines(zf, type = "o", pch = pch, cex = 0.6, col = col[2])
   else lines(zf, col = col[2])
   
   k <- ncol(x$low)
