@@ -238,6 +238,7 @@ irf.tf <- function(tf, lag.max = 10, cum = FALSE, plot = TRUE) {
 #' @param tf an object of the S3 class "tf".
 #' 
 #' @return A "ts" object
+#' @export
 output.tf <- function(tf) {
   stopifnot(inherits(tf, "tf"))
   x <- filterC(tf$x, tf$theta, tf$phi, tf$delay)

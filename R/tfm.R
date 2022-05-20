@@ -376,7 +376,7 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir = NULL, ...
   N <- length(y)
   if (tfm$noise$bc) y <- log(y)
   
-  if (diff & tfm$noise$d > 0) {
+  if (diff && tfm$noise$d > 0) {
     y <- diffC(y, tfm$noise$nabla, FALSE)
     n <- length(y)
     if (tfm$kx > 0) {
