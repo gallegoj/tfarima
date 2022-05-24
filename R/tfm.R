@@ -411,8 +411,13 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir = NULL, ...
     }
     if (tfm$k > 0) {
       for (i in 1:tfm$k) {
-        x <- filterC(tfm$inputs[[i]]$x, tfm$inputs[[i]]$theta,
-                     tfm$inputs[[i]]$phi, tfm$inputs[[i]]$delay)
+        if (tfm$inputs[[i]]$um$bc) {
+          x <- filterC(log(tfm$inputs[[i]]$x), tfm$inputs[[i]]$theta,
+                       tfm$inputs[[i]]$phi, tfm$inputs[[i]]$delay)
+        } else {
+          x <- filterC(tfm$inputs[[i]]$x, tfm$inputs[[i]]$theta,
+                       tfm$inputs[[i]]$phi, tfm$inputs[[i]]$delay)
+        }
         t0 <- tfm$inputs[[i]]$t.start
         t1 <- tfm$inputs[[i]]$t.end
         if (t0 > 1 || length(tfm$inputs[[i]]$x) > t1)

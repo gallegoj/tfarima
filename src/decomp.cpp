@@ -121,14 +121,16 @@ arma::mat deceffBC(const arma::colvec &y, const bool &bc, const double &mu,
     B = flipud(B);
     return(B);  
   } else if (type > 2) {
-    B = (deceffBC(y, bc, mu, phi, nabla, theta, sig2, F, -1) + 
-            deceffBC(y, bc, mu, phi, nabla, theta, sig2, F, -2))/2;
+    B = (deceffBC(y, bc, mu, phi, nabla, theta, sig2, F, 1) + 
+            deceffBC(y, bc, mu, phi, nabla, theta, sig2, F, 2))/2;
+    /*
     for (i = 0; i < r; i++) {
       for (j = 0; j < r; j++) {
         B(i, j) *= 2;
         B(N - 1 - i, j) *= 2;
       }
     }
+     */
     return B;
   }  
   
@@ -137,41 +139,46 @@ arma::mat deceffBC(const arma::colvec &y, const bool &bc, const double &mu,
   
   mat F1(r, r), F2(r, r), F3(r, r);
   B.zeros(N, r+1);
-
-  mat Y;
-  if (bc)
-    Y = forecastC(log(y), false, mu, phi, nabla, theta, sig2, r, r);
-  else
-    Y = forecastC(y, false, mu, phi, nabla, theta, sig2, r, r);
-
   vec a = exactresC(diffC(y, nabla, bc) - mu, phi, theta);
   if ((int)a.n_elem != N) {
     if ((int)a.n_elem < N) a.insert_rows(0, N - a.n_elem);
     else a.shed_rows(0, a.n_elem - N - 1);
   }
-  
   vec psi = polyratioC(theta, polymultC(phi, nabla), r);
-  psi.shed_row(0);
+  
+  /*
+  mat Y;
+  if (bc)
+    Y = forecastC(log(y), false, mu, phi, nabla, theta, sig2, r, r);
+  else
+    Y = forecastC(y, false, mu, phi, nabla, theta, sig2, r, r);
   for(j = 0; j < r; j++) 
     yh(j) = Y(r + j, 0);
-
+  */
+  for (j = 0; j < r; j++)  {
+    if (bc) yh(j) = log(y(j)) - a(j);
+    else yh(j) = y(j) - a(j);
+    for (i=1; i<=j; i++)
+      yh(j) -= psi(i)*a(j-i);
+  }
+  
   for (j = 0; j < r; j++) {
     for (i = 0; i < r; i++) {
       F1(i, j) = F(i, j);
       F2(i, j) = F(i + 1, j);
     }
   }
-  
+  psi.shed_row(0);
   b = solve(F1, yh);
   F3 = solve(F1, F2);
   psi = solve(F1, psi);
-  for (i = r; i < N; i++) {
+  for (i = 0; i < N; i++) {
     B(i, r) = a(i);
     for (j = 0; j < r; j++)
       B(i, j) = b(j);
     b = F3*b + psi*a(i);
   }
-
+/*
   // Initial values
   if (type > 0) {
     F3 = solve(F2, F1);
@@ -185,6 +192,7 @@ arma::mat deceffBC(const arma::colvec &y, const bool &bc, const double &mu,
         B(i, j) = b(j);
     }
   }
+ */
   return B;
   
 }
