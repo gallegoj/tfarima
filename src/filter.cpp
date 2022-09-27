@@ -1,5 +1,7 @@
 #include "RcppArmadillo.h"
 #include "filter.h"
+#include "res.h"
+# include "presample.h"
 using namespace arma;
 
 // Filter input 

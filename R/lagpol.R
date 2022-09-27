@@ -65,7 +65,7 @@ lagpol <- function(param = NULL, s = 1, p = 1, lags = NULL, coef = NULL)
               k = length(param), coef = coef, ncoef = ncoef)
   class(lp) <- c("lagpol")
   
-  if (!admreg.lagpol(lp, FALSE)) warning("Roots inside the unit circle")
+  #if (!admreg.lagpol(lp, FALSE)) warning("Roots inside the unit circle")
   
   return(lp)
   
@@ -91,7 +91,7 @@ as.lagpol <- function(pol, p = 1) {
   
   if (is.lagpol(pol)) return(pol)
   pol <- as.numeric(pol)
-  stopifnot(pol[1] == 1)
+  pol[1] <- 1
   k <- length(pol) - 1
   if (k == 0) return(NULL)
   pol[1] <- 0
@@ -425,36 +425,49 @@ is.lagpol.list <- function(lpl) {
 }
 
 
-# Lag polynomial factorization
-#
-# \code{polyfactors} extracts the simplifying factors of a polynomial
-#  in the lag operator.
-#
-# @param pol an object of class \code{lagpol}.
-# 
-# @return \code{polyfactors} returns a list with the simplifying factors
-# of the lag polynomial.  
-# 
-# @examples
-# polyfactors( polyexpand( c(1, 1.2, -0.8), c(1, -2, 1) ) ) 
-# 
-factorize.lagpol <- function(lp) {
+#' Lag polynomial factorization
+#'
+#' \code{factors} extracts the simplifying factors of a polynomial
+#'  in the lag operator.
+#'
+#' @param lp an object of class \code{lagpol}.
+#' 
+#' @return \code{factors} returns a list with the simplifying factors
+#' of the lag polynomial.  
+#' 
+#' @examples
+#' factors( as.lagpol(c(1, rep(0, 11), -1)) ) 
+#'
+#' @export
+factors <- function (lp, ...) { UseMethod("factors") }
+
+#' @rdname factors
+#' @export
+factors.lagpol <- function(lp) {
+  if (is.numeric(lp)) 
+    lp <- as.lagpol(lp)
+  stopifnot(is.lagpol(lp))
+  oldw <- options(warn = -1)
+  on.exit(options(oldw))
   t <- polyrootsC(lp$pol)
+  
   f <- -1
   k <- 1
   p <- apply(t, 1, function(x) {
     if (f != x[4]) {
       f <<- x[4]
       param <- x[3]
-      coef.name <- paste("f", k, sep = "")
+      coef.name <- paste0("c", k)
+      names(param) <- coef.name
       k <<- k + 1
-      if (k == 0.5) {
-        coef <- c(paste("-abs(", coef.name, ")", sep = ""))
-      } else if (k < 0.0000001) {
-        coef <- c(paste("abs(", coef.name, ")", sep = ""))
+      if (f == 0.5) {
+        coef <- c(paste0("-abs(", coef.name, ")"))
+      } else if (f < 0.0000001) {
+        f <- 0
+        coef <- c(paste0("abs(", coef.name, ")"))
       } else {
-        coef <- c(paste("-2*cos(2*pi*", f, ")*sqrt(abs(", coef.name, "))", 
-                        sep = ""), paste("-abs(", coef.name, ")", sep = ""))
+        coef <- c(paste0("-2*cos(2*pi*", f, ")*sqrt(abs(", coef.name, "))"),
+                  paste0("-abs(", coef.name, ")"))
       }
       return(lagpol(param = param, coef = coef, p = x[6] + lp$p - 1))
     }
@@ -463,7 +476,7 @@ factorize.lagpol <- function(lp) {
   })
   
   p = p[!sapply(p, is.null)]
-  
+
   return(p)
   
 }

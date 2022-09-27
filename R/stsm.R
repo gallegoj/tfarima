@@ -35,7 +35,8 @@
 #' stsm1
 #' @export
 #' 
-stsm <- function(y, b, C, fSv, s2v, s2u = 1, xreg = NULL, bc = FALSE, fit = TRUE, ...) {
+stsm <- function(y, b, C, fSv, s2v, s2u = 1, xreg = NULL, bc = FALSE, 
+                 fit = TRUE, ...) {
   dots <- list(...)
   if (missing(y)) y <- NULL
   if (!is.null(y)) {
@@ -210,7 +211,7 @@ autocov.stsm <- function(mdl, ...) {
       sum <- sum + d[j]*d[j-i+1]
     g[i] <- sum
   }
-  g = g*mdl$s2u
+  g <- g*mdl$s2u
   k <- k - 1
   for (i in 1:k) {
     sum <- 0
@@ -373,7 +374,7 @@ fit2autocov.stsm <- function(mdl, g, method = "BFGS", show.iter = FALSE, ...) {
   .f <- function(par, ...) {
     mdl$Sv <<- do.call(mdl$fSv, c(list(s2v = exp(par), k = lb), mdl$dots)) 
     g0 <- autocov.stsm(mdl)
-    f <- sqrt(sum((g0-g)^2))
+    f <- max(abs(g0/g0[1]-g/g[1]))
     if (show.iter)
       print(c(f = f, par))
     f
@@ -390,9 +391,11 @@ fit2autocov.stsm <- function(mdl, g, method = "BFGS", show.iter = FALSE, ...) {
   mdl$Sv <- do.call(mdl$fSv, c(list(s2v = mdl$s2v, k = length(mdl$b)), mdl$dots)) 
   mdl$opt <- opt
   lf <- .LeverrierFaddeev(mdl$b, mdl$C)
-  w <- diffC(mdl$y, lf[[1]], mdl$bc)
-  mdl$opt$logLik <- llrfC(w, lf[[1]], lf[[2]], mdl$Sv, mdl$s2u, FALSE)
-  mdl$optim <- NULL
+  if (!is.null(mdl$y)) {
+    w <- diffC(mdl$y, lf[[1]], mdl$bc)
+    mdl$opt$logLik <- llrfC(w, lf[[1]], lf[[2]], mdl$Sv, mdl$s2u, FALSE)
+    mdl$optim <- NULL
+  }
   names(mdl$s2v) <- nms[-1]
   names(mdl$s2u) <- nms[1]
   mdl
@@ -444,27 +447,39 @@ print.stsm <- function(x, ...) {
 rform <- function (mdl, ...) { UseMethod("rform") }
 
 #' @rdname rform
+#' @param indx indexes for submodel.
 #' @export
-rform.stsm <- function(mdl, ...) {
-  lf <- .LeverrierFaddeev(mdl$b, mdl$C)
+rform.stsm <- function(mdl, indx = NULL, ...) {
+  if (any(mdl$s2v < 0)) stop("inadmissible model: negative variances")
+  if (!is.null(indx)) {
+    lf <- .LeverrierFaddeev(mdl$b[indx[1]:indx[2]], 
+                            as.matrix(mdl$C[indx[1]:indx[2],indx[1]:indx[2]]))
+    Sv <- as.matrix(mdl$Sv[indx[1]:indx[2],indx[1]:indx[2]])
+  } else {
+    lf <- .LeverrierFaddeev(mdl$b, mdl$C)
+    Sv <- mdl$Sv
+  }
   d <- lf$p
   A <- lf$A
   k <- length(d)
-  g <- rep(0, k)
-  for (i in 1:k) {
-    sum <- 0
-    for (j in i:k) 
-      sum <- sum + d[j]*d[j-i+1]
-    g[i] <- sum
-  }
-  g = g*mdl$s2u
+  if (is.null(indx)) {
+    g <- rep(0, k)
+    for (i in 1:k) {
+      sum <- 0
+      for (j in i:k) 
+        sum <- sum + d[j]*d[j-i+1]
+      g[i] <- sum
+    }
+    g <- g*mdl$s2u
+  } else g <- rep(0, k-1)
+  
   k <- k - 1
   for (i in 1:k) {
     sum <- 0
     for (j in i:k) 
-      sum <- sum + sum((A[j, ] %*% mdl$Sv) * A[j-i+1, ])
+      sum <- sum + sum((A[j, ] %*% Sv) * A[j-i+1, ])
     g[i] <- g[i] + sum
   }
   ma <- as.vector(acovtomaC(g))
-  um(bc = mdl$bc, i = as.lagpol(d), ma = as.lagpol(c(1, -ma[-1])), sig2 = ma[1])
+  um(bc = mdl$bc, i = as.lagpol(d), ma = as.lagpol(c(1, -ma[-1])), sig2 = ma[1]^2)
 }

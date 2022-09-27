@@ -996,9 +996,9 @@ predict.tfm <- function(object, newdata=NULL, y = NULL, ori = NULL, n.ahead = NU
     if (nrow(object$xreg) < n) {
       if (is.null(newdata)) 
         stop("insufficient number of forecasts for input") 
-      if (col(newdata) < object$kx) 
+      if (ncol(newdata) < object$kx) 
         stop("wrong object 'newdata'")
-      Xf <- newdata[1:n.ahead, 1:object$kx]
+      Xf <- cbind(newdata[1:n.ahead, 1:object$kx])
       if (ncol(newdata) > object$kx) 
         newdata <- newdata[,object$kx:ncol(newdata)]
       else 

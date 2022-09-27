@@ -36,7 +36,10 @@
 ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, 
                 lags.at = NULL, freq.at = NULL,
                 wn.bands = TRUE, graphs = c("plot", "acf", "pacf"),
-                set.layout = TRUE, byrow = TRUE, main = "", envir=NULL, ...) {
+                set.layout = TRUE, byrow = TRUE, main = "", 
+                plot.abline.args = NULL,
+                plot.points.args = NULL,
+                envir=NULL, ...) {
 
 
   if (is.null (envir)) envir <- parent.frame ()
@@ -218,6 +221,10 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
             reg <- lm(y~X)
             points(t, reg$fitted.values, ty = "l", col = "gray", lty = 2)
           }
+          if (!is.null(plot.abline.args))
+            do.call(abline, plot.abline.args)
+          if (!is.null(plot.points.args))
+            do.call(points, plot.points.args)
         }
         else if (graphs[j] ==  "acf") {
           rho <- stats::acf(y, lag.max = lag.max, plot = F)$acf[, ,]

@@ -5,7 +5,7 @@ double polyevalC(const arma::colvec &pol, double z);
 arma::mat polyrootsC(const arma::colvec &pol);
 arma::mat sortrootsC(const arma::cx_colvec &roots);
 arma::mat combinerootsC(arma::mat T);
-arma::mat roots2polC(arma::mat T);
+arma::mat roots2polC(arma::mat A, bool check = false);
 bool admregC(const arma::colvec &pol, bool ar);
 arma::colvec polymultC(const arma::colvec &pol1, const arma::colvec &pol2);
 arma::colvec polydivC(const arma::colvec &pol1, const arma::colvec &pol2, bool rem = false);

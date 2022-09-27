@@ -3,5 +3,4 @@
 
 arma::colvec filterC(const arma::colvec &x, const arma::colvec &omega,
                      const arma::colvec &delta, int b);
-
 #endif //__ARIMA_FILTER__

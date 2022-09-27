@@ -77,6 +77,79 @@ arma::colvec condresC(const arma::colvec &w, const arma::colvec &phi,
   
 }
 
+// Conditional residuals of an ARMA(p, q) model.with non-null presample values.
+//
+// \code{condresC} computes the conditional residuals of an ARMA(p, q) model
+// given some initial conditions.
+//
+// @param w Stationary time series, numeric vector.
+// @param phi AR polynomial, numeric vector.
+// @param theta MA polynomial, numeric vector.
+// @param w0 presamples values of the stationary series w.
+// @param a0 presamples values of the error.
+// @param forward logical. If TRUE/FALSE, conditional residuals are computed for
+//   the forward/backward representation.
+//
+// @return \code{condresC} returns a column vector containing the conditional
+//   residuals.
+//
+//   [[Rcpp::export]]
+arma::colvec condres0C(const arma::colvec &w, const arma::colvec &phi, 
+                      const arma::colvec &theta, 
+                      const arma::colvec &w0, const arma::colvec &a0, 
+                      const bool forward) {
+  
+  int t, j, tlag, n, p, q;
+  double x;
+  
+  n = w.n_elem;
+  p = phi.n_elem-1;
+  q = theta.n_elem-1;
+  
+  colvec res(n);
+  
+  if (forward) {
+    if (p>0||q>0) {
+      for (t = 0; t < n; t++) {
+        x = 0;
+        for (j = 0; j<= p; j++) {
+          tlag = t-j;
+          if (tlag>-1) x +=  phi(j)*w(tlag);
+          else x +=  phi(j)*w0(p-j);
+        }
+        for (j = 1; j<= q; j++) {
+          tlag = t-j;
+          if (tlag>-1) x -=  theta(j)*res(tlag);
+          else x -=  theta(j)*a0(q-j);
+        }
+        res(t) = x;
+      }
+    } else
+      res = w;
+  } else {
+    if (p > 0 || q>0) {
+      for (t = n-1; t>-1; t--) {
+        x = 0;
+        for (j = 0; j <= p; j++) {
+          tlag = t+j;
+          if (tlag<n) x +=  phi(j)*w(tlag);
+          else x +=  phi(j)*w0(j-1);
+        }
+        for (j = 1; j <= q; j++) {
+          tlag = t+j;
+          if (tlag<n) x -=  theta(j)*res(tlag);
+          else x -=  theta(j)*a0(j-1);
+        }
+        res(t) = x;
+      }
+    } else
+      res = w;
+  }
+  
+  return res;
+  
+}
+
 // Presample values or initial conditions of an ARMA(p, q) model.
 //
 // \code{inicondC} computes the initial conditions of an ARMA(p, q) model. 

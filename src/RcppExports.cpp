@@ -12,13 +12,14 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // acovtomaC
-arma::colvec acovtomaC(const arma::colvec& g);
-RcppExport SEXP _tfarima_acovtomaC(SEXP gSEXP) {
+arma::colvec acovtomaC(const arma::colvec& g, int& code);
+RcppExport SEXP _tfarima_acovtomaC(SEXP gSEXP, SEXP codeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::colvec& >::type g(gSEXP);
-    rcpp_result_gen = Rcpp::wrap(acovtomaC(g));
+    Rcpp::traits::input_parameter< int& >::type code(codeSEXP);
+    rcpp_result_gen = Rcpp::wrap(acovtomaC(g, code));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -281,13 +282,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // roots2polC
-arma::mat roots2polC(arma::mat T);
-RcppExport SEXP _tfarima_roots2polC(SEXP TSEXP) {
+arma::mat roots2polC(arma::mat A, bool check);
+RcppExport SEXP _tfarima_roots2polC(SEXP ASEXP, SEXP checkSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type T(TSEXP);
-    rcpp_result_gen = Rcpp::wrap(roots2polC(T));
+    Rcpp::traits::input_parameter< arma::mat >::type A(ASEXP);
+    Rcpp::traits::input_parameter< bool >::type check(checkSEXP);
+    rcpp_result_gen = Rcpp::wrap(roots2polC(A, check));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -388,6 +390,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// presampleCovC
+arma::mat presampleCovC(const arma::colvec& phi, const arma::colvec& theta, bool fvf);
+RcppExport SEXP _tfarima_presampleCovC(SEXP phiSEXP, SEXP thetaSEXP, SEXP fvfSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::colvec& >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< bool >::type fvf(fvfSEXP);
+    rcpp_result_gen = Rcpp::wrap(presampleCovC(phi, theta, fvf));
+    return rcpp_result_gen;
+END_RCPP
+}
 // condresC
 arma::colvec condresC(const arma::colvec& w, const arma::colvec& phi, const arma::colvec& theta, const bool forward);
 RcppExport SEXP _tfarima_condresC(SEXP wSEXP, SEXP phiSEXP, SEXP thetaSEXP, SEXP forwardSEXP) {
@@ -399,6 +414,22 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::colvec& >::type theta(thetaSEXP);
     Rcpp::traits::input_parameter< const bool >::type forward(forwardSEXP);
     rcpp_result_gen = Rcpp::wrap(condresC(w, phi, theta, forward));
+    return rcpp_result_gen;
+END_RCPP
+}
+// condres0C
+arma::colvec condres0C(const arma::colvec& w, const arma::colvec& phi, const arma::colvec& theta, const arma::colvec& w0, const arma::colvec& a0, const bool forward);
+RcppExport SEXP _tfarima_condres0C(SEXP wSEXP, SEXP phiSEXP, SEXP thetaSEXP, SEXP w0SEXP, SEXP a0SEXP, SEXP forwardSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::colvec& >::type w(wSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type w0(w0SEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type a0(a0SEXP);
+    Rcpp::traits::input_parameter< const bool >::type forward(forwardSEXP);
+    rcpp_result_gen = Rcpp::wrap(condres0C(w, phi, theta, w0, a0, forward));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -529,7 +560,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_tfarima_acovtomaC", (DL_FUNC) &_tfarima_acovtomaC, 1},
+    {"_tfarima_acovtomaC", (DL_FUNC) &_tfarima_acovtomaC, 2},
     {"_tfarima_decompHC", (DL_FUNC) &_tfarima_decompHC, 2},
     {"_tfarima_decompFC", (DL_FUNC) &_tfarima_decompFC, 2},
     {"_tfarima_deceffBC", (DL_FUNC) &_tfarima_deceffBC, 9},
@@ -548,7 +579,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_tfarima_polyrootsC", (DL_FUNC) &_tfarima_polyrootsC, 1},
     {"_tfarima_sortrootsC", (DL_FUNC) &_tfarima_sortrootsC, 1},
     {"_tfarima_combinerootsC", (DL_FUNC) &_tfarima_combinerootsC, 1},
-    {"_tfarima_roots2polC", (DL_FUNC) &_tfarima_roots2polC, 1},
+    {"_tfarima_roots2polC", (DL_FUNC) &_tfarima_roots2polC, 2},
     {"_tfarima_admregC", (DL_FUNC) &_tfarima_admregC, 2},
     {"_tfarima_polymultC", (DL_FUNC) &_tfarima_polymultC, 2},
     {"_tfarima_polydivC", (DL_FUNC) &_tfarima_polydivC, 3},
@@ -557,7 +588,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_tfarima_polyraiseC", (DL_FUNC) &_tfarima_polyraiseC, 2},
     {"_tfarima_polyfactorsC", (DL_FUNC) &_tfarima_polyfactorsC, 1},
     {"_tfarima_polyratioC", (DL_FUNC) &_tfarima_polyratioC, 3},
+    {"_tfarima_presampleCovC", (DL_FUNC) &_tfarima_presampleCovC, 3},
     {"_tfarima_condresC", (DL_FUNC) &_tfarima_condresC, 4},
+    {"_tfarima_condres0C", (DL_FUNC) &_tfarima_condres0C, 6},
     {"_tfarima_inicondC", (DL_FUNC) &_tfarima_inicondC, 3},
     {"_tfarima_exactresC", (DL_FUNC) &_tfarima_exactresC, 3},
     {"_tfarima_cssrC", (DL_FUNC) &_tfarima_cssrC, 3},

@@ -1071,15 +1071,32 @@ plot.predict.um <- function(x, n.back = 0, xlab = "Time", ylab = "z", main = "",
   
 }
 
-
+#' @rdname print
+#' @param arima logical. If TRUE, lag ARIMA polynomials are printed.
 #' @export
-print.um <- function(x, ...) {
+print.um <- function(x, arima = FALSE, ...) {
   stopifnot(inherits(x, "um"))
-  if (is.null(names(x$sig2))) names(x$sig2) <- "sig2"
-  if (is.null(x$optim))
-    print( c(unlist(x$param), x$sig2) )
-  else
-    print(summary(x), short = TRUE, ...)
+  if (arima) {
+    if (x$p > 0) {
+      cat("AR polynomial:\n")
+      print(phi(x))
+    }
+    if (x$d > 0) {
+      cat("I polynomial:\n")
+      print(nabla(x))
+    }
+    if (x$q > 0) {
+      cat("MA polynomial:\n")
+      print(theta(x))
+    }
+    print(x$sig2)
+  } else {
+    if (is.null(names(x$sig2))) names(x$sig2) <- "sig2"
+    if (is.null(x$optim))
+      print( c(unlist(x$param), x$sig2) )
+    else
+      print(summary(x), short = TRUE, ...)
+  } 
 }
 
 
@@ -1571,6 +1588,434 @@ function(mdl, z = NULL, method = c("mixed", "forecast", "backcast"), envir=NULL,
   
 }
 
+#' Minimum signal extraction
+#'
+#' \code{msx} extracts a signal from a time series.
+#'
+#' @param mdl an object of class \code{\link{um}} or \code{\link{tfm}}.
+#' @param ... additional arguments.
+#'
+#' @return An object of class \code{msx}.
+#'
+#' @export
+msx <- function (mdl, ...) { UseMethod("msx") }
+
+#' @rdname msx
+#' @param z an object of class \code{\link{ts}}.
+#' @param ar AR polynomial for signal.
+#' @param i I polynomial for signal.
+#' @param canonical logical. If TRUE the canonical decomposition is obtained.
+#' @param check logical value to check if ar and i are simplifying factors of
+#'   the object mdl.
+#' @param method  the procedure to obtain the MA parameters of the model of the
+#'   signal is based either on the roots or on the autocovariances, method =
+#'   c("roots", "acov").
+#' @param envir environment.
+#'
+#' @export
+msx.um <- function(mdl, z = NULL, ar = NULL, i = NULL, canonical = TRUE, 
+                   check = TRUE, method = c("roots", "acov"), envir = NULL, ...) {
+  .B2w <- function(a) {
+    a <- as.numeric(a)
+    n <- length(a)
+    if (n < 3) return(a)
+    p0 <- rep(0, n)
+    p1 <- rep(0, n)
+    p2 <- rep(0, n)
+    b <- rep(0, n)
+    b[1:2] <- a[1:2]
+    p0[1] <- 2
+    p1[2] <- 1
+    for (i in 3:n) {
+      p2[1:i] <- c(0, p1[1:(i-1)]) - p0[1:i]
+      b[1:i] <- b[1:i] + a[i]*p2[1:i]
+      p0 <- p1
+      p1 <- p2
+    }
+    return(b)
+  }
+
+  .w2B <- function(b) {
+    b <- as.numeric(b)
+    n <- length(b)
+    if (n < 3) return(b)
+    a <- rep(0, n)
+    a[1:2] <- b[1:2]
+    for (i in 3:n) {
+      for (j in 0:(i-1)) {
+        if (i-2*j<1) break
+        a[i-2*j] <- a[i-2*j] + b[i]*choose(i-1,j)
+      }
+    }
+    return(a)
+  }
+
+  .w2ma <- function(b) {
+    r <- polyroot(b)
+    l <- length(r)
+    d <- sqrt(r^2 - 4)
+    r <- c((r + d)/2, (r - d)/2)
+    r <- r[order(Mod(r))]
+    r <- 1/r[1:l]
+    ma <- 1
+    for (r1 in r)
+      ma <- c(ma, 0) - c(0, ma/r1)
+    ma <- Re(ma)
+    ma <- c(b[length(b)]/ma[length(ma)], ma)
+    ma
+  }
+  
+  .fx <- function(x, num, den) {
+    sum(num*(x^(0:(length(num)-1)))) / sum(den*(x^(0:(length(den)-1))))
+  }
+  
+  .polydiv <- function(pol, pol1, check) {
+    if (check) {
+      eps <- sqrt(.Machine$double.eps)
+      if (!all(abs(polydivC(pol, pol1, TRUE)) < eps )) {
+        print(pol1)
+        stop("is not contained in model")
+      }
+    }
+    pol2 <- as.numeric(polydivC(pol, pol1, FALSE))
+    list(pol1 = pol1, pol2 = pol2)
+  }
+  
+  method <- match.arg(method, c("roots", "acov"))
+  if (is.null(ar) && is.null(i))
+    stop("missing ARI polynomial for signal")
+  
+  if (!is.null(ar)) {
+    ar <- polyexpand(.lagpol0(r, "ar", "phi", envir=envir))
+    ar <- .polydiv(mdl$phi, ar, check)
+  } else {
+    ar <- list(pol1 = 1, pol2 = mdl$phi)
+  }
+  
+  if (!is.null(i)) {
+    i <- polyexpand(.lagpol0(i, "i", "delta", envir=envir))
+    i <- .polydiv(mdl$nabla, i, check)
+  } else {
+    i <- list(pol1 = 1, pol2 = mdl$nabla)
+  }
+  pol1 <- polymultC(ar$pol1, i$pol1)
+  pol2 <- polymultC(ar$pol2, i$pol2)
+  l1 <- length(pol1)
+  l2 <- length(pol2)
+  stopifnot(l1 > 1)
+  
+  # Burman (1980)
+  u <- .B2w(tacovC(1, mdl$theta, 1, mdl$q))
+  v <- .B2w(tacovC(1, polymultC(mdl$phi, mdl$nabla), 1, mdl$p+mdl$d))
+  lu <- length(u)
+  lv <- length(v)
+  q <- as.numeric(polydivC(u, v, FALSE))
+  r <- as.numeric(polydivC(u, v, TRUE))
+  v1 <- .B2w(tacovC(1, pol1, 1, lv-2))
+  if (l2 > 1) {
+    A1 <- toeplitz(v1)
+    A1[upper.tri(A1)] <- 0
+    v2 <- .B2w(tacovC(1, pol2, 1, lv-2))
+    A2 <- toeplitz(v2)
+    A2[upper.tri(A2)] <- 0
+    A <- cbind(A2[,1:(l1-1)], A1[,1:(l2-1)])
+    stopifnot(nrow(A) == ncol(A))
+    b <- c(1, rep(0,lv-2))
+    h <- solve(A, b)
+    v1 <- v1[1:l1]
+    v2 <- v2[1:l2]
+    u1 <- polymultC(h[1:(l1-1)], r) 
+    u2 <- polymultC(h[-(1:(l1-1))], r)
+    u1 <- as.numeric(polydivC(u1, v1, TRUE))
+    u2 <- as.numeric(polydivC(u2, v2, TRUE))
+  } else {
+    u1 <- r
+    v1 <- v1[1:l1]
+    u2 <- 0
+    v2 <- 1
+    u2s <- 0
+    A <- NULL
+  }
+  code1 <- code2 <- 0
+  if (canonical) {
+    o1 = optimize(.fx, num = u1, den = v1, interval = c(-2, 2))
+    min1 <- min(c(o1$objective, .fx(-2, u1, v1), .fx(2, u1, v1)))
+    u1s <- c(u1, rep(0, length(v1) - length(u1))) - min1*v1
+    g1 <- .w2B(u1s)
+    if (g1[1] > 0)  {
+      if (method == "roots")
+        ma1 <- .w2ma(u1s)
+      else {
+        ma1 <- acovtomaC(g1, code1)
+        ma1 <- c(ma1[1]^2, ma1[-1]/ma1[1])
+      }
+    } else ma1 <- NULL
+  } else {
+    g1 <- .w2B(u1)
+    if (g1[1] > 0) {
+      if (method == "roots")
+        ma1 <- .w2ma(u1)
+      else {
+        ma1 <- acovtomaC(g1, code1)
+        ma1 <- c(ma1[1]^2, ma1[-1]/ma1[1])
+      }
+    } else {
+        ma1 <- NULL
+        code1 <- 2 
+    }
+    min1 <- 0
+  }
+  if (is.null(ma1))
+    warning("non-admissible decomposition")
+  
+  if (l2 > 1) {
+    if (canonical) {
+      o2 = optimize(.fx, num = u2, den = v2, interval = c(-2, 2))
+      min2 <- min(c(o2$objective, .fx(-2, u2, v2), .fx(2, u2, v2)))
+      u2s <- c(u2, rep(0, length(v2)-length(u2))) - min2*v2
+      g2 <- .w2B(u2s)
+      if (u2s[1] > 0.0) {
+        if (method == "roots")
+          ma2 <- .w2ma(u2s)
+        else {
+          ma2 <- acovtomaC(g2, code2)
+          ma2 <- c(ma2[1]^2, ma2[-1]/ma2[1])
+        }
+      } else {
+          ma2 <- NULL
+          code2 <- 2
+      }
+    } else {
+      g2 <- .w2B(u2)
+      if (g2[1] > 0.0) {
+        if (method == "roots")
+          ma2 <- .w2ma(u2)
+        else {
+          ma2 <- acovtomaC(g2, code2)
+          ma2 <- c(ma2[1]^2, ma2[-1]/ma2[1])
+        }
+      } else {
+        ma2 <- NULL
+        code2 <- 2
+      }
+      min2 <- 0
+    }
+    if (is.null(ma2)) warning("non-admissible decomposition")
+  } else {
+    ma2 <- NULL
+    min2 <- 0
+  }
+  q1 <- q
+  if (canonical)
+    q[1] <- q[1] + min1 + min2
+  if (q[1] >= 0) {
+    if (length(q) > 1) {
+      if (method == "roots")
+        ma3 <- .w2ma(q)
+      else {
+        ma3 <- acovtomaC(.w2B(q), code3)
+        ma3 <- c(ma3[1]^2, ma3[-1]/ma3[1])
+      }
+    } else ma3 <- sqrt(q)
+  } else ma3 <- NULL
+  if (q[1] < 0) warning("non-admissible decomposition")
+  
+  oldw <- getOption("warn") 
+  options(warn = -1) 
+  on.exit(options(warn = oldw))
+  x <- list(um = mdl)
+  if (!is.null(ma1)) {
+    mdl1 <- um(ar = as.lagpol(ar$pol1), i = as.lagpol(i$pol1),
+               ma = as.lagpol(ma1[-1]), sig2 = ma1[1]*mdl$sig2)
+  } else mdl1 <- NULL 
+  if (!is.null(ma2)) {
+    mdl2 <- um(ar = as.lagpol(ar$pol2), i = as.lagpol(i$pol2),
+               ma = as.lagpol(ma2[-1]), sig2 = ma2[1]*mdl$sig2)
+  } else mdl2 <- NULL
+  if (q[1]>=0) {
+    mdl3 <- um(ma = as.lagpol(c(1, -ma3[-1])), sig2 = ma3[1]^2*mdl$sig2)
+  } else mdl3 <- NULL
+  
+  if (!is.null(mdl2) && !is.null(mdl3)) noise <- sum_um(mdl2, mdl3)
+  else noise <- NULL
+  x <- list(um = mdl, signal1 = mdl1, signal2 = mdl2, irreg = mdl3, noise = noise,
+            aux = list(u = u, v = v, r = r, q = q1, u1 = u1, 
+                       u2 = u2, v1 = v1, v2 = v2, g1 = g1, g2 = g2, 
+                       code1 = code1, code2 = code2, A = A, b = r))
+  if (canonical)
+    x$aux <- c(x$aux, list( u1s = u1s, u2s = u2s,
+                            min1 = min1, min2 = min2, qmax = q))
+  class(x) <- "msx"
+  x
+}
+
+#' @rdname print
+#' @param signal logical. If TRUE, only signal model is printed.
+#' @export
+print.msx <- function(x, signal = FALSE, ...) {
+  if (!signal) {
+    cat("Model\n")
+    if (x$um$p > 0) {
+      cat(" AR polynomial\n")
+      print(phi(x$um))
+    }
+    if (x$um$d > 0) {
+      cat(" I polynomial\n")
+      print(nabla(x$um))
+    }
+    if (x$um$q > 0) {
+      cat(" MA polynomial\n")
+      print(theta(x$um))
+    }
+    cat(" sigma2:", x$um$sig2)
+  }
+  
+  if (!is.null(x$signal1)) {
+    cat("\nSignal1\n")
+    if (x$signal1$p > 0) {
+      cat(" AR polynomial\n")
+      print(phi(x$signal1))
+    }
+    if (x$signal1$d > 0) {
+      cat(" I polynomial\n")
+      print(nabla(x$signal1))
+    }
+    if (x$signal1$q > 0) {
+      cat(" MA polynomial\n")
+      print(theta(x$signal1))
+    }
+    cat(" sigma2:", x$signal1$sig2)
+    if (x$aux$code1 == 1) print("\nconvergence not achieved")
+    else if (x$aux$code1 == 2) print("\nnegative variance")
+  } else  cat("\nSignal1: nonadmisible decomposition\n")
+  
+  if (signal) return(invisible(NULL))
+
+  if (!is.null(x$signal2)) {
+    cat("\nSignal2\n")
+    if (x$signal2$p > 0) {
+      cat(" AR polynomial\n")
+      print(phi(x$signal2))
+    }
+    if (x$signal2$d > 0) {
+      cat(" I polynomial\n")
+      print(nabla(x$signal2))
+    }
+    if (x$signal2$q > 0) {
+      cat(" MA polynomial\n")
+      print(theta(x$signal2))
+    }
+    cat(" sigma2:", x$signal2$sig2)
+    if (x$aux$code2 == 1) print("\nconvergence not achieved")
+    else if (x$aux$code2 == 2) print("\nnegative variance")
+  }
+  
+  cat("\nNoise\n")
+  if (x$noise$p > 0) {
+    cat(" AR polynomial\n")
+    print(phi(x$noise))
+  }
+  if (x$noise$d > 0) {
+    cat(" I polynomial\n")
+    print(nabla(x$noise))
+  }
+  if (x$noise$q > 0) {
+    cat(" MA polynomial\n")
+    print(theta(x$noise))
+  }
+  cat(" sigma2:", x$noise$sig2)
+  return(invisible(NULL))
+}
+
+#' Wiener-Kolmogorov filter
+#'
+#' \code{wkfilter} extracts a signal for a time series.
+#'
+#' @param x an object of class \code{\link{msx}}.
+#' @param ... additional arguments.
+#'
+#' @return An object of class \code{wkfilter}.
+#'
+#' @export
+wkfilter <- function (x, ...) { UseMethod("wkfilter") }
+
+#' @rdname wkfilter
+#' @param z optional, time series.
+#'
+#' @export
+wkfilter.msx <- function(x, z = NULL, ret = c("signal", "noise"), envir = parent.frame(), ...) {
+
+  stopifnot(inherits(x, "msx"))
+  ret <- match.arg(ret, c("signal", "noise"))
+  z <- z.um(x$um, z, envir)
+  start <- start(z)
+  s <- frequency(z)
+  n <- length(z)
+  num <- polymultC(x$signal1$theta, polymultC(x$noise$phi, x$noise$nabla))
+  r <- length(num) - 1
+  if (x$um$q < r)
+    th <- c(x$um$theta, rep(0, r - x$um$q))
+  else {
+    th <- x$um$theta
+    r <- x$um$q
+  }
+  g <- tacovC(1, num, 1, r)
+  A1 <- toeplitz(th)
+  A1[upper.tri(A1)] <- 0
+  A2 <- toeplitz(rev(th))
+  A2[upper.tri(A2)] <- 0
+  A2 <- A2[, ncol(A2):1]
+  A <- A1 + A2
+  num <- rev(as.numeric(solve(A, rev(g))))
+  r <- x$um$p + x$um$d
+  if (r < x$um$q) {
+    r <- x$um$q
+  }
+  p1 <- predict(x$um, z = z, n.ahead = 2*x$um$q)
+  if (x$um$bc)
+    w <- condresC(log(p1$z), num, 1, FALSE)
+  else
+    w <- condresC(p1$z, num, 1, FALSE)
+  
+  w <- w[1:(n+x$um$q)]
+  A1 <- sapply(1:(x$um$p+x$um$d), function(i) {
+    c(rep(0, i-1), x$um$theta, rep(0, x$um$p+x$um$d-i))
+  })  
+  A1 <- t(A1)
+  phi <- polymultC(x$um$phi, x$um$nabla)  
+  phi <- rev(as.numeric(phi))
+  A2 <- sapply(1:x$um$q, function(i) {
+    c(rep(0, i-1), phi, rep(0, x$um$p+x$um$d-i))
+  })  
+  A2 <- t(A2)
+  A <- rbind(A1, A2)
+  b <- c(w[(n+x$um$q-x$um$p-x$um$d+1):(n+x$um$q)], rep(0, x$um$q))
+  x0 <- solve(A, b)
+  x1 <- condres0C(w, 1, x$um$theta, 0, x0[1:x$um$q], FALSE)
+  
+  z1 <- z[n:1]
+  p <- predict(x$um, z = z1, n.ahead = 2*x$um$q)
+  if (x$um$bc)
+    w <- condresC(log(p$z), num, 1, FALSE)
+  else
+    w <- condresC(p$z, num, 1, FALSE)
+  w <- w[1:(n+x$um$q)]
+  b <- c(w[(n+x$um$q-x$um$p-x$um$d+1):(n+x$um$q)], rep(0, x$um$q))
+  x0 <- solve(A, b)
+  x2 <- condres0C(w, 1, x$um$theta, 0, x0[1:x$um$q], FALSE)
+  x2 <- x2[n:1]
+  x1 <- x1[1:n]
+  x1 <- (x1+x2)*x$signal1$sig2/x$um$sig2
+  if (ret == "noise") {
+    if (x$um$bc) x1 <- log(z) - x1
+    else x1 <- z - x1
+  }
+  
+  if (x$um$bc) x1 <- exp(x1)
+  x1 <- ts(x1, start = start, frequency = s)
+  return(x1)
+  
+}
 
 #' Sum of univariate (ARIMA) models
 #' 
@@ -1741,7 +2186,8 @@ sum_um <- function(...) {
   
   if (is.matrix(g)) {
     g <- rowSums(g)
-    ma <- acovtomaC(g)
+    code <- 0
+    ma <- acovtomaC(g, code)
     sig2 <- ma[1]^2
     ma <- as.lagpol(c(1, -ma[-1]))
   } else {
@@ -1766,8 +2212,8 @@ sum_um <- function(...) {
 sform <- function (mdl, ...) { UseMethod("sform") }
 
 #' @rdname sform
-#' @param fSv optional function to create the covariance matrix.
-#' @param par vector of parameters for function fSv.
+#' @param z an optional time series.
+#' @param envir environment, see "\code{\link{um}}".
 #' @param ... other arguments.
 #' 
 #' @examples
@@ -1778,7 +2224,11 @@ sform <- function (mdl, ...) { UseMethod("sform") }
 #' 
 #' @export
 #' 
-sform.um <- function(mdl, fSv = NULL, par = NULL, ...) {
+sform.um <- function(mdl, z = NULL, envir = NULL, ...) {
+  if (is.null (envir)) envir <- parent.frame ()
+  if (!is.null(z)) z <- eval(parse(text = z), envir)
+  else if (!is.null(mdl$z)) z <- eval(parse(text = mdl$z), envir)
+
   if (is.null(mdl$mu)) mu <- 0
   else mu <- mdl$mu
   ariroots <- unlist( lapply( c(mdl$ar, mdl$i), function(x) roots(x, FALSE)) )
@@ -1792,19 +2242,25 @@ sform.um <- function(mdl, fSv = NULL, par = NULL, ...) {
   C <- iC1 %*% C2
   b <- as.vector(c1 %*% solve(C))
   d <- as.vector(iC1 %*% psi)
-  C[abs(C) < .Machine$double.eps] <- 0
-  b[abs(b) < .Machine$double.eps] <- 0
+  # C[abs(C) < .Machine$double.eps] <- 0
+  # b[abs(b) < .Machine$double.eps] <- 0
   s2u <- (1 - sum(b*d))*mdl$sig2
   if (s2u < 0) s2u <- 0
-  if (is.null(fSv)){
-    psi <- unname(psi)
-    s2v <- sqrt(mdl$sig2)*psi
-    return(stsm(NULL, b, C, .sPsi, s2v, s2u, bc = mdl$bc))
-  } else if (!is.null(par)) {
-    g <- autocov(mdl, lag.max = length(b))
-    mdl1 <- stsm(NULL, b, C, fSv, par, s2u)
-    return(fit2autocov(mdl1, g))
-  }
+  lf <- .LeverrierFaddeev(b, C)
+  k <- length(b)
+  g <- autocov(mdl, lag.max = k-1)
+  g <- g - as.numeric( tacovC(1, lf$p, s2u, k-1) )
+  A <- apply(lf$A, 2, function(x) {
+    tacovC(1, x, 1, k-1)
+  })
+  s2v <- as.numeric(ginv(A) %*% g)
+  if (any(s2v < 0)) 
+    warning("nonadmisible decomposition")
+  names(s2v) <- paste0("s", 1:k)
+  mdl1 <- stsm(z, b, C, .sDiag, s2v, s2u, NULL, bc = mdl$bc, FALSE)
+  mdl1$A <- A
+  mdl1$g <- g
+  return(mdl1)
 }
 
 #' Unscramble MA polynomial
@@ -1904,10 +2360,10 @@ tsdiag.um <- function(object, gof.lag = 10, ...)
 #'
 ucomp <- function (mdl, ...) { UseMethod("ucomp") }
 
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
 #' @rdname ucomp
 #' @param z an object of class \code{\link{ts}}.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @export
 ucomp.um <-
   function(mdl, z = NULL, method = c("mixed", "forecast", "backcast"), envir=NULL, ...)
@@ -2025,8 +2481,6 @@ plot.ucomp.um <- function(x, main = NULL, ...) {
   invisible(NULL)
   
 }
-
-
 
 # Non-exported functions
 

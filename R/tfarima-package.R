@@ -40,6 +40,7 @@
 #' @docType package
 #' @importFrom Rcpp evalCpp
 #' @importFrom numDeriv jacobian
+#' @importFrom MASS ginv
 #' @importFrom stats Box.test acf as.ts bartlett.test cycle density dnorm end
 #' @importFrom stats frequency is.ts is.mts lm median na.pass optim plot.ts pnorm
 #' @importFrom stats printCoefmat qnorm resid residuals rnorm sd start time

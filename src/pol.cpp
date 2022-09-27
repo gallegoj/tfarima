@@ -149,49 +149,41 @@ arma::mat combinerootsC(arma::mat T) {
 }
 
 // [[Rcpp::export]]
-arma::mat roots2polC(arma::mat T) {
-  int h, i, j, p, r, s;
-  double d;
-  
-  p = T.n_rows; 
-  mat A(p, 5, fill::zeros);
-
-  r = 0;    
-  for (i = 0; i <  p; i++) {
-    if (T(i, 5) > 0) {
-      s = 1;
-      h = 1;
-      d = T(i, 5);
-      for (j = i + 1; j <  p; j++) {
-        if (T(j, 5) > 0 && simeqC(T(j, 2), T(i, 2)) ) {
-          h++;
-          if (T(j, 5) < d)  d = T(j, 5);
-          if (T(j, 4) > s && std::isfinite(T(j, 4)))  s = T(j, 4);
-        }
+arma::mat roots2polC(arma::mat A, bool check) {
+  int h, i, j, r;
+  r = A.n_rows;
+  vec pol(1), pol1(2), pol2(3);
+  pol(0) = pol1(0) = pol2(0) = 1;
+  h = 0;
+  r--;
+  for (i = 0; i <  r; i++) {
+    if (check) {
+      if(A(i, 2) < 1) {
+        A(i, 2) = 1/A(i, 2);
+        A(i, 0) = 1/A(i, 0);
       }
-        
-      if (h == 1) {
-        A(r, 0) = 1; A(r, 1) = d; A(r, 2) = 1; A(r, 3) = T(r, 2);
-      } else if (h==2) {
-        
-      } else {
-        if (simeqC(T(i, 3), 0) ) {
-          A(r, 0) = d; A(r, 1) = d; A(r, 2) = 1; A(r, 3) = T(i, 2);
-        } else {
-          
-        }
-      }
-      
-      for (j = i; j <  p; j++)
-        if (T(j, 5) > 0 && simeqC(T(j, 2), T(i, 2)) )
-          T(j, 5) -= d;
-        
-      i--;
-      r++;
-    }
+     }
+    if ( simeqC(A(i, 2), A(i+1, 2)) && simeqC(A(i, 1), -A(i+1, 1)) ) {
+      pol2(1) = -2*cos(2*datum::pi*A(i, 3))/A(i, 2);
+      pol2(2) = pow(1/A(i, 2), 2);
+      for (j = 0; j < int(A(i, 5)); j++)
+        pol = polymultC(pol, pol2);
+      i++;
+    } else {
+      pol1(1) = -1/A(i, 0);
+      for (j = 0; j < int(A(i, 5)); j++)
+        pol = polymultC(pol, pol1);
+    } 
+    h++;
   }
   
-  return A;
+  if (i == r) {
+    pol1(1) = -1/A(i, 0);
+    for (j = 0; j < int(A(i, 5)); j++)
+      pol = polymultC(pol, pol1);
+  }
+
+  return pol;
   
 }
 
@@ -279,7 +271,12 @@ arma::colvec polydivC(const arma::colvec &pol1, const arma::colvec &pol2, bool r
   double d;
   l1 = pol1.n_elem - 1;
   l2 = pol2.n_elem - 1;
+  if (l1 < l2) {
+    if (rem) return pol1;
+    else return colvec(1, fill::zeros);
+  }
   l3 = l1 - l2;
+  
 
   colvec p1 = pol1;
   colvec p2 = pol2;

@@ -1,7 +1,7 @@
 Package: tfarima
 Type: Package
 Title: Transfer Function and ARIMA Models
-Version: 0.3.3
+Version: 0.3.4
 Date: 2022-05-20
 Authors@R: person("Jose L.", "Gallego", email = "jose.gallego@unican.es",
   role = c("aut", "cre"))
@@ -10,7 +10,7 @@ Author: Jose L. Gallego [aut, cre]
 Maintainer: Jose L. Gallego <jose.gallego@unican.es>
 URL: https://github.com/gallegoj/tfarima
 License: GPL-2
-Imports: Rcpp (>= 1.0.0), stats, numDeriv, zoo
+Imports: Rcpp (>= 1.0.0), stats, MASS, numDeriv, zoo
 LinkingTo: Rcpp, RcppArmadillo
 Suggests: knitr, rmarkdown
 Encoding: UTF-8

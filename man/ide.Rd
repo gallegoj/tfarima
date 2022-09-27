@@ -16,6 +16,8 @@ ide(
   set.layout = TRUE,
   byrow = TRUE,
   main = "",
+  plot.abline.args = NULL,
+  plot.points.args = NULL,
   envir = NULL,
   ...
 )
