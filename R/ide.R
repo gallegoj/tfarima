@@ -22,6 +22,8 @@
 #' @param byrow logical. If TRUE the layout is filled by rows, otherwise it is
 #'   filled by columns.
 #' @param main title of the graph.
+#' @param plot.abline.args Add straight lines to time series plot.
+#' @param plot.points.args Add points to time series plot.
 #' @param envir environment in which the function arguments are evaluated. If
 #'   NULL the calling environment of this function will be used.
 #' @param ... additional arguments.

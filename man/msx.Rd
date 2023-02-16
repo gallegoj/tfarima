@@ -12,10 +12,10 @@ msx(mdl, ...)
   z = NULL,
   ar = NULL,
   i = NULL,
-  ar.pos = NULL,
-  i.pos = NULL,
   canonical = TRUE,
   check = TRUE,
+  method = c("roots", "acov"),
+  ret = c("default", "min"),
   envir = NULL,
   ...
 )
@@ -31,14 +31,18 @@ msx(mdl, ...)
 
 \item{i}{I polynomial for signal.}
 
-\item{ar.pos}{positions of the AR lag polynomials, vector of integers.}
-
-\item{i.pos}{positions of the I lag polynomials, vector of integers.}
-
 \item{canonical}{logical. If TRUE the canonical decomposition is obtained.}
 
 \item{check}{logical value to check if ar and i are simplifying factors of
 the object mdl.}
+
+\item{method}{the procedure to obtain the MA parameters of the model of the
+signal is based either on the roots or on the autocovariances, method =
+c("roots", "acov").}
+
+\item{ret}{type of return, c("default", "min")}
+
+\item{envir}{environment.}
 }
 \value{
 An object of class \code{msx}.

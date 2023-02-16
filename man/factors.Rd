@@ -7,10 +7,12 @@
 \usage{
 factors(lp, ...)
 
-\method{factors}{lagpol}(lp)
+\method{factors}{lagpol}(lp, ...)
 }
 \arguments{
 \item{lp}{an object of class \code{lagpol}.}
+
+\item{...}{additional arguments.}
 }
 \value{
 \code{factors} returns a list with the simplifying factors

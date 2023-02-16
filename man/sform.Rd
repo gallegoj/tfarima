@@ -7,16 +7,12 @@
 \usage{
 sform(mdl, ...)
 
-\method{sform}{um}(mdl, fSv = NULL, par = NULL, z = NULL, envir = NULL, ...)
+\method{sform}{um}(mdl, z = NULL, envir = NULL, ...)
 }
 \arguments{
 \item{mdl}{an object of class \code{um}.}
 
 \item{...}{other arguments.}
-
-\item{fSv}{optional function to create the covariance matrix.}
-
-\item{par}{vector of parameters for function fSv.}
 
 \item{z}{an optional time series.}
 

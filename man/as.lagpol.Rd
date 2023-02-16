@@ -4,12 +4,14 @@
 \alias{as.lagpol}
 \title{Lag polynomial}
 \usage{
-as.lagpol(pol, p = 1)
+as.lagpol(pol, p = 1, coef.name = "a")
 }
 \arguments{
 \item{pol}{a numeric vector.}
 
 \item{p}{integer power.}
+
+\item{coef.name}{name prefix for coefficients.}
 }
 \value{
 An object of class \code{lagpol}.

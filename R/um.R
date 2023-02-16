@@ -504,6 +504,52 @@ display.default <- function(um, ...) {
   }
 }
 
+#' Equation of a univariate ARIMA model
+#'
+#' \code{equation} prints the equation of an object of class um.
+#'
+#' @param um an object of class \code{um} or a list of these objects.
+#' @param ... additional arguments.
+#' 
+#' @examples
+#' equation(um(ar = "(1 - 0.8B)"))
+#' 
+#' @export 
+equation <- function (um, ...) UseMethod("equation")
+
+#' @rdname equation
+#' @param unscramble logical. If TRUE, AR, I and MA polynomials are unscrambled.
+#' @export
+equation.um <- function(um, unscramble = TRUE, ...) {
+  txt <- ""
+  if (unscramble) {
+    if (um$p > 0) 
+      txt <- paste0(txt, "(", as.character.lagpol(um$phi, ...), ")")
+    if (um$d > 0) 
+      txt <- paste0(txt, "(", as.character.lagpol(um$nabla, ...), ")")
+    if (um$bc) txt <- paste0(txt, "log(z_t) = ")
+    else txt <- paste0(txt, "z_t = ")
+    if (um$q > 0) 
+      txt <- paste0(txt, "(", as.character.lagpol(um$theta, ...), ")")
+  } else {
+    if (um$p > 0) {
+      for (i in 1:um$kar)
+        txt <- paste0(txt, "(", as.character.lagpol(um$ar[[i]], ...), ")")
+    }
+    if (um$d > 0) {
+      for (i in 1:length(um$i))
+        txt <- paste0(txt, "(", as.character.lagpol(um$i[[i]], ...), ")")
+    }
+    if (um$bc) txt <- paste0(txt, "log(z_t) = ")
+    else txt <- paste0(txt, "z_t = ")
+    if (um$q > 0) {
+      for (i in 1:um$kma)
+        txt <- paste0(txt, "(", as.character.lagpol(um$ma[[i]], ...), ")")
+    }
+  }
+  paste0(txt, "a_t")
+} 
+  
 #' Easter effect
 #'
 #' \code{easter} extends the ARIMA model \code{um} by including a regression
@@ -1071,8 +1117,8 @@ plot.predict.um <- function(x, n.back = 0, xlab = "Time", ylab = "z", main = "",
   
 }
 
-#' @rdname print
-#' @param arima logical. If TRUE, lag ARIMA polynomials are printed.
+# #' @rdname print
+# #' @param arima logical. If TRUE, lag ARIMA polynomials are printed.
 #' @export
 print.um <- function(x, arima = FALSE, ...) {
   stopifnot(inherits(x, "um"))
@@ -1610,11 +1656,13 @@ msx <- function (mdl, ...) { UseMethod("msx") }
 #' @param method  the procedure to obtain the MA parameters of the model of the
 #'   signal is based either on the roots or on the autocovariances, method =
 #'   c("roots", "acov").
+#' @param ret type of return, c("default", "min")   
 #' @param envir environment.
 #'
 #' @export
 msx.um <- function(mdl, z = NULL, ar = NULL, i = NULL, canonical = TRUE, 
-                   check = TRUE, method = c("roots", "acov"), envir = NULL, ...) {
+                   check = TRUE, method = c("roots", "acov"), 
+                   ret = c("default", "min"), envir = NULL, ...) {
   .B2w <- function(a) {
     a <- as.numeric(a)
     n <- length(a)
@@ -1651,6 +1699,9 @@ msx.um <- function(mdl, z = NULL, ar = NULL, i = NULL, canonical = TRUE,
   }
 
   .w2ma <- function(b) {
+    lb <- length(b)
+    if (lb == 1)
+      return(b)
     r <- polyroot(b)
     l <- length(r)
     d <- sqrt(r^2 - 4)
@@ -1661,8 +1712,10 @@ msx.um <- function(mdl, z = NULL, ar = NULL, i = NULL, canonical = TRUE,
     for (r1 in r)
       ma <- c(ma, 0) - c(0, ma/r1)
     ma <- Re(ma)
-    ma <- c(b[length(b)]/ma[length(ma)], ma)
-    ma
+    ma <- c(b[lb]/ma[length(ma)], ma)
+    if (!is.finite(ma[1]))
+      .w2ma(b[-lb])
+    else ma
   }
   
   .fx <- function(x, num, den) {
@@ -1680,13 +1733,28 @@ msx.um <- function(mdl, z = NULL, ar = NULL, i = NULL, canonical = TRUE,
     pol2 <- as.numeric(polydivC(pol, pol1, FALSE))
     list(pol1 = pol1, pol2 = pol2)
   }
-  
   method <- match.arg(method, c("roots", "acov"))
+  
+  if (ret == "min") {
+    u <- .B2w(tacovC(1, mdl$theta, mdl$sig2, mdl$q))
+    v <- .B2w(tacovC(1, polymultC(mdl$phi, mdl$nabla), 1, mdl$p+mdl$d))
+    code1 <- code2 <- 0
+    o = optimize(.fx, num = u, den = v, interval = c(-2, 2))
+    min <- min(c(o$objective, .fx(-2, u, v), .fx(2, u, v)))
+    us <- c(u, rep(0, length(v) - length(u))) - min*v
+    ma <- .w2ma(us)
+    mdl1 <- um(ar = mdl$ar, 
+               i = mdl$i,
+               ma = as.lagpol(ma[-1], 1, "theta"),
+               sig2 = ma[1])
+    return(list(mdl = mdl1, u = u, v = v, min = min))        
+  }
+  
   if (is.null(ar) && is.null(i))
     stop("missing ARI polynomial for signal")
   
   if (!is.null(ar)) {
-    ar <- polyexpand(.lagpol0(r, "ar", "phi", envir=envir))
+    ar <- polyexpand(.lagpol0(ar, "ar", "phi", envir=envir))
     ar <- .polydiv(mdl$phi, ar, check)
   } else {
     ar <- list(pol1 = 1, pol2 = mdl$phi)
@@ -1711,31 +1779,29 @@ msx.um <- function(mdl, z = NULL, ar = NULL, i = NULL, canonical = TRUE,
   lv <- length(v)
   q <- as.numeric(polydivC(u, v, FALSE))
   r <- as.numeric(polydivC(u, v, TRUE))
-  v1 <- .B2w(tacovC(1, pol1, 1, lv-2))
+  v1 <- .B2w(tacovC(1, pol1, 1, l1-1))
   if (l2 > 1) {
-    A1 <- toeplitz(v1)
+    v2 <- .B2w(tacovC(1, pol2, 1, l2-1))
+    A1 <- toeplitz(c(v1, rep(0, lv - l1 - 1)))
     A1[upper.tri(A1)] <- 0
-    v2 <- .B2w(tacovC(1, pol2, 1, lv-2))
-    A2 <- toeplitz(v2)
+    A2 <- toeplitz(c(v2, rep(0, lv - l2 - 1)))
     A2[upper.tri(A2)] <- 0
     A <- cbind(A2[,1:(l1-1)], A1[,1:(l2-1)])
     stopifnot(nrow(A) == ncol(A))
     b <- c(1, rep(0,lv-2))
     h <- solve(A, b)
-    v1 <- v1[1:l1]
-    v2 <- v2[1:l2]
     u1 <- polymultC(h[1:(l1-1)], r) 
     u2 <- polymultC(h[-(1:(l1-1))], r)
     u1 <- as.numeric(polydivC(u1, v1, TRUE))
     u2 <- as.numeric(polydivC(u2, v2, TRUE))
   } else {
     u1 <- r
-    v1 <- v1[1:l1]
     u2 <- 0
     v2 <- 1
     u2s <- 0
     A <- NULL
   }
+  
   code1 <- code2 <- 0
   if (canonical) {
     o1 = optimize(.fx, num = u1, den = v1, interval = c(-2, 2))
@@ -1801,8 +1867,11 @@ msx.um <- function(mdl, z = NULL, ar = NULL, i = NULL, canonical = TRUE,
       min2 <- 0
     }
     if (is.null(ma2)) warning("non-admissible decomposition")
+    else mdl2 <- um(ar = as.lagpol(ar$pol2), i = as.lagpol(i$pol2),
+               ma = as.lagpol(ma2[-1]), sig2 = ma2[1]*mdl$sig2)
   } else {
-    ma2 <- NULL
+    mdl2 <- NULL
+    g2 <- NULL
     min2 <- 0
   }
   q1 <- q
@@ -1825,19 +1894,20 @@ msx.um <- function(mdl, z = NULL, ar = NULL, i = NULL, canonical = TRUE,
   on.exit(options(warn = oldw))
   x <- list(um = mdl)
   if (!is.null(ma1)) {
-    mdl1 <- um(ar = as.lagpol(ar$pol1), i = as.lagpol(i$pol1),
-               ma = as.lagpol(ma1[-1]), sig2 = ma1[1]*mdl$sig2)
+    mdl1 <- um(ar = as.lagpol(ar$pol1, 1, "phi"), 
+               i = as.lagpol(i$pol1, 1, "nabla"),
+               ma = as.lagpol(ma1[-1], 1, "theta"),
+               sig2 = ma1[1]*mdl$sig2)
   } else mdl1 <- NULL 
-  if (!is.null(ma2)) {
-    mdl2 <- um(ar = as.lagpol(ar$pol2), i = as.lagpol(i$pol2),
-               ma = as.lagpol(ma2[-1]), sig2 = ma2[1]*mdl$sig2)
-  } else mdl2 <- NULL
+
   if (q[1]>=0) {
     mdl3 <- um(ma = as.lagpol(c(1, -ma3[-1])), sig2 = ma3[1]^2*mdl$sig2)
   } else mdl3 <- NULL
   
-  if (!is.null(mdl2) && !is.null(mdl3)) noise <- sum_um(mdl2, mdl3)
+  if (!is.null(mdl2) && !is.null(mdl3)) noise <- .addum(mdl2, mdl3)
+  else if (!is.null(mdl3)) noise <- mdl3
   else noise <- NULL
+  
   x <- list(um = mdl, signal1 = mdl1, signal2 = mdl2, irreg = mdl3, noise = noise,
             aux = list(u = u, v = v, r = r, q = q1, u1 = u1, 
                        u2 = u2, v1 = v1, v2 = v2, g1 = g1, g2 = g2, 
@@ -1854,37 +1924,11 @@ msx.um <- function(mdl, z = NULL, ar = NULL, i = NULL, canonical = TRUE,
 #' @export
 print.msx <- function(x, signal = FALSE, ...) {
   if (!signal) {
-    cat("Model\n")
-    if (x$um$p > 0) {
-      cat(" AR polynomial\n")
-      print(phi(x$um))
-    }
-    if (x$um$d > 0) {
-      cat(" I polynomial\n")
-      print(nabla(x$um))
-    }
-    if (x$um$q > 0) {
-      cat(" MA polynomial\n")
-      print(theta(x$um))
-    }
-    cat(" sigma2:", x$um$sig2)
+    cat("Model\n", equation(x$um, FALSE), "\nsigma2:", x$um$sig2)
   }
   
   if (!is.null(x$signal1)) {
-    cat("\nSignal1\n")
-    if (x$signal1$p > 0) {
-      cat(" AR polynomial\n")
-      print(phi(x$signal1))
-    }
-    if (x$signal1$d > 0) {
-      cat(" I polynomial\n")
-      print(nabla(x$signal1))
-    }
-    if (x$signal1$q > 0) {
-      cat(" MA polynomial\n")
-      print(theta(x$signal1))
-    }
-    cat(" sigma2:", x$signal1$sig2)
+    cat("\n\nSignal1\n", equation(x$signal1), "\nsigma2:", x$signal1$sig2)
     if (x$aux$code1 == 1) print("\nconvergence not achieved")
     else if (x$aux$code1 == 2) print("\nnegative variance")
   } else  cat("\nSignal1: nonadmisible decomposition\n")
@@ -1892,39 +1936,17 @@ print.msx <- function(x, signal = FALSE, ...) {
   if (signal) return(invisible(NULL))
 
   if (!is.null(x$signal2)) {
-    cat("\nSignal2\n")
-    if (x$signal2$p > 0) {
-      cat(" AR polynomial\n")
-      print(phi(x$signal2))
-    }
-    if (x$signal2$d > 0) {
-      cat(" I polynomial\n")
-      print(nabla(x$signal2))
-    }
-    if (x$signal2$q > 0) {
-      cat(" MA polynomial\n")
-      print(theta(x$signal2))
-    }
-    cat(" sigma2:", x$signal2$sig2)
+    cat("\n\nSignal2\n", equation(x$signal2), "\nsigma2:", x$signal2$sig2)
     if (x$aux$code2 == 1) print("\nconvergence not achieved")
     else if (x$aux$code2 == 2) print("\nnegative variance")
   }
+
+  if (!is.null(x$noise)) {
+    cat("\n\nNoise\n", equation(x$noise), "\nsigma2:", x$noise$sig2)
+  }
   
-  cat("\nNoise\n")
-  if (x$noise$p > 0) {
-    cat(" AR polynomial\n")
-    print(phi(x$noise))
-  }
-  if (x$noise$d > 0) {
-    cat(" I polynomial\n")
-    print(nabla(x$noise))
-  }
-  if (x$noise$q > 0) {
-    cat(" MA polynomial\n")
-    print(theta(x$noise))
-  }
-  cat(" sigma2:", x$noise$sig2)
   return(invisible(NULL))
+  
 }
 
 #' Wiener-Kolmogorov filter
@@ -1940,6 +1962,8 @@ print.msx <- function(x, signal = FALSE, ...) {
 wkfilter <- function (x, ...) { UseMethod("wkfilter") }
 
 #' @rdname wkfilter
+#' @param ret type of return, signal or noise.
+#' @param envir environment.
 #' @param z optional, time series.
 #'
 #' @export
@@ -2016,6 +2040,9 @@ wkfilter.msx <- function(x, z = NULL, ret = c("signal", "noise"), envir = parent
   return(x1)
   
 }
+
+
+
 
 #' Sum of univariate (ARIMA) models
 #' 
@@ -2189,7 +2216,7 @@ sum_um <- function(...) {
     code <- 0
     ma <- acovtomaC(g, code)
     sig2 <- ma[1]^2
-    ma <- as.lagpol(c(1, -ma[-1]))
+    ma <- as.lagpol(c(1, -ma[-1]), coef.name = "theta")
   } else {
     sig2 <- sum(g)
     ma <- NULL
@@ -2197,6 +2224,194 @@ sum_um <- function(...) {
   
   um(ar = list.ar, i = list.i, ma = ma, sig2 = sig2)
   
+}
+
+.addum <- function(um1, um2, add = TRUE) {
+  stopifnot(is.um(um1) && is.um(um2))
+
+  group.factors <- function(list.lp, lp) {
+    # Group AR or I operators of a "um" object by roots
+    # E.g.: (1-B)*(1-B^s) = (1-B)^2*(1+B+...+B^s-1)
+    n <- length(list.lp)
+    for (j in 1:n) {
+      lp1 <- list.lp[[j]]
+      gcd <- polygcdC(lp1$pol, lp$pol)
+      if (nrow(gcd) > 1) {
+        q1 <- polydivC(lp1$pol, gcd, FALSE)
+        q <- polydivC(lp$pol, gcd, FALSE)
+        if (nrow(q1) == 1) {
+          lp1$p <- lp1$p + lp$p
+          lp1$Pol <- as.numeric(polyraiseC(lp1$pol, lp1$p))
+          list.lp[[j]] <- lp1
+          if (nrow(q) == 1) {
+            lp <- NULL
+            break
+          } else lp <- as.lagpol(q, lp$p)
+        } else {
+          list.lp[[j]] <- as.lagpol(q1, p = lp1$p)
+          if (nrow(q) == 1) {
+            lp$p <- lp1$p + lp$p
+            lp$Pol <- as.numeric(polyraiseC(lp$pol, lp1$p))
+            break
+          } else {
+            list.lp <- c(list.lp, list(as.lagpol(gcd, lp1$p + lp$p)))
+            lp <- as.lagpol(q, p = lp$p)
+          }
+        }
+      }
+    }
+    if (!is.null(lp)) list.lp <- c(list.lp, list(lp))
+    return(list.lp)
+  }
+  
+  lcm.factors <- function(list.lp, lp) {
+    # Least common multiple of several lag polynomials
+    n <- length(list.lp)
+    for (j in 1:n) {
+      lp1 <- list.lp[[j]]
+      gcd <- polygcdC(lp1$pol, lp$pol)
+      if (nrow(gcd) > 1 && gcd[1] > 0.5 ) {
+        q <- polydivC(lp$pol, gcd, FALSE)
+        if (lp$p <= lp1$p) {
+          if (nrow(q) > 1) {
+            lp <- as.lagpol(q, p = lp$p)
+          } else {
+            lp <- NULL
+            break
+          }
+        } else {
+          q <- polymultC(polyraiseC(gcd, lp$p - lp1$p), polyraiseC(q, lp$p))
+          lp <- as.lagpol(q, p = 1)
+        }
+      }
+    }
+    
+    if (!is.null(lp)) list.lp <- c(list.lp, list(lp))
+    
+    return(list.lp)
+  }
+  
+  ar <- lapply(list(um1, um2), function(um) {
+    n <- length(um$ar)
+    if (n > 1) {
+      l <- um$ar[1]
+      for (j in 2:n) 
+        l <- group.factors(l, um$ar[[j]])
+      l
+    } else um$ar
+  })
+  
+  ar <- unlist(ar, recursive = FALSE)
+  n <- length(ar) 
+  if (n == 0) list.ar <- list()
+  else if (n == 1) list.ar <- ar 
+  else {
+    list.ar <- ar[1]
+    for (j in 2:n) 
+      list.ar <- lcm.factors(list.ar, ar[[j]])
+  }
+  
+  # I factors
+  i <- lapply(list(um1, um2), function(um) {
+    n <- length(um$i)
+    if (n > 1) {
+      l <- um$i[1]
+      for (j in 2:n) 
+        l <- group.factors(l, um$i[[j]])
+      l
+    } else um$i
+  })
+  i <- unlist(i, recursive = FALSE)
+  
+  li <- length(i) 
+  if (li == 0) list.i <- list()
+  else if (li == 1) list.i <- i 
+  else {
+    list.i <- i[1]
+    for (j in 2:li) 
+      list.i <- lcm.factors(list.i, i[[j]])
+  }
+  
+  # MA polynomials
+  if (length(list.ar) > 0) phi <- polyexpand(list.ar)
+  else {
+    list.ar <- NULL
+    phi <- 1
+  }
+  
+  if (length(list.i) > 0) nabla <- polyexpand(list.i)
+  else {
+    list.i <- NULL
+    nabla <- 1
+  }
+  
+  nlags <- 0
+  list.ma <- lapply(list(um1, um2), function(um) {
+    phi1 <- polydivC(phi, um$phi, FALSE)
+    nabla1 <- polydivC(nabla, um$nabla, FALSE)
+    theta <- polymultC(phi1, nabla1)
+    theta <- as.numeric( polymultC(theta, um$theta) )
+    nlags <<- max(nlags, length(theta)-1 )
+    theta*sqrt(um$sig2)
+  })
+  
+  # MA autocovariances
+  g <- sapply(list.ma, function(ma) {
+    tacovC(1, ma, 1, nlags)
+  })
+  
+  if (is.matrix(g)) {
+    if (!add) {
+      if (g[1,1] > g[1, 2]) g <- g[,1] - g[,2]
+      else g <- g[,2] - g[,1]
+    } else g <- rowSums(g)
+    ma <- autocov2MA(g)
+    sig2 <- ma[1]
+    ma <- as.lagpol(ma[-1], coef.name = "theta")
+  } else {
+    sig2 <- sum(g)
+    ma <- NULL
+  }
+  
+  um(ar = list.ar, i = list.i, ma = ma, sig2 = sig2)
+  
+}
+
+
+#' @export
+Ops.um <- function(e1, e2) {
+  if (nargs() == 1L) 
+    stop(gettextf("unary %s not defined for \"um\" objects", 
+                  .Generic), domain = NA)
+  switch(.Generic,
+              `+` = {
+                .addum(e1, e2)  
+              },
+              `-` = {
+                .addum(e1, e2, FALSE)
+              },
+              `*` = {
+                if (is.numeric(e1)) {
+                  e2$sig2 <- e2$sig2*e1[1]
+                  e2
+                } else if (is.numeric(e2)) {
+                  e1$sig2 <- e1$sig2*e2[1]
+                  e1
+                } else stop(gettextf("%s not defined for \"um\" objects",
+                                                   .Generic), domain = NA)
+              },
+              `/` = {
+                if (is.numeric(e1)) {
+                  e2$sig2 <- e2$sig2/e1[1]
+                  e2
+                } else if (is.numeric(e2)) {
+                  e1$sig2 <- e1$sig2/e2[1]
+                  e1
+                } else stop(gettextf("%s not defined for \"um\" objects",
+                                     .Generic), domain = NA)
+              },
+              stop(gettextf("%s not defined for \"um\" objects",
+                            .Generic), domain = NA))
 }
 
 #' Structural form for an ARIMA model
@@ -2248,18 +2463,28 @@ sform.um <- function(mdl, z = NULL, envir = NULL, ...) {
   if (s2u < 0) s2u <- 0
   lf <- .LeverrierFaddeev(b, C)
   k <- length(b)
-  g <- autocov(mdl, lag.max = k-1)
+  g <- as.numeric( tacovC(1, mdl$theta, mdl$sig2, k-1) )
+  #g <- autocov(mdl, lag.max = k-1)
   g <- g - as.numeric( tacovC(1, lf$p, s2u, k-1) )
   A <- apply(lf$A, 2, function(x) {
     tacovC(1, x, 1, k-1)
   })
   s2v <- as.numeric(ginv(A) %*% g)
-  if (any(s2v < 0)) 
-    warning("nonadmisible decomposition")
+  if (any(s2v < 0)) {
+    s2v <- sapply(s2v, function(x) {
+      if (x < 0 && abs(x) < sqrt(.Machine$double.eps))
+        0
+      else
+        x
+    })
+    if (any(s2v < 0))
+      warning("nonadmisible decomposition")
+  }
   names(s2v) <- paste0("s", 1:k)
   mdl1 <- stsm(z, b, C, .sDiag, s2v, s2u, NULL, bc = mdl$bc, FALSE)
   mdl1$A <- A
   mdl1$g <- g
+  mdl1$lf <- lf
   return(mdl1)
 }
 
@@ -2519,7 +2744,7 @@ eq.um <-function(um, digits = 2, arima = TRUE) {
   }
   
   if (arima && !is.null(um$i)) {
-    for (i in 1:um$ki) {
+    for (i in 1:length(um$i)) {
       pol <- paste("(", as.character(um$i[[i]], digits, TRUE, TRUE), ")", sep = "")
       if (um$i[[i]]$p > 1) pol <- paste(pol, "'^", um$i[[i]]$p, "*'", sep = "")
       eq <- paste(eq, pol, sep = "")      

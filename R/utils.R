@@ -1,3 +1,62 @@
+#' MA process compatible with a vector of autocovariances
+#'
+#' \code{autocov2MA} computes the error variance and the MA polynomial from a
+#' vector of autocovriances.
+#'
+#' @param x a vector of q autocovariances.
+#'
+#' @return A vector of the form c(sig2, 1, -theta1, ..., -thetaq).
+#' 
+#' @examples 
+#' ma1 <- um(ma = "1 - 0.8B", sig2 = 0.5)
+#' autocov2MA(autocov(ma1, 1))
+#' @export
+autocov2MA <- function(x) {
+  x <- as.numeric(x)
+  n <- length(x)
+  while(x[n] == 0 && n > 0) {
+    x <- x[-n]
+    n <- n - 1
+  }
+  if (n == 0) return(0)
+  stopifnot(x[1] > 0)
+  if (n == 1)
+    return(x)
+  b <- rep(0, n)
+  b[1:2] <- x[1:2]
+  if (n > 2) {
+    p0 <- rep(0, n)
+    p1 <- rep(0, n)
+    p2 <- rep(0, n)
+    p0[1] <- 2
+    p1[2] <- 1
+    for (i in 3:n) {
+      p2[1:i] <- c(0, p1[1:(i-1)]) - p0[1:i]
+      b[1:i] <- b[1:i] + x[i]*p2[1:i]
+      p0 <- p1
+      p1 <- p2
+    }
+  }
+  
+  r <- polyroot(b)
+  l <- length(r)
+  r <- sapply(r, function(x) {
+    c((x + sqrt(x^2 - 4))/2, (x - sqrt(x^2 - 4))/2)
+  })
+  r <- as.vector(r)
+  r <- r[order(Mod(r))]
+  r <- r[1:l]
+  ma <- 1
+  for (r1 in r)
+    ma <- c(ma, 0) - c(0, ma*r1)
+  ma <- Re(ma)
+  ma <- c(b[n]/ma[length(ma)], ma)
+  if (!is.finite(ma[1]))
+    autocov2MA(x[-n])
+  else return(ma)
+}
+
+
 #' Standardize time series
 #'
 #' \code{std} standardizes a time series.

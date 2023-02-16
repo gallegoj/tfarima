@@ -15,6 +15,10 @@ wkfilter(x, ...)
 \item{...}{additional arguments.}
 
 \item{z}{optional, time series.}
+
+\item{ret}{type of return, signal or noise.}
+
+\item{envir}{environment.}
 }
 \value{
 An object of class \code{wkfilter}.

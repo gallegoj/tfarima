@@ -1,7 +1,7 @@
 Package: tfarima
 Type: Package
 Title: Transfer Function and ARIMA Models
-Version: 0.3.4
+Version: 0.3.5
 Date: 2022-05-20
 Authors@R: person("Jose L.", "Gallego", email = "jose.gallego@unican.es",
   role = c("aut", "cre"))

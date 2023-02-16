@@ -38,6 +38,14 @@
 stsm <- function(y, b, C, fSv, s2v, s2u = 1, xreg = NULL, bc = FALSE, 
                  fit = TRUE, ...) {
   dots <- list(...)
+  if (!is.matrix(C)) {
+    if (length(C) == 1) C <- as.matrix(C)
+    else stop("C argument must be a matrix")
+  }
+  stopifnot(nrow(C) == ncol(C))
+  if (is.matrix(b)) 
+    b <- as.vector(b)
+  stopifnot(length(b) == nrow(C))
   if (missing(y)) y <- NULL
   if (!is.null(y)) {
     y.name <- deparse(substitute(y))
@@ -438,10 +446,10 @@ print.stsm <- function(x, ...) {
 #' 
 #' b <- 1
 #' C <- as.matrix(1)
-#' stsm1 <- stsm(b = b, C = C, s2v = c(lvl = 1469.619), s2u = c(irr = 15103.061))
-#' rf1 <- rform(stsm1)
-#' nabla(rf1)
-#' theta(rf1)
+#' #stsm1 <- stsm(b = b, C = C, s2v = c(lvl = 1469.619), s2u = c(irr = 15103.061))
+#' #rf1 <- rform(stsm1)
+#' #nabla(rf1)
+#' #theta(rf1)
 
 #' @export
 rform <- function (mdl, ...) { UseMethod("rform") }
@@ -480,6 +488,6 @@ rform.stsm <- function(mdl, indx = NULL, ...) {
       sum <- sum + sum((A[j, ] %*% Sv) * A[j-i+1, ])
     g[i] <- g[i] + sum
   }
-  ma <- as.vector(acovtomaC(g))
-  um(bc = mdl$bc, i = as.lagpol(d), ma = as.lagpol(c(1, -ma[-1])), sig2 = ma[1]^2)
+  ma <- as.vector(autocov2MA(g))
+  um(bc = mdl$bc, i = as.lagpol(d), ma = as.lagpol(ma[-1]), sig2 = ma[1])
 }

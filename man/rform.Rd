@@ -7,12 +7,14 @@
 \usage{
 rform(mdl, ...)
 
-\method{rform}{stsm}(mdl, ...)
+\method{rform}{stsm}(mdl, indx = NULL, ...)
 }
 \arguments{
 \item{mdl}{an object of class \code{stsm}.}
 
 \item{...}{other arguments.}
+
+\item{indx}{indexes for submodel.}
 }
 \value{
 An object of class \code{um}.
@@ -24,8 +26,8 @@ An object of class \code{um}.
 
 b <- 1
 C <- as.matrix(1)
-stsm1 <- stsm(b = b, C = C, s2v = c(lvl = 1469.619), s2u = c(irr = 15103.061))
-rf1 <- rform(stsm1)
-nabla(rf1)
-theta(rf1)
+#stsm1 <- stsm(b = b, C = C, s2v = c(lvl = 1469.619), s2u = c(irr = 15103.061))
+#rf1 <- rform(stsm1)
+#nabla(rf1)
+#theta(rf1)
 }

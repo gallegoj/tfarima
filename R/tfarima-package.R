@@ -41,10 +41,11 @@
 #' @importFrom Rcpp evalCpp
 #' @importFrom numDeriv jacobian
 #' @importFrom MASS ginv
-#' @importFrom stats Box.test acf as.ts bartlett.test cycle density dnorm end
-#' @importFrom stats frequency is.ts is.mts lm median na.pass optim plot.ts pnorm
-#' @importFrom stats printCoefmat qnorm resid residuals rnorm sd start time
-#' @importFrom stats ts tsdiag update var window
+#' @importFrom stats acf as.ts bartlett.test Box.test cycle density dnorm end
+#' @importFrom stats frequency is.ts is.mts lm median na.pass optim optimize
+#' @importFrom stats plot.ts pnorm predict printCoefmat qnorm resid residuals  
+#' @importFrom stats rnorm sd start time ts tsdiag update var window rbinom
+#' @importFrom stats toeplitz
 #' @importFrom graphics plot abline axis layout lcm legend lines mtext par
 #' @importFrom graphics plot.new points text title
 #' @useDynLib tfarima, .registration=TRUE

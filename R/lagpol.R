@@ -80,6 +80,7 @@ lagpol <- function(param = NULL, s = 1, p = 1, lags = NULL, coef = NULL)
 #' 
 #' @param pol a numeric vector.
 #' @param p integer power.
+#' @param coef.name name prefix for coefficients.
 #' 
 #' @return An object of class \code{lagpol}.
 #' 
@@ -87,7 +88,7 @@ lagpol <- function(param = NULL, s = 1, p = 1, lags = NULL, coef = NULL)
 #' as.lagpol(c(1, -0.8))
 #' as.lagpol(c(1, 0, 0, 0, -0.8))
 #' @export 
-as.lagpol <- function(pol, p = 1) {
+as.lagpol <- function(pol, p = 1, coef.name = "a") {
   
   if (is.lagpol(pol)) return(pol)
   pol <- as.numeric(pol)
@@ -99,7 +100,7 @@ as.lagpol <- function(pol, p = 1) {
   pol <- -pol[lags]
   lags <- (0:k)[lags]
   if (length(lags) < 1) return(NULL)
-  names(pol) <- paste("a", lags, sep = "")
+  names(pol) <- paste(coef.name, lags, sep = "")
   lp <- lagpol(pol, lags = lags, p = p)
   return(lp)
   
@@ -233,7 +234,7 @@ as.character.lagpol <- function(lp, digits = 2, pol = FALSE, eq = FALSE, ...) {
   p <- signif(p, digits = digits)
   d <- length(p) - 1
   names(p) <- 0:d
-  p <- p[p != 0]
+  p <- p[abs(p) > 5.96e-08]
   if (length(p) == 0) return("0")
   
   signs <- ifelse(p < 0, "- ", "+ ")
@@ -431,6 +432,7 @@ is.lagpol.list <- function(lpl) {
 #'  in the lag operator.
 #'
 #' @param lp an object of class \code{lagpol}.
+#' @param ... additional arguments.
 #' 
 #' @return \code{factors} returns a list with the simplifying factors
 #' of the lag polynomial.  
@@ -443,14 +445,14 @@ factors <- function (lp, ...) { UseMethod("factors") }
 
 #' @rdname factors
 #' @export
-factors.lagpol <- function(lp) {
+factors.lagpol <- function(lp, ...) {
   if (is.numeric(lp)) 
     lp <- as.lagpol(lp)
   stopifnot(is.lagpol(lp))
   oldw <- options(warn = -1)
   on.exit(options(oldw))
   t <- polyrootsC(lp$pol)
-  
+
   f <- -1
   k <- 1
   p <- apply(t, 1, function(x) {
@@ -466,8 +468,9 @@ factors.lagpol <- function(lp) {
         f <- 0
         coef <- c(paste0("abs(", coef.name, ")"))
       } else {
-        coef <- c(paste0("-2*cos(2*pi*", f, ")*sqrt(abs(", coef.name, "))"),
+        coef <- c(paste0("2*cos(2*pi*", f, ")*sqrt(abs(", coef.name, "))"),
                   paste0("-abs(", coef.name, ")"))
+        param <- param^2
       }
       return(lagpol(param = param, coef = coef, p = x[6] + lp$p - 1))
     }
