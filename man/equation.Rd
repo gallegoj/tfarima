@@ -7,7 +7,7 @@
 \usage{
 equation(um, ...)
 
-\method{equation}{um}(um, unscramble = TRUE, ...)
+\method{equation}{um}(um, unscramble = TRUE, digits = 4, ...)
 }
 \arguments{
 \item{um}{an object of class \code{um} or a list of these objects.}

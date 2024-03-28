@@ -107,7 +107,6 @@ arma::colvec condres0C(const arma::colvec &w, const arma::colvec &phi,
   q = theta.n_elem-1;
   
   colvec res(n);
-  
   if (forward) {
     if (p>0||q>0) {
       for (t = 0; t < n; t++) {
@@ -115,30 +114,30 @@ arma::colvec condres0C(const arma::colvec &w, const arma::colvec &phi,
         for (j = 0; j<= p; j++) {
           tlag = t-j;
           if (tlag>-1) x +=  phi(j)*w(tlag);
-          else x +=  phi(j)*w0(p-j);
+          else x +=  phi(j)*w0(-tlag-1);
         }
-        for (j = 1; j<= q; j++) {
+        for (j = 1; j <= q; j++) {
           tlag = t-j;
           if (tlag>-1) x -=  theta(j)*res(tlag);
-          else x -=  theta(j)*a0(q-j);
+          else x -=  theta(j)*a0(-tlag-1);
         }
         res(t) = x;
       }
     } else
       res = w;
   } else {
-    if (p > 0 || q>0) {
+    if (p > 0 || q > 0) {
       for (t = n-1; t>-1; t--) {
         x = 0;
         for (j = 0; j <= p; j++) {
           tlag = t+j;
           if (tlag<n) x +=  phi(j)*w(tlag);
-          else x +=  phi(j)*w0(j-1);
+          else x +=  phi(j)*w0(tlag-n);
         }
         for (j = 1; j <= q; j++) {
           tlag = t+j;
           if (tlag<n) x -=  theta(j)*res(tlag);
-          else x -=  theta(j)*a0(j-1);
+          else x -=  theta(j)*a0(tlag-n);
         }
         res(t) = x;
       }

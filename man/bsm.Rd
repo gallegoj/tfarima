@@ -8,10 +8,11 @@ bsm(
   y,
   bc = FALSE,
   seas = c("hd", "ht", "hs"),
-  s2v = c(lvl = 0.2, slp = 0.05, seas = 0.075),
-  s2u = 0.1,
+  par = c(irr = 0.75, lvl = 1, slp = 0.05, seas = 0.075),
+  fixed = c(lvl = TRUE),
   xreg = NULL,
-  fSv = NULL,
+  fit = TRUE,
+  updmdl = NULL,
   ...
 )
 }
@@ -23,15 +24,18 @@ bsm(
 \item{seas}{character, type of seasonality (Harvey-Durbin (hd), Harvey-Todd
 (ht), Harrison-Steven (ht))}
 
-\item{s2v}{variances of the error vector v_t.}
+\item{par}{real vector with the error variances of each unobserved
+component.}
 
-\item{s2u}{variance of the error u_t.}
+\item{fixed}{logical vector to fix parameters.}
 
 \item{xreg}{matrix of regressors.}
 
-\item{fSv}{function to create the covariance matrix of v_t.}
+\item{fit}{logical. If TRUE, model is fitted.}
 
-\item{...}{other arguments.}
+\item{updmdl}{function to update the parameters of the BSM.}
+
+\item{...}{additional arguments.}
 }
 \value{
 An object of class \code{stsm}.

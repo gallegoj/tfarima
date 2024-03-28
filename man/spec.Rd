@@ -7,12 +7,16 @@
 \usage{
 spec(um, ...)
 
-\method{spec}{um}(um, n.freq = 501, ...)
+\method{spec}{um}(um, nabla = FALSE, n.freq = 501, ...)
 }
 \arguments{
 \item{um}{an object of class \code{um}.}
 
 \item{...}{additional parameters.}
+
+\item{nabla}{logical. If TRUE, the pseudospectrum for a non stationary ARIMA
+model is calculated. By default, the spectrum is computed for the
+stationary ARMA model.}
 
 \item{n.freq}{number of frequencies.}
 }

@@ -89,12 +89,12 @@ polymultC <- function(pol1, pol2) {
     .Call(`_tfarima_polymultC`, pol1, pol2)
 }
 
-polydivC <- function(pol1, pol2, rem) {
-    .Call(`_tfarima_polydivC`, pol1, pol2, rem)
+polydivC <- function(pol1, pol2, rem, tol) {
+    .Call(`_tfarima_polydivC`, pol1, pol2, rem, tol)
 }
 
-polygcdC <- function(pol1, pol2) {
-    .Call(`_tfarima_polygcdC`, pol1, pol2)
+polygcdC <- function(pol1, pol2, tol) {
+    .Call(`_tfarima_polygcdC`, pol1, pol2, tol)
 }
 
 polyprsC <- function(pol1, pol2) {
@@ -103,10 +103,6 @@ polyprsC <- function(pol1, pol2) {
 
 polyraiseC <- function(pol, d) {
     .Call(`_tfarima_polyraiseC`, pol, d)
-}
-
-polyfactorsC <- function(pol) {
-    .Call(`_tfarima_polyfactorsC`, pol)
 }
 
 polyratioC <- function(num, den, d) {
@@ -149,8 +145,24 @@ pgramC <- function(y, cpgram) {
     .Call(`_tfarima_pgramC`, y, cpgram)
 }
 
-llrfC <- function(w, d, A, Sv, s2u, s2star) {
-    .Call(`_tfarima_llrfC`, w, d, A, Sv, s2u, s2star)
+llrfC <- function(w, nabla, b, C, S, s2, cform) {
+    .Call(`_tfarima_llrfC`, w, nabla, b, C, S, s2, cform)
+}
+
+resrfC <- function(w, nabla, b, C, S, s2, cform) {
+    .Call(`_tfarima_resrfC`, w, nabla, b, C, S, s2, cform)
+}
+
+kf0C <- function(y, b, C, S, x1, P1, v, s2) {
+    .Call(`_tfarima_kf0C`, y, b, C, S, x1, P1, v, s2)
+}
+
+kfC <- function(y, b, C, S, x1, P1, v, s2, X, PX, cform, filtered, xn) {
+    .Call(`_tfarima_kfC`, y, b, C, S, x1, P1, v, s2, X, PX, cform, filtered, xn)
+}
+
+ksC <- function(y, b, C, S, x1, P1, X, PX, cform) {
+    .Call(`_tfarima_ksC`, y, b, C, S, x1, P1, X, PX, cform)
 }
 
 tacovC <- function(phi, theta, sigma2, nlags) {

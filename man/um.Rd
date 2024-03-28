@@ -14,6 +14,7 @@ um(
   bc = FALSE,
   fit = TRUE,
   envir = parent.frame(),
+  warn = TRUE,
   ...
 )
 }
@@ -36,6 +37,9 @@ um(
 
 \item{envir}{the environment in which to look for the time series z when it
 is passed as a character string.}
+
+\item{warn}{logical. If TRUE, a warning is displayed for non-admissible
+models.}
 
 \item{...}{additional arguments.}
 }

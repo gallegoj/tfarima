@@ -9,14 +9,15 @@ msx(mdl, ...)
 
 \method{msx}{um}(
   mdl,
-  z = NULL,
   ar = NULL,
   i = NULL,
   canonical = TRUE,
+  tol = 1e-05,
   check = TRUE,
   method = c("roots", "acov"),
+  single = TRUE,
   ret = c("default", "min"),
-  envir = NULL,
+  envir = parent.frame(),
   ...
 )
 }
@@ -25,13 +26,11 @@ msx(mdl, ...)
 
 \item{...}{additional arguments.}
 
-\item{z}{an object of class \code{\link{ts}}.}
+\item{ar, i}{AR and/or I lag polynomials for the signal.}
 
-\item{ar}{AR polynomial for signal.}
+\item{canonical}{logical value to set or not the canonical requirement.}
 
-\item{i}{I polynomial for signal.}
-
-\item{canonical}{logical. If TRUE the canonical decomposition is obtained.}
+\item{tol}{tolerance to check if a value is null.}
 
 \item{check}{logical value to check if ar and i are simplifying factors of
 the object mdl.}
@@ -39,6 +38,8 @@ the object mdl.}
 \item{method}{the procedure to obtain the MA parameters of the model of the
 signal is based either on the roots or on the autocovariances, method =
 c("roots", "acov").}
+
+\item{single}{logical. TRUE for single signal and FALSE for multiple signals.}
 
 \item{ret}{type of return, c("default", "min")}
 

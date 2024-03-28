@@ -2,27 +2,34 @@
 % Please edit documentation in R/um.R
 \name{wkfilter}
 \alias{wkfilter}
-\alias{wkfilter.msx}
+\alias{wkfilter.um}
 \title{Wiener-Kolmogorov filter}
 \usage{
-wkfilter(x, ...)
+wkfilter(um.z, ...)
 
-\method{wkfilter}{msx}(x, z = NULL, ret = c("signal", "noise"), envir = parent.frame(), ...)
+\method{wkfilter}{um}(um.z, um.uc, z = NULL, envir = parent.frame(), ...)
 }
 \arguments{
-\item{x}{an object of class \code{\link{msx}}.}
+\item{um.z}{an object of class \code{\link{um}}.}
 
 \item{...}{additional arguments.}
 
 \item{z}{optional, time series.}
 
-\item{ret}{type of return, signal or noise.}
-
 \item{envir}{environment.}
+
+\item{um.z, um.uc}{ARIMA models for the observed time series and the
+unobserved component.}
 }
 \value{
 An object of class \code{wkfilter}.
 }
 \description{
 \code{wkfilter} extracts a signal for a time series.
+}
+\examples{
+um1 <- um(AirPassengers, bc = T, i = list(1, c(1,12)), ma = list(1, c(1,12)))
+msx1 <- msx(um1, i = "(1-B)2")
+trend <- wkfilter(um1, msx1$signal1)
+seas <- wkfilter(um1, msx1$signal2)
 }

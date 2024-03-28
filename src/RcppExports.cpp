@@ -318,27 +318,29 @@ BEGIN_RCPP
 END_RCPP
 }
 // polydivC
-arma::colvec polydivC(const arma::colvec& pol1, const arma::colvec& pol2, bool rem);
-RcppExport SEXP _tfarima_polydivC(SEXP pol1SEXP, SEXP pol2SEXP, SEXP remSEXP) {
+arma::colvec polydivC(const arma::colvec& pol1, const arma::colvec& pol2, bool rem, double tol);
+RcppExport SEXP _tfarima_polydivC(SEXP pol1SEXP, SEXP pol2SEXP, SEXP remSEXP, SEXP tolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::colvec& >::type pol1(pol1SEXP);
     Rcpp::traits::input_parameter< const arma::colvec& >::type pol2(pol2SEXP);
     Rcpp::traits::input_parameter< bool >::type rem(remSEXP);
-    rcpp_result_gen = Rcpp::wrap(polydivC(pol1, pol2, rem));
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    rcpp_result_gen = Rcpp::wrap(polydivC(pol1, pol2, rem, tol));
     return rcpp_result_gen;
 END_RCPP
 }
 // polygcdC
-arma::colvec polygcdC(const arma::colvec& pol1, const arma::colvec& pol2);
-RcppExport SEXP _tfarima_polygcdC(SEXP pol1SEXP, SEXP pol2SEXP) {
+arma::colvec polygcdC(const arma::colvec& pol1, const arma::colvec& pol2, double tol);
+RcppExport SEXP _tfarima_polygcdC(SEXP pol1SEXP, SEXP pol2SEXP, SEXP tolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::colvec& >::type pol1(pol1SEXP);
     Rcpp::traits::input_parameter< const arma::colvec& >::type pol2(pol2SEXP);
-    rcpp_result_gen = Rcpp::wrap(polygcdC(pol1, pol2));
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    rcpp_result_gen = Rcpp::wrap(polygcdC(pol1, pol2, tol));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -363,17 +365,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::colvec& >::type pol(polSEXP);
     Rcpp::traits::input_parameter< int >::type d(dSEXP);
     rcpp_result_gen = Rcpp::wrap(polyraiseC(pol, d));
-    return rcpp_result_gen;
-END_RCPP
-}
-// polyfactorsC
-arma::mat polyfactorsC(const arma::colvec& pol);
-RcppExport SEXP _tfarima_polyfactorsC(SEXP polSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::colvec& >::type pol(polSEXP);
-    rcpp_result_gen = Rcpp::wrap(polyfactorsC(pol));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -516,18 +507,96 @@ BEGIN_RCPP
 END_RCPP
 }
 // llrfC
-double llrfC(const arma::colvec& w, const arma::colvec& d, const arma::mat& A, const arma::mat& Sv, double s2u, bool s2star);
-RcppExport SEXP _tfarima_llrfC(SEXP wSEXP, SEXP dSEXP, SEXP ASEXP, SEXP SvSEXP, SEXP s2uSEXP, SEXP s2starSEXP) {
+double llrfC(const arma::colvec& w, const arma::colvec& nabla, const arma::rowvec& b, const arma::mat& C, const arma::mat& S, arma::colvec& s2, bool cform);
+RcppExport SEXP _tfarima_llrfC(SEXP wSEXP, SEXP nablaSEXP, SEXP bSEXP, SEXP CSEXP, SEXP SSEXP, SEXP s2SEXP, SEXP cformSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::colvec& >::type w(wSEXP);
-    Rcpp::traits::input_parameter< const arma::colvec& >::type d(dSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type A(ASEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type Sv(SvSEXP);
-    Rcpp::traits::input_parameter< double >::type s2u(s2uSEXP);
-    Rcpp::traits::input_parameter< bool >::type s2star(s2starSEXP);
-    rcpp_result_gen = Rcpp::wrap(llrfC(w, d, A, Sv, s2u, s2star));
+    Rcpp::traits::input_parameter< const arma::colvec& >::type nabla(nablaSEXP);
+    Rcpp::traits::input_parameter< const arma::rowvec& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type C(CSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type S(SSEXP);
+    Rcpp::traits::input_parameter< arma::colvec& >::type s2(s2SEXP);
+    Rcpp::traits::input_parameter< bool >::type cform(cformSEXP);
+    rcpp_result_gen = Rcpp::wrap(llrfC(w, nabla, b, C, S, s2, cform));
+    return rcpp_result_gen;
+END_RCPP
+}
+// resrfC
+arma::colvec resrfC(const arma::colvec& w, const arma::colvec& nabla, const arma::rowvec& b, const arma::mat& C, const arma::mat& S, arma::colvec& s2, bool cform);
+RcppExport SEXP _tfarima_resrfC(SEXP wSEXP, SEXP nablaSEXP, SEXP bSEXP, SEXP CSEXP, SEXP SSEXP, SEXP s2SEXP, SEXP cformSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::colvec& >::type w(wSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type nabla(nablaSEXP);
+    Rcpp::traits::input_parameter< const arma::rowvec& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type C(CSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type S(SSEXP);
+    Rcpp::traits::input_parameter< arma::colvec& >::type s2(s2SEXP);
+    Rcpp::traits::input_parameter< bool >::type cform(cformSEXP);
+    rcpp_result_gen = Rcpp::wrap(resrfC(w, nabla, b, C, S, s2, cform));
+    return rcpp_result_gen;
+END_RCPP
+}
+// kf0C
+bool kf0C(const arma::colvec& y, const arma::colvec& b, const arma::mat& C, const arma::mat& S, const arma::colvec& x1, const arma::mat& P1, arma::colvec& v, arma::colvec& s2);
+RcppExport SEXP _tfarima_kf0C(SEXP ySEXP, SEXP bSEXP, SEXP CSEXP, SEXP SSEXP, SEXP x1SEXP, SEXP P1SEXP, SEXP vSEXP, SEXP s2SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::colvec& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type C(CSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type S(SSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type x1(x1SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type P1(P1SEXP);
+    Rcpp::traits::input_parameter< arma::colvec& >::type v(vSEXP);
+    Rcpp::traits::input_parameter< arma::colvec& >::type s2(s2SEXP);
+    rcpp_result_gen = Rcpp::wrap(kf0C(y, b, C, S, x1, P1, v, s2));
+    return rcpp_result_gen;
+END_RCPP
+}
+// kfC
+bool kfC(const arma::colvec& y, const arma::colvec& b, const arma::mat& C, const arma::mat& S, arma::colvec& x1, arma::mat& P1, arma::colvec& v, arma::colvec& s2, arma::mat& X, arma::mat& PX, bool cform, bool filtered, bool xn);
+RcppExport SEXP _tfarima_kfC(SEXP ySEXP, SEXP bSEXP, SEXP CSEXP, SEXP SSEXP, SEXP x1SEXP, SEXP P1SEXP, SEXP vSEXP, SEXP s2SEXP, SEXP XSEXP, SEXP PXSEXP, SEXP cformSEXP, SEXP filteredSEXP, SEXP xnSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::colvec& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type C(CSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type S(SSEXP);
+    Rcpp::traits::input_parameter< arma::colvec& >::type x1(x1SEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type P1(P1SEXP);
+    Rcpp::traits::input_parameter< arma::colvec& >::type v(vSEXP);
+    Rcpp::traits::input_parameter< arma::colvec& >::type s2(s2SEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type PX(PXSEXP);
+    Rcpp::traits::input_parameter< bool >::type cform(cformSEXP);
+    Rcpp::traits::input_parameter< bool >::type filtered(filteredSEXP);
+    Rcpp::traits::input_parameter< bool >::type xn(xnSEXP);
+    rcpp_result_gen = Rcpp::wrap(kfC(y, b, C, S, x1, P1, v, s2, X, PX, cform, filtered, xn));
+    return rcpp_result_gen;
+END_RCPP
+}
+// ksC
+bool ksC(const arma::colvec& y, const arma::colvec& b, const arma::mat& C, const arma::mat& S, const arma::colvec& x1, const arma::mat& P1, arma::mat& X, arma::mat& PX, bool cform);
+RcppExport SEXP _tfarima_ksC(SEXP ySEXP, SEXP bSEXP, SEXP CSEXP, SEXP SSEXP, SEXP x1SEXP, SEXP P1SEXP, SEXP XSEXP, SEXP PXSEXP, SEXP cformSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::colvec& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type C(CSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type S(SSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type x1(x1SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type P1(P1SEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type PX(PXSEXP);
+    Rcpp::traits::input_parameter< bool >::type cform(cformSEXP);
+    rcpp_result_gen = Rcpp::wrap(ksC(y, b, C, S, x1, P1, X, PX, cform));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -582,11 +651,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_tfarima_roots2polC", (DL_FUNC) &_tfarima_roots2polC, 2},
     {"_tfarima_admregC", (DL_FUNC) &_tfarima_admregC, 2},
     {"_tfarima_polymultC", (DL_FUNC) &_tfarima_polymultC, 2},
-    {"_tfarima_polydivC", (DL_FUNC) &_tfarima_polydivC, 3},
-    {"_tfarima_polygcdC", (DL_FUNC) &_tfarima_polygcdC, 2},
+    {"_tfarima_polydivC", (DL_FUNC) &_tfarima_polydivC, 4},
+    {"_tfarima_polygcdC", (DL_FUNC) &_tfarima_polygcdC, 3},
     {"_tfarima_polyprsC", (DL_FUNC) &_tfarima_polyprsC, 2},
     {"_tfarima_polyraiseC", (DL_FUNC) &_tfarima_polyraiseC, 2},
-    {"_tfarima_polyfactorsC", (DL_FUNC) &_tfarima_polyfactorsC, 1},
     {"_tfarima_polyratioC", (DL_FUNC) &_tfarima_polyratioC, 3},
     {"_tfarima_presampleCovC", (DL_FUNC) &_tfarima_presampleCovC, 3},
     {"_tfarima_condresC", (DL_FUNC) &_tfarima_condresC, 4},
@@ -597,7 +665,11 @@ static const R_CallMethodDef CallEntries[] = {
     {"_tfarima_simC", (DL_FUNC) &_tfarima_simC, 7},
     {"_tfarima_spectrumC", (DL_FUNC) &_tfarima_spectrumC, 4},
     {"_tfarima_pgramC", (DL_FUNC) &_tfarima_pgramC, 2},
-    {"_tfarima_llrfC", (DL_FUNC) &_tfarima_llrfC, 6},
+    {"_tfarima_llrfC", (DL_FUNC) &_tfarima_llrfC, 7},
+    {"_tfarima_resrfC", (DL_FUNC) &_tfarima_resrfC, 7},
+    {"_tfarima_kf0C", (DL_FUNC) &_tfarima_kf0C, 8},
+    {"_tfarima_kfC", (DL_FUNC) &_tfarima_kfC, 13},
+    {"_tfarima_ksC", (DL_FUNC) &_tfarima_ksC, 9},
     {"_tfarima_tacovC", (DL_FUNC) &_tfarima_tacovC, 4},
     {"_tfarima_pacorrC", (DL_FUNC) &_tfarima_pacorrC, 3},
     {NULL, NULL, 0}

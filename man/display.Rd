@@ -13,6 +13,7 @@ display(um, ...)
   lag.max = 25,
   n.freq = 501,
   log.spec = FALSE,
+  lags.at = NULL,
   graphs = c("acf", "pacf", "spec"),
   byrow = FALSE,
   eq = TRUE,
@@ -31,6 +32,8 @@ display(um, ...)
 \item{n.freq}{number of frequencies for the spectrum.}
 
 \item{log.spec}{logical. If TRUE log spectrum is computed.}
+
+\item{lags.at}{the lags of the ACF/PACF at which tick-marks are to be drawn.}
 
 \item{graphs}{vector of graphs.}
 

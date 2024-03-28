@@ -6,7 +6,7 @@
 \alias{autocov.um}
 \title{Theoretical autocovariances of an ARMA model}
 \usage{
-\method{autocov}{stsm}(mdl, ...)
+\method{autocov}{stsm}(mdl, lag.max = NULL, arma = TRUE, varphi = FALSE, tol = 1e-04, ...)
 
 autocov(mdl, ...)
 
@@ -15,9 +15,18 @@ autocov(mdl, ...)
 \arguments{
 \item{mdl}{an object of class \code{um} or \code{stsm}.}
 
-\item{...}{additional arguments.}
-
 \item{lag.max}{maximum lag for autocovariances.}
+
+\item{arma}{logical. If TRUE, the autocovariances for the stationary ARMA
+model of the reduced form are computed. Otherwise, the autocovariances are
+only computed for the MA part.}
+
+\item{varphi}{logical. If TRUE, the varphi polynomial of the reduced form is
+also returned.}
+
+\item{tol}{tolerance to check if a root is close to one.}
+
+\item{...}{additional arguments.}
 }
 \value{
 A numeric vector.
@@ -30,9 +39,7 @@ The I polynomial is ignored.
 }
 \examples{
 # Local level model
-b <- 1
-C <- as.matrix(1)
-stsm1 <- stsm(b = b, C = C, s2v = c(lvl = 1469.619), s2u = c(irr = 15103.061))
+stsm1 <- stsm(b = 1, C = 1, S = diag(c(irr = 0.8, lvl = 0.04))
 autocov(stsm1)
 
 ar1 <- um(ar = "1-0.8B")

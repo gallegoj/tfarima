@@ -28,7 +28,7 @@ arma::colvec tacovC(const arma::colvec &phi, const arma::colvec &theta,
 
   if (nlags<0) nlags *= -1;
 
-  // Cross-covariances G_0, G_1, ..., G_nlags
+  // Autocovariances g_0, g_1, ..., g_nlags
   // are obtained by solving the SEL Ax=b
   
   vec g(nlags+1, fill::zeros); // g = [g_0, g_1, ..., g_nlags];

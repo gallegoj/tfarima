@@ -7,22 +7,27 @@
 \usage{
 factors(lp, ...)
 
-\method{factors}{lagpol}(lp, ...)
+\method{factors}{lagpol}(lp, tol = 1e-05, expand = FALSE, ...)
 }
 \arguments{
 \item{lp}{an object of class \code{lagpol}.}
 
 \item{...}{additional arguments.}
+
+\item{tol}{tolerance for real and unit roots.}
+
+\item{expand}{logical if the expanded polynomial should be returned.}
 }
 \value{
-\code{factors} returns a list with the simplifying factors
-of the lag polynomial.
+\code{factors} returns a list with the simplifying factors of the lag
+  polynomial or the expanded polynomial.
 }
 \description{
-\code{factors} extracts the simplifying factors of a polynomial
- in the lag operator.
+\code{factors} extracts the simplifying factors of a polynomial in the lag
+operator by replacing, if needed, its approximate unit or real roots to exact
+unit or real roots.
 }
 \examples{
-factors( as.lagpol(c(1, rep(0, 11), -1)) ) 
+factors( as.lagpol(c(1, rep(0, 11), -1)) )
 
 }

@@ -7,7 +7,17 @@
 \usage{
 sform(mdl, ...)
 
-\method{sform}{um}(mdl, z = NULL, envir = NULL, ...)
+\method{sform}{um}(
+  mdl,
+  z = NULL,
+  msoe = TRUE,
+  index = NULL,
+  nnls = NULL,
+  cform = TRUE,
+  tol = 1.490116e-08,
+  envir = NULL,
+  ...
+)
 }
 \arguments{
 \item{mdl}{an object of class \code{um}.}
@@ -16,19 +26,30 @@ sform(mdl, ...)
 
 \item{z}{an optional time series.}
 
+\item{msoe}{logical, TRUE for multiple source of errors and FALSE for single
+source of error.}
+
+\item{index}{an optional vector of integers both to group common variances or
+to fix some variances to zero.}
+
+\item{cform}{logical. TRUE for contemporaneous form and FALSE for future
+form.}
+
+\item{tol}{tolerance to check if the elements of b and C are zero.}
+
 \item{envir}{environment, see "\code{\link{um}}".}
 }
 \value{
 An object of class \code{stsm}
 }
 \description{
-\code{sform} finds the structural form for an ARIMA model from its the eventual
-forecast function.
+\code{sform} finds the structural form for an ARIMA model from its the
+eventual forecast function.
 }
 \examples{
 
-airl <- um(i = list(1, c(1, 12)), ma = "(1 - 0.86B)(1 - 0.8B12)")
-sf <- sform(airl)
+airl <- um(i = list(1, c(1, 12)), ma = "(1 - 0.8B)(1 - 0.8B12)")
+sf <- sform(airl, index = c(1, 0, rep(2, 11)))
 sf
 
 }

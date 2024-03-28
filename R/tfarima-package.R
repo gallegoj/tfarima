@@ -46,7 +46,7 @@
 #' @importFrom stats plot.ts pnorm predict printCoefmat qnorm resid residuals  
 #' @importFrom stats rnorm sd start time ts tsdiag update var window rbinom
 #' @importFrom stats toeplitz
-#' @importFrom graphics plot abline axis layout lcm legend lines mtext par
-#' @importFrom graphics plot.new points text title
+#' @importFrom graphics abline axis hist layout lcm legend lines mtext par
+#' @importFrom graphics plot  plot.new points text title
 #' @useDynLib tfarima, .registration=TRUE
 NULL

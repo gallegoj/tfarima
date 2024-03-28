@@ -1,8 +1,8 @@
 Package: tfarima
 Type: Package
 Title: Transfer Function and ARIMA Models
-Version: 0.3.5
-Date: 2022-05-20
+Version: 0.3.6
+Date: 2024-04-28
 Authors@R: person("Jose L.", "Gallego", email = "jose.gallego@unican.es",
   role = c("aut", "cre"))
 Description: Building customized transfer function and ARIMA models with multiple operators and parameter restrictions. Functions for model identification, model estimation (exact or conditional maximum likelihood), model diagnostic checking, automatic outlier detection, calendar effects, forecasting and seasonal adjustment. See Bell and Hillmer (1983) <doi:10.1080/01621459.1983.10478005>, Box, Jenkins, Reinsel and Ljung <ISBN:978-1-118-67502-1>, Box, Pierce and Newbold (1987) <doi:10.1080/01621459.1987.10478430>, Box and Tiao (1975) <doi:10.1080/01621459.1975.10480264>, Chen and Liu (1993) <doi:10.1080/01621459.1993.10594321>.

@@ -2,9 +2,9 @@
 % Please edit documentation in R/stsm.R
 \name{stsm}
 \alias{stsm}
-\title{Structural Time Series models}
+\title{Structural time series models}
 \usage{
-stsm(y, b, C, fSv, s2v, s2u = 1, xreg = NULL, bc = FALSE, fit = TRUE, ...)
+stsm(y, b, C, S, xreg = NULL, bc = FALSE, cform = TRUE)
 }
 \arguments{
 \item{y}{an object of class \code{ts}.}
@@ -13,38 +13,38 @@ stsm(y, b, C, fSv, s2v, s2u = 1, xreg = NULL, bc = FALSE, fit = TRUE, ...)
 
 \item{C}{matrix of constants.}
 
-\item{fSv}{function to create the covariance matrix of v_t.}
-
-\item{s2v}{variances of the vector error v_t in the state equation.}
-
-\item{s2u}{variance of the error u_t in the observation equation.}
+\item{S}{covariance matrix of the error vector (u_t, v_t).}
 
 \item{xreg}{matrix of regressors.}
 
 \item{bc}{logical. If TRUE logs are taken.}
 
-\item{fit}{logical. If TRUE, model is fitted.}
-
-\item{...}{other arguments.}
+\item{cform}{logical. If TRUE station equation is given in contemporaneous
+form, otherwise it is written in future form.}
 }
 \value{
 An object of class \code{stsm}.
 }
 \description{
 \code{stsm} creates an S3 object representing a time-invariant structural
-time series model.
+time series model:
 }
 \details{
-y_t = b'x_t + u_t (observation equation), 
-x_t = Cx_t-1 + v_t (state equation).
+y(t) = b'x(t) + u(t) (observation equation), 
+x(t+j) = Cx(t+j-1) + v(t) (state equation),
+j = 0 for contemporaneous form or 1 for future form.
 }
 \examples{
 # Local level model
 b <- 1
 C <- as.matrix(1)
-stsm1 <- stsm(Nile, b, C, s2v = c(lvl = 0.5), s2u = c(irr = 1))
+stsm1 <- stsm(Nile, b, C, S = diag(c(irr = 1, lvl = 0.5)) )
 stsm1
 }
 \references{
-Durbin, J. and Koopman, S.J. (2012) Time Series Analysis
+Durbin, J. and Koopman, S.J. (2012) Time Series Analysis by State Space
+Methods, 2nd ed., Oxford University Press, Oxford.
+
+Harvey, A.C. (1989) Forecasting, Structural Time Series Models and the Kalman
+Filter. Cambridge University Press, Cambridge.
 }

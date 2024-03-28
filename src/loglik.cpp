@@ -111,7 +111,6 @@ double ellarmaC(const arma::colvec &w, const arma::colvec &phi, const arma::colv
 
   ssr0 = Xy.t()*aux*FVF*Xy;
   ssr -= ssr0(0, 0);
-  
   llf = -0.5*n*( 1.0 + log(2*datum::pi) + log(ssr/n) + log(detXX)/n );
       
   return llf;

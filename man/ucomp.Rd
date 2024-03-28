@@ -19,8 +19,8 @@ ucomp(mdl, ...)
 \method{ucomp}{um}(
   mdl,
   z = NULL,
-  method = c("mixed", "forecast", "backcast"),
-  envir = NULL,
+  method = c("msx", "msx0", "mixed", "forecast", "backcast"),
+  envir = parent.frame(),
   ...
 )
 }

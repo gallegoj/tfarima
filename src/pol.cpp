@@ -60,7 +60,11 @@ arma::mat sortrootsC(const arma::cx_colvec &r) {
     T(j, 0) = cx.real();  T(j, 1) = cx.imag();
     T(j, 2) = abs(cx);
     T(j, 3) = acos( T(j, 0)/T(j, 2) )/(2.0*datum::pi);
-    if ( simeqC(T(j, 3), 0) ) T(j, 3) = 0; 
+    if ( simeqC(pow(T(j, 1), 2), 0) ) {
+      T(j, 1) = 0;
+      if (T(j, 0) > 0) T(j, 3) = 0;
+      else T(j, 3) = 0.5;
+    } 
     T(j, 4) = 1.0/T(j, 3);
     T(j, 5) = 1;
   }
@@ -178,6 +182,12 @@ arma::mat roots2polC(arma::mat A, bool check) {
   }
   
   if (i == r) {
+    if (check) {
+      if(A(i, 2) < 1) {
+        A(i, 2) = 1/A(i, 2);
+        A(i, 0) = 1/A(i, 0);
+      }
+    }
     pol1(1) = -1/A(i, 0);
     for (j = 0; j < int(A(i, 5)); j++)
       pol = polymultC(pol, pol1);
@@ -263,9 +273,23 @@ arma::colvec polymultC(const arma::colvec &pol1, const arma::colvec &pol2) {
   return pol;
 }
 
-
-// [[Rcpp::export]]
-arma::colvec polydivC(const arma::colvec &pol1, const arma::colvec &pol2, bool rem) {
+// Polynomial division
+//
+// \code{polydivC} computes the quotient of two lag polynomials c(B) =
+// a(B)/b(B).
+//
+// @param pol1,pol2 are numeric vectors with the coefficients of two
+//   polynomials.
+// @param rem logical. If true, the function returns the remainder of the
+//   division return; if false, the quotient is returned.
+// @ param tol tolerance to check if a value is null.
+//
+// @return \code{polydivC} returns a column vector with the coefficients of the
+//   quotient or remainder polynomial.
+//
+//   [[Rcpp::export]]
+arma::colvec polydivC(const arma::colvec &pol1, const arma::colvec &pol2, 
+                      bool rem, double tol) {
   
   int i, j, l1, l2, l3;
   double d;
@@ -277,7 +301,6 @@ arma::colvec polydivC(const arma::colvec &pol1, const arma::colvec &pol2, bool r
   }
   l3 = l1 - l2;
   
-
   colvec p1 = pol1;
   colvec p2 = pol2;
   colvec q(l3+1, fill::zeros);
@@ -291,13 +314,13 @@ arma::colvec polydivC(const arma::colvec &pol1, const arma::colvec &pol2, bool r
   
   if (!rem) {  
     for (j = l3; j > 0; j--) { 
-      if(q(j) == 0) q.shed_row(j);
+      if(simeqC(q(j), 0, tol)) q.shed_row(j);
       else break;
     }
     return q;  
   } else {
       for (j = l1; j > 0; j--) { 
-        if(p1(j) == 0) p1.shed_row(j);
+        if(simeqC(p1(j), 0, tol)) p1.shed_row(j);
         else break;
       }
       return p1;  
@@ -305,22 +328,20 @@ arma::colvec polydivC(const arma::colvec &pol1, const arma::colvec &pol2, bool r
 }
 
 // [[Rcpp::export]]
-arma::colvec polygcdC(const arma::colvec &pol1, const arma::colvec &pol2) {
+arma::colvec polygcdC(const arma::colvec &pol1, const arma::colvec &pol2,
+                      double tol) {
   
-  if (pol2.n_elem > pol1.n_elem) return polygcdC(pol2, pol1);
+  if (pol2.n_elem > pol1.n_elem)
+    return polygcdC(pol2, pol1, tol);
   colvec p1 = pol1;
   colvec p2 = pol2;
   colvec p3;
-  while(!simeqC(p2(0), 0, 1.490116e-08) || p2.n_elem > 1) {
-    p3 = polydivC(p1, p2, true);
+  while(!(simeqC(p2(0), 0, tol) && p2.n_elem == 1) ) { //    
+    p3 = polydivC(p1, p2, true, tol);
     p1 = p2;
     p2 = p3;
   }
-  if(p1.n_elem == 1) 
-    return colvec(1, fill::ones);
-  else {
-    return p1; // /p1(0);  
-  }
+  return p1/p1(0);  
 }
 
 // [[Rcpp::export]]
@@ -374,57 +395,6 @@ arma::colvec polyraiseC(const arma::colvec &pol, int d) {
     }
     return pol1;
   }
-}
-
-// Polynomial factors
-//
-// \code{polyfactorsC} C function called by the R function polyroots 
-// to compute the roots of a polynomial in the lag operator.
-//
-// @param pol Numeric vector, c(1, coef_1, ..., coef_p).
-// 
-// @return \code{polyfactorsC} returns a matrix with five columns showing 
-// the real and imaginary parts and the modulus, frequency and period
-// of each root.  
-// 
-// @section Warning:
-// Use the R function polyroots insted of polyrootsC.
-// 
-// [[Rcpp::export]]
-arma::mat polyfactorsC(const arma::colvec &pol) {
-
-  int h, i, r;
-  mat A = polyrootsC(pol);
-  r = A.n_rows;
-  mat B(r, 4, fill::zeros);
-  h = 0;
-  r--;
-  for (i = 0; i <  r; i++) {
-    if ( (A(i, 2) == A(i+1, 2)) && (A(i, 1) == -A(i+1, 1)) ) {
-      B(h, 0) = 2;
-      B(h, 1) = 1;
-      B(h, 2) = -2*A(i, 0);
-      B(h, 3) = pow(A(i, 2), 2);
-      i++;
-    } else {
-      B(h, 0) = 1;
-      B(h, 1) = 1;
-      B(h, 2) = -A(i, 0);
-    } 
-    h++;
-  }
-  
-  if (i == r) {
-    B(h, 0) = 1;
-    B(h, 1) = 1;
-    B(h, 2) = -A(i, 0);
-    h++;
-  }
-  
-  B.resize(h, 4);
-  
-  return B;
-  
 }
 
 // Rational polynomial.

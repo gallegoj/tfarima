@@ -128,7 +128,7 @@ InterventionVar <- function(Y, date, type = c("P", "S", "R"), n.ahead = 0) {
   x <- ts(integer(nY), start = start, frequency = s)
   if (s > 1) n <- (date[1] - start[1] + 1)*s - (start[2] - 1) - (s - date[2])
   else n <- (date[1] - start[1] + 1)*s
-  stopifnot(n > 0 || n <= nY)
+  stopifnot(n > 0 && n <= nY)
   x[n] <- 1
   if (type != "P") {
     x <- cumsum(x)

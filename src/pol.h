@@ -8,12 +8,13 @@ arma::mat combinerootsC(arma::mat T);
 arma::mat roots2polC(arma::mat A, bool check = false);
 bool admregC(const arma::colvec &pol, bool ar);
 arma::colvec polymultC(const arma::colvec &pol1, const arma::colvec &pol2);
-arma::colvec polydivC(const arma::colvec &pol1, const arma::colvec &pol2, bool rem = false);
-arma::colvec polygcdC(const arma::colvec &pol1, const arma::colvec &pol2);
+arma::colvec polydivC(const arma::colvec &pol1, const arma::colvec &pol2, 
+                      bool rem = false, double tol = 1e-5);
+arma::colvec polygcdC(const arma::colvec &pol1, const arma::colvec &pol2,
+                      double tol = 1e-5);
 arma::colvec polyprsC(const arma::colvec &pol1, const arma::colvec &pol2);
 arma::colvec polyraiseC(const arma::colvec &pol, int d);
 arma::colvec polyratioC(const arma::colvec &num, const arma::colvec &den, int d);
-arma::mat polyfactorsC(const arma::colvec &pol);
 bool simeqC(double x, double y, double tol = 1e-5);
 bool ltC(double x, double y, double tol = 1e-5);
 

@@ -374,9 +374,7 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
     if (main !=  "") 
       title(main = main, outer = TRUE, cex.main = 1.10)
   }
-
   invisible(NULL)
-  
 }
 
 tslabel <- function(ylab, bc, d, D, s, S) {

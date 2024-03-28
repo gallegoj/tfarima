@@ -4,23 +4,30 @@
 \alias{fit.stsm}
 \title{Estimation of a STS model}
 \usage{
-\method{fit}{stsm}(mdl, method = "BFGS", show.iter = FALSE, ...)
+\method{fit}{stsm}(mdl, updmdl, par, fixed = NULL, show.iter = FALSE, tol = 1e-04, ...)
 }
 \arguments{
 \item{mdl}{an object of class \code{\link{stsm}}.}
 
-\item{method}{argument of the \code{optim} function.}
+\item{par}{argument passed to the \code{updmod} function.}
+
+\item{fixed}{vector of logical values indicating which parameters are fixed
+(TRUE) or estimated (FALSE).}
 
 \item{show.iter}{logical value to show or hide the estimates at the different
 iterations.}
 
+\item{tol}{tolerance to check if a root is close to one.}
+
 \item{...}{other arguments.}
+
+\item{updmod}{function to update the parameters of the model.}
 }
 \value{
-An object of class "stsm" with the estimated variances.
+An object of class "stsm" with estimated parameters.
 }
 \description{
-\code{fit} fits the stsm to the time series y.
+\code{fit} is used to estimate a stsm model.
 }
 \examples{
 # Local level model

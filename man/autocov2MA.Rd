@@ -4,13 +4,20 @@
 \alias{autocov2MA}
 \title{MA process compatible with a vector of autocovariances}
 \usage{
-autocov2MA(x)
+autocov2MA(x, method = c("roots", "acov"), tol = 1e-05)
 }
 \arguments{
-\item{x}{a vector of q autocovariances.}
+\item{x}{a numeric vector with q autocovariances.}
+
+\item{method}{character. Two methods are provided to compute the MA
+parameters: roots, based on the roots of the autocovariance generating
+function; acov, based on the non-linear system of equations relating
+autocovariances and MA parameters.}
+
+\item{tol}{tolerance to check if an autocovariance is null.}
 }
 \value{
-A vector of the form c(sig2, 1, -theta1, ..., -thetaq).
+A vector of the form c(s2, 1, -theta1, ..., -thetaq).
 }
 \description{
 \code{autocov2MA} computes the error variance and the MA polynomial from a
@@ -18,5 +25,6 @@ vector of autocovriances.
 }
 \examples{
 ma1 <- um(ma = "1 - 0.8B", sig2 = 0.5)
-autocov2MA(autocov(ma1, 2))
+autocov2MA(autocov(ma1, 1))
+autocov2MA(autocov(ma1, 1), "acov")
 }
