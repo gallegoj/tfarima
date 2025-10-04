@@ -7,21 +7,32 @@
 \usage{
 signal(mdl, ...)
 
-\method{signal}{tfm}(mdl, y = NULL, diff = TRUE, envir = NULL, ...)
+\method{signal}{tfm}(
+  mdl,
+  y = NULL,
+  diff = FALSE,
+  type = c("xreg", "inputs"),
+  envir = parent.frame(),
+  ...
+)
 }
 \arguments{
 \item{mdl}{an object of the class \code{tfm}.}
 
 \item{...}{additional arguments.}
 
-\item{y}{output of the TF model if it is different to that of the 
-\code{tfm} object.}
+\item{y}{output of the TF model if it is different to that of the \code{tfm}
+object.}
 
-\item{diff}{logical. If TRUE, the noise is differenced with
-the "i" operator of the univariate model of the noise.}
+\item{diff}{logical. If TRUE, the signal is differenced with the "i" operator
+of the univariate model of the noise.}
 
-\item{envir}{environment in which the function arguments are evaluated.
-If NULL the calling environment of this function will be used.}
+\item{type}{Character vector specifying signal components to extract: "xreg"
+for exogenous regressors only,"inputs" for transfer function inputs only.
+If both provided (default), includes all components.}
+
+\item{envir}{Environment in which the function arguments are evaluated. By
+default, the calling environment is used.}
 }
 \value{
 A "ts" object.

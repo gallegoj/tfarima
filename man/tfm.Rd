@@ -2,7 +2,7 @@
 % Please edit documentation in R/tfm.R
 \name{tfm}
 \alias{tfm}
-\title{Transfer function models}
+\title{Transfer Function Model Constructor}
 \usage{
 tfm(
   output = NULL,
@@ -10,40 +10,68 @@ tfm(
   inputs = NULL,
   noise,
   fit = TRUE,
-  envir = NULL,
   new.name = TRUE,
+  envir = parent.frame(),
   ...
 )
 }
 \arguments{
-\item{output}{a ts object or a numeric vector.}
+\item{output}{A numeric vector or \code{ts} object representing the 
+dependent (output) time series. If \code{NULL}, it is taken from 
+\code{noise$z}.}
 
-\item{xreg}{a matrix of regressors.}
+\item{xreg}{A numeric matrix or \code{ts} object of exogenous regressors. 
+Columns correspond to different regressors. Defaults to \code{NULL}.}
 
-\item{inputs}{a list of tf objects.}
+\item{inputs}{A list of transfer function objects of class \code{tf}. 
+Each element represents one stochastic input. Can also be a single 
+\code{tf} object. Defaults to \code{NULL}.}
 
-\item{noise}{a um object for the noise.}
+\item{noise}{An object of class \code{um} describing the univariate 
+noise model. This defines the ARIMA-type structure for the residuals.}
 
-\item{fit}{logical. If TRUE, model is fitted.}
+\item{fit}{Logical. If \code{TRUE} (default), the model parameters are 
+estimated by maximum likelihood after construction.}
 
-\item{envir}{environment in which the function arguments are evaluated. If
-NULL the calling environment of this function will be used.}
+\item{new.name}{Logical. Internal use. If \code{TRUE} (default), a new 
+name is assigned to the output series. Otherwise, the name stored in 
+\code{noise$z} is preserved.}
 
-\item{new.name}{logical. Argument used internally: if TRUE a new name is
-assigned to the output, otherwise it keeps its name saved in noise$z.}
+\item{envir}{Environment in which the function arguments are evaluated. 
+If \code{NULL}, the calling environment is used.}
 
-\item{...}{additional arguments.}
+\item{...}{Additional arguments passed to \code{\link{fit.tfm}} when 
+\code{fit = TRUE}.}
 }
 \value{
-An object of the class \code{tfm}.
+Object of class \code{tfm} with components: output, xreg, inputs, 
+  noise, param, kx, k, optim, method, and call.
 }
 \description{
-\code{tfm} creates a multiple input transfer function model.
+Creates and optionally fits a multiple-input transfer function model. 
+A transfer function model relates an output time series to one or more 
+input series (transfer functions), exogenous regressors, and a noise model.
+}
+\details{
+All series must have the same frequency. Input series must span at least 
+the same period as output. The function applies differencing and Box-Cox 
+transformation as specified in \code{noise}.
+}
+\examples{
+\dontrun{
+Y <- seriesJ$Y - mean(seriesJ$Y)
+X <- seriesJ$X - mean(seriesJ$X)
+umx <- um(X, ar = 3)
+umy <- fit(umx, Y)
+tfx <- tfest(Y, X, delay = 3, p = 2, q = 2, um.x = umx, um.y = umy)
+tfmy <- tfm(Y, inputs = tfx, noise = um(ar = 2))
+}
+
 }
 \references{
-Box, G.E., Jenkins, G.M., Reinsel, G.C. and Ljung, G.M. (2015) Time Series
-Analysis: Forecasting and Control. John Wiley & Sons, Hoboken.
+Box, G. E., Jenkins, G. M., Reinsel, G. C., & Ljung, G. M. (2015).
+\emph{Time Series Analysis: Forecasting and Control} (5th ed.). Wiley.
 }
 \seealso{
-\code{\link{tf}} and \code{\link{um}}.
+\code{\link{tf}}, \code{\link{um}}, \code{\link{fit.tfm}}
 }

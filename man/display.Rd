@@ -17,6 +17,7 @@ display(um, ...)
   graphs = c("acf", "pacf", "spec"),
   byrow = FALSE,
   eq = TRUE,
+  cex = 1.25,
   ...
 )
 
@@ -40,6 +41,8 @@ display(um, ...)
 \item{byrow}{orientation of the graphs.}
 
 \item{eq}{logical. If TRUE the model equation is used as title.}
+
+\item{cex}{double. Font size for equation text.}
 }
 \description{
 \code{display} shows graphs characterizing one or a list of ARMA models.

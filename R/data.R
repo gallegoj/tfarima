@@ -53,3 +53,18 @@
 #'
 #' @source \url{https://drive.google.com/file/d/1LP8aMIQewMrxgOlrg9rN3eWHhZuUsY8K/view?usp=sharing}
 "Wtelephone"
+
+#' Monthly Retail Sales: Building Material and Supplies Dealers (NAICS 4441)
+#'
+#' Monthly U.S. retail sales for building material and supplies dealers
+#' (NAICS code 4441), in millions of dollars, seasonally adjusted.
+#' Source: U.S. Census Bureau, Monthly Retail Trade Survey (via FRED).
+#'
+#' @format A time series object of class \code{ts} with frequency 12,
+#' starting in January 1992 and ending in December 2024.
+#' @references U.S. Census Bureau, Monthly Retail Trade Survey.
+#' FRED series code: MRTSSM4441USS.
+#' @examples
+#' plot(BuildingMat, ylab = "Millions of dollars",
+#'      main = "Building Material and Supplies Dealers")
+"BuildingMat"

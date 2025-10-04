@@ -4,20 +4,24 @@
 \alias{roots2lagpol}
 \title{Lag polynomial from roots}
 \usage{
-roots2lagpol(x, ...)
+roots2lagpol(x, lp = TRUE, ...)
 }
 \arguments{
-\item{x}{an object of class \code{complex}.}
+\item{x}{a vector of real and/or complex roots.}
+
+\item{lp}{logical. If TRUE, a object of class \code{lagpol} is returned;
+otherwise a numeric vector is returned.}
 
 \item{...}{additional arguments.}
 }
 \value{
-A lag polynomial.
+A lag polynomial or a numeric vector.
 }
 \description{
 \code{roots2lagpol} creates a lag polynomial from its roots.
 }
 \examples{
-roots2lagpol(polyroot(c(1,-1)))
+roots2lagpol(polyroot(c(1, -1)))
+roots2lagpol(polyroot(c(1, -1, 1)))
 
 }

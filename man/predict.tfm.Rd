@@ -2,7 +2,7 @@
 % Please edit documentation in R/tfm.R
 \name{predict.tfm}
 \alias{predict.tfm}
-\title{Forecasting with transfer function models}
+\title{Forecast Transfer Function Model}
 \usage{
 \method{predict}{tfm}(
   object,
@@ -17,38 +17,48 @@
 )
 }
 \arguments{
-\item{object}{an object of class \code{\link{um}}.}
+\item{object}{A fitted \code{tfm} object.}
 
-\item{newdata}{new data for the predictors for the forecast period. This is
-a matrix if there is more than one predictor. The number of columns is
-equal to the number of predictors, the number of rows equal to
-\code{n.ahead}. If there is one predictor only the data may be provided
-alternatively as a vector.}
+\item{newdata}{Optional matrix or vector of future values for exogenous
+regressors and inputs. Rows correspond to forecast horizon, columns to
+predictors.}
 
-\item{y}{an object of class \code{\link{ts}}.}
+\item{y}{Optional \code{ts} object for alternative output series.}
 
-\item{ori}{the origin of prediction. By default, it is the last observation.}
+\item{ori}{Forecast origin (observation index). Default is last observation.}
 
-\item{n.ahead}{number of steps ahead.}
+\item{n.ahead}{Number of steps ahead to forecast. Default is series frequency.}
 
-\item{level}{confidence level.}
+\item{level}{Confidence level(s) for prediction intervals (0-1). Default is 0.95.
+Can be a vector for multiple intervals.}
 
-\item{i}{transformation of the series \code{y} to be forecasted. It is a
-lagpol as those of a \code{\link{um}} object.}
+\item{i}{Optional differencing operator (lagpol) to apply before forecasting.}
 
-\item{envir}{environment in which the function arguments are evaluated.
-If NULL the calling environment of this function will be used.}
+\item{envir}{Environment for evaluation. NULL uses calling environment.}
 
-\item{...}{additional arguments.}
+\item{...}{Additional arguments (currently unused).}
+}
+\value{
+Object of class \code{predict.tfm} containing:
+\item{z}{Complete series including forecasts}
+\item{rmse}{Root mean square error for each forecast}
+\item{low, upp}{Lower and upper prediction interval bounds (matrices)}
+\item{level}{Confidence level(s) used}
+\item{dates}{Time points for all observations}
+\item{ori, ori.date}{Forecast origin (index and date)}
+\item{n.ahead}{Number of forecasts}
 }
 \description{
-\code{predict} computes point and interval predictions for a time series
-based on a \code{tfm} object.
+Computes point forecasts and prediction intervals for transfer function models.
 }
 \details{
-Forecasts for the inputs of a \code{tfm} object can be provided
-in tree ways: (1) extending the time series with forecasts so that the length
-of the intput is greater than the length of the output, (2) computed 
-internally from the \code{um} object associated to the input and (3) with 
-the \code{newdata} argument.
+Future values for transfer function inputs can be provided in three ways:
+(1) extending input series beyond output length, (2) automatic forecasting
+from associated \code{um} models, or (3) via the \code{newdata} argument.
+
+If Box-Cox transformation was used, forecasts are back-transformed and
+intervals adjusted accordingly.
+}
+\seealso{
+\code{\link{tfm}}, \code{\link{fit.tfm}}
 }

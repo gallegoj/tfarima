@@ -4,7 +4,7 @@
 \alias{setinputs.tfm}
 \alias{setinputs}
 \alias{setinputs.um}
-\title{\code{setinputs} adds new inputs into a transfer function model.}
+\title{Add or Replace Inputs in Models}
 \usage{
 \method{setinputs}{tfm}(
   mdl,
@@ -20,21 +20,29 @@ setinputs(mdl, ...)
 \method{setinputs}{um}(mdl, xreg = NULL, inputs = NULL, y = NULL, envir = NULL, ...)
 }
 \arguments{
-\item{mdl}{a \code{umm} or \code{tfm} object.}
+\item{mdl}{A \code{um} or \code{tfm} object.}
 
-\item{xreg}{a matrix of inputs.}
+\item{xreg}{Optional matrix of exogenous regressors.}
 
-\item{inputs}{a list of tf objects.}
+\item{inputs}{Optional list of \code{tf} objects (only for \code{tfm}).}
 
-\item{y}{an optional ts object.}
+\item{y}{Optional \code{ts} object for output series.}
 
-\item{envir}{an environment.}
+\item{envir}{Environment for evaluation. Default is calling environment.}
 
-\item{...}{other arguments.}
+\item{...}{Additional arguments passed to model constructor.}
 }
 \value{
 A \code{tfm} object.
 }
 \description{
-\code{setinputs} adds new inputs into a transfer function model.
+Adds new inputs to transfer function or univariate models.
+}
+\details{
+For \code{tfm} objects: If the model already has inputs of the same type,
+new ones are appended (combined). The model is re-fitted by default unless
+\code{fit = FALSE}.
+}
+\seealso{
+\code{\link{um}}, \code{\link{tfm}}
 }

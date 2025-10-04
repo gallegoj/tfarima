@@ -7,37 +7,54 @@
 tf(
   x = NULL,
   delay = 0,
-  w0 = 0,
+  w0 = 0.01,
   ar = NULL,
   ma = NULL,
   um = NULL,
   n.back = NULL,
   par.prefix = "",
-  envir = NULL
+  envir = parent.frame()
 )
 }
 \arguments{
-\item{x}{input, a ts object or a numeric vector.}
+\item{x}{Input time series. A ts object or numeric vector. If NULL, input
+should be provided inside the \code{um} object.}
 
-\item{delay}{integer.}
+\item{delay}{Integer. Number of periods to delay the input (d in the transfer
+function).}
 
-\item{w0}{constant term of the polynomial V(B), double.}
+\item{w0}{Numeric. Constant term of the transfer function polynomial V(B).}
 
-\item{ar}{list of stationary AR polynomials.}
+\item{ar}{Character string or list. Specification of autoregressive
+polynomials in the denominator.}
 
-\item{ma}{list of MA polynomials.}
+\item{ma}{Character string or list. Specification of moving average
+polynomials in the numerator.}
 
-\item{um}{univariate model for stochastic input.}
+\item{um}{Univariate model object. Model for the stochastic component of the
+input series.}
 
-\item{n.back}{number of backcasts to extend the input.}
+\item{n.back}{Integer. Number of backcasts to compute for extending the input
+series backward.}
 
-\item{par.prefix}{prefix name for parameters.}
+\item{par.prefix}{Character. Prefix for parameter names in transfer function.}
 
-\item{envir}{environment in which the function arguments are evaluated.
-If NULL the calling environment of this function will be used.}
+\item{envir}{Environment. Environment for evaluating function arguments. If
+NULL, uses the calling environment.}
 }
 \value{
-An object of the class "tf".
+An object of class "tf" containing the transfer function specification.
+Key components include:
+\describe{
+  \item{x}{Input time series data (possibly extended with backcasts).}
+  \item{delay}{Number of periods delay in the transfer function.}
+  \item{w0}{Constant gain parameter.}
+  \item{phi}{AR polynomial coefficients (denominator).}
+  \item{theta}{MA polynomial coefficients (numerator).}
+  \item{p, q}{Orders of AR and MA polynomials respectively.}
+  \item{param}{Named list of all model parameters.}
+  \item{um}{Univariate model for the input series.}
+}
 }
 \description{
 \code{tf} creates a rational transfer function for an input, V(B) = w0(1 -

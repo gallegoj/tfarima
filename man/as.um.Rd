@@ -4,10 +4,12 @@
 \alias{as.um}
 \title{Convert \code{arima} into \code{um}.}
 \usage{
-as.um(arima)
+as.um(arima, ...)
 }
 \arguments{
 \item{arima}{an object of class \code{arima}.}
+
+\item{...}{additional arguments.}
 }
 \value{
 An object of class \code{um}.

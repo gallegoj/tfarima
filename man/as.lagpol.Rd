@@ -2,23 +2,24 @@
 % Please edit documentation in R/lagpol.R
 \name{as.lagpol}
 \alias{as.lagpol}
-\title{Lag polynomial}
+\title{Lag polynomial converter}
 \usage{
 as.lagpol(pol, p = 1, coef.name = "a")
 }
 \arguments{
-\item{pol}{a numeric vector.}
+\item{pol}{the numeric vector to be converted into an object of class lag 
+polynomial.}
 
-\item{p}{integer power.}
+\item{p}{the exponent of the lag polynomial, positive integer.}
 
-\item{coef.name}{name prefix for coefficients.}
+\item{coef.name}{name prefix for coefficients, character.}
 }
 \value{
 An object of class \code{lagpol}.
 }
 \description{
-\code{as.lagpol} converts a numeric vector c(1, -a_1, \dots, -a_d) into 
-a lag polynomial \eqn{(1 - a_1 B - ... - a_p B^p)}.
+\code{as.lagpol} converts a numeric vector \code{c(1, -a_1, \dots, -a_d)} 
+into a lag polynomial \eqn{(1 - a_1 B - ... - a_p B^p)}.
 }
 \examples{
 as.lagpol(c(1, -0.8))

@@ -2,15 +2,22 @@
 % Please edit documentation in R/lagpol.R
 \name{printLagpol}
 \alias{printLagpol}
-\title{Print numeric vector as a lagpol object}
+\title{Print non-normalized polynomial as a lag polynomial}
 \usage{
-printLagpol(pol, digits = 2)
+printLagpol(pol, digits = 2, width = getOption("width"))
 }
 \arguments{
-\item{pol}{numeric vectors with the coefficients of a normalized polynomial.}
+\item{pol}{Numeric vector with the coefficients of a non-normalized polynomial. 
+The first element can be any numeric value, not necessarily 1.}
 
-\item{digits}{number of decimals.}
+\item{digits}{Integer. Number of significant digits to display. Default is 2.}
+
+\item{width}{Integer. Maximum number of characters per line. Default is the console width.}
+}
+\value{
+Invisibly returns the input vector.
 }
 \description{
-Print numeric vector as a lagpol object
+Prints a non-normalized polynomial as a \code{lagpol} object, preserving the 
+original coefficients.
 }

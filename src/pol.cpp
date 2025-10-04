@@ -192,7 +192,6 @@ arma::mat roots2polC(arma::mat A, bool check) {
     for (j = 0; j < int(A(i, 5)); j++)
       pol = polymultC(pol, pol1);
   }
-
   return pol;
   
 }

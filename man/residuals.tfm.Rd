@@ -2,27 +2,32 @@
 % Please edit documentation in R/tfm.R
 \name{residuals.tfm}
 \alias{residuals.tfm}
-\title{Residuals of a transfer function model}
+\title{Extract Residuals from Transfer Function Model}
 \usage{
-\method{residuals}{tfm}(object, y = NULL, method = c("exact", "cond"), envir = NULL, ...)
+\method{residuals}{tfm}(
+  object,
+  y = NULL,
+  method = c("exact", "cond"),
+  envir = parent.frame(),
+  ...
+)
 }
 \arguments{
-\item{object}{a \code{tfm} object.}
+\item{object}{A fitted \code{tfm} object.}
 
-\item{y}{output of the TF model (if it is different to that of the "tfm" 
-object).}
+\item{y}{Optional \code{ts} object for alternative output series.}
 
-\item{method}{a character string specifying the method to compute the
-residuals, exact or conditional.}
+\item{method}{Character: "exact" estimates presample values  to
+compute residuals; "cond" fixes presample values at zero.}
 
-\item{envir}{environment in which the function arguments are evaluated.
-If NULL the calling environment of this function will be used.}
+\item{envir}{Environment for evaluation. NULL uses calling environment.}
 
-\item{...}{additional arguments.}
+\item{...}{Currently unused.}
 }
 \value{
-A "ts" object.
+A \code{ts} object containing model residuals with the same
+  time series attributes as the output series.
 }
 \description{
-\code{residuals} computes the exact or conditional residuals of a TF model.
+Computes exact or conditional residuals from a fitted transfer function model.
 }

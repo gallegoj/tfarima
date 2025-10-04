@@ -2,7 +2,7 @@
 % Please edit documentation in R/tf.R
 \name{tfest}
 \alias{tfest}
-\title{Preestimates of a transfer function}
+\title{Helper function to create a tf object}
 \usage{
 tfest(
   y,
@@ -14,35 +14,49 @@ tfest(
   um.x = NULL,
   n.back = NULL,
   par.prefix = "",
-  envir = NULL
+  envir = envir <- parent.frame()
 )
 }
 \arguments{
-\item{y}{output, a ts object or a numeric vector.}
+\item{y}{Output series, a ts object or numeric vector.}
 
-\item{x}{input, a ts object or a numeric vector.}
+\item{x}{Input series, a ts object or numeric vector.}
 
-\item{delay}{integer.}
+\item{delay}{Integer. Number of periods delay (default 0).}
 
-\item{p}{order of the AR polynomial, integer}
+\item{p}{Integer. Order of the AR polynomial (default 1).}
 
-\item{q}{order of the MA polynomial, integer.}
+\item{q}{Integer. Order of the MA polynomial (default 2).}
 
-\item{um.y}{univariate model for output, um object or NULL.}
+\item{um.y}{Univariate model for output series, um object or NULL.}
 
-\item{um.x}{univariate model for input, um object or NULL.}
+\item{um.x}{Univariate model for input series, um object or NULL.}
 
-\item{n.back}{number of backcasts.}
+\item{n.back}{Integer. Number of backcasts to compute.}
 
-\item{par.prefix}{prefix name for parameters.}
+\item{par.prefix}{Character. Prefix for parameter names.}
 
-\item{envir}{environment in which the function arguments are evaluated.
-If NULL the calling environment of this function will be used.}
+\item{envir}{Environment for evaluating arguments. If NULL, uses calling
+environment.}
 }
 \value{
-A "tf" S3 object
+An object of class \code{\link{tf}} containing preestimated transfer
+  function parameters.
 }
 \description{
-\code{tfest} provides preestimates of the transfer function
-between an output and an input.
+\code{tfest} estimates the transfer function
+ \deqn{V(B) = w_0 * (theta(B)/phi(B)) * B^d}
+that relates the input X_t to the output Y_t.
+}
+\details{
+Uses prewhitening to estimate initial parameter values.
+}
+\examples{
+
+Y <- seriesJ$Y - mean(seriesJ$Y)
+X <- seriesJ$X - mean(seriesJ$X)
+umx <- um(X, ar = 3)
+umy <- fit(umx, Y)
+tfx <- tfest(Y, X, delay = 3, p = 2, q = 2, um.x = umx, um.y = umy)
+
 }

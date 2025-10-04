@@ -11,24 +11,22 @@ using namespace arma;
 // @param g Numeric vector, c(g_0, g_1, ..., g_q).
 // 
 // @return \code{ma} returns a numeric vector 
-// c(sig, theta_1, ..., theta_q). 
+// c(theta_0, theta_1, ..., theta_q). 
 // 
 // [[Rcpp::export]]
-arma::colvec acovtomaC(const arma::colvec &g, int &code) {
-  int i, j, q, iter, niter;
-  bool again = true;
+arma::colvec acovtomaC(const arma::colvec &g, int &code, double tol, 
+                       int max_iter) {
+  int i, j, q, iter;
   code = 0;
   q = g.n_elem;
-  if (q == 1) return sqrt(g);
+  if (q == 1) return arma::colvec({sqrt(g(0))});
   
   vec f(q), t0(q, fill::zeros), t1(q), t2(q);
   mat T(q, q);
   
   t0(0) = sqrt(g(0));
-  t2 = - g;
   iter = 0;
-  niter = 100;
-  while(iter < niter) {
+  while(iter < max_iter) {
     for (i = 0; i < q; i++) {
       for (j = 0; j < q-i; j++) T(i, j) = t0(i+j);
       for (j = q-i; j < q; j++) T(i, j) = 0;
@@ -37,31 +35,25 @@ arma::colvec acovtomaC(const arma::colvec &g, int &code) {
       for (j = 0; j < q-i; j++)
         f(i) += t0(j)*t0(i+j);
     }
-    t1 = t0 - solve(T, f);
-    if ( max(abs(t1-t0)) < 1e-6 ){
+    if ( all(abs(f) < tol) ) {
       t1 = t0;
       break;
-    } else {
-      if (max(abs(t1)) < max(abs(t2)))
-        t2 = t1;
     }
+    
+    try {
+      t1 = t0 - solve(T, f, solve_opts::no_approx);
+    } catch (...) {
+      code = -1;
+      return t0;
+    }      
     t0 = t1;
     ++iter;
-    if (iter == niter && again) {
-      iter = 0;
-      checkmaC(t1);
-      again = false;
-    }
   }
+  
+  if (iter == max_iter)
+    code = -1;
 
-  if (iter == niter) {
-    code = 1;
-    t1 = t2;
-  }
-    
-  for (j = 1; j < q; j++)
-    t1(j) /= -t1(0);
-
+  //checkmaC(t1);
   return t1;
   
 }

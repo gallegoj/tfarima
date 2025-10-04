@@ -6,7 +6,7 @@
 \alias{sim.um}
 \title{Time series simulation form an ARIMA or TF model}
 \usage{
-\method{sim}{tfm}(mdl, n = 100, y0 = NULL, seed = NULL, ...)
+\method{sim}{tfm}(mdl, envir = parent.frame(), ...)
 
 sim(mdl, ...)
 
@@ -24,13 +24,12 @@ sim(mdl, ...)
 \arguments{
 \item{mdl}{an object of class \code{um} or \code{tfm}.}
 
-\item{n}{number of observations.}
-
-\item{y0}{initial conditions for the nonstationary series.}
-
-\item{seed}{an integer.}
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{other arguments.}
+
+\item{n}{number of observations.}
 
 \item{z0}{initial conditions for the nonstationary series.}
 
@@ -38,8 +37,7 @@ sim(mdl, ...)
 
 \item{a}{vector of innovations, optional.}
 
-\item{envir}{environment in which the function arguments are evaluated.
-If NULL the calling environment of this function will be used.}
+\item{seed}{an integer.}
 }
 \value{
 An object of class \code{ts}.

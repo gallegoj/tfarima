@@ -2,24 +2,16 @@
 % Please edit documentation in R/stsm.R
 \name{ks}
 \alias{ks}
-\alias{ks.stsm}
-\title{Kalman smoother for STS models}
+\title{Kalman smoother for SS models}
 \usage{
-ks(mdl, ...)
-
-\method{ks}{stsm}(mdl, x1 = NULL, P1 = NULL, ...)
+ks(mdl, x0 = NULL, P0 = NULL)
 }
 \arguments{
-\item{mdl}{an object of class \code{stsm}.}
+\item{mdl}{an object of class \code{ssm}.}
 
-\item{...}{additional arguments.}
+\item{x0}{initial state vector.}
 
-\item{x1}{initial state vector.}
-
-\item{P1}{covariance matrix of x1.}
-}
-\value{
-An list with the smoothed states and their covariance matrices.
+\item{P0}{covariance matrix of x0.}
 }
 \description{
 \code{ks} computes smoothed states and their covariance matrices.

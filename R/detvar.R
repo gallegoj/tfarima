@@ -221,7 +221,7 @@ sdummies <- function(Y, ref = 1, constant = FALSE, n.ahead = 0) {
 }
 
 
-easter.date <- function(year, easter.mon = FALSE) {
+easterDate <- function(year, easter.mon = FALSE) {
   a <- year %% 19
   b <- year %% 4
   c <- year %% 7
@@ -246,7 +246,7 @@ EasterVar <- function(x, len = 4, easter.mon = FALSE, n.ahead = 0) {
   x <- ts(double(n), start = start, frequency = 12)
   end <- end(x)  
   # first year
-  e <- easter.date(start[1], easter.mon)
+  e <- easterDate(start[1], easter.mon)
   if (start[2] <= e[1]) {
     n <- e[1] - start[2] + 1
     if (e[1] == 3) x[n] <- 1
@@ -258,7 +258,7 @@ EasterVar <- function(x, len = 4, easter.mon = FALSE, n.ahead = 0) {
   }
 
   for (y in (start[1]+1):(end[1]-1)) {
-    e <- easter.date(y, easter.mon)
+    e <- easterDate(y, easter.mon)
     n <- (y - start[1] + 1)*12 - (start[2] - 1) - (12 - e[1])
     if (e[1] == 3) x[n] <- 1
     else if (e[2] > len) x[n] <- 1
@@ -271,7 +271,7 @@ EasterVar <- function(x, len = 4, easter.mon = FALSE, n.ahead = 0) {
   # last year
   if (end[2] > 2) {
     y <- end[1]
-    e <- easter.date(y, easter.mon)
+    e <- easterDate(y, easter.mon)
     n <- (y - start[1] + 1)*12 - (start[2] - 1) - (12 - e[1])
     if (e[1] <= end[2]) {
       if (e[1] == 3) x[n] <- 1

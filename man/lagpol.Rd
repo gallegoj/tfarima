@@ -7,36 +7,60 @@
 lagpol(param = NULL, s = 1, p = 1, lags = NULL, coef = NULL)
 }
 \arguments{
-\item{param}{a vector/list of named parameters.}
+\item{param}{a vector/list of named parameters. These parameters can be used 
+within the coefficient expressions.}
 
-\item{s}{the seasonal period, integer.}
+\item{s}{an integer specifying the lag spacing or seasonal period.}
 
-\item{p}{the power of lag polynomial, integer.}
+\item{p}{an integer specifying the exponent applied to the base lag polynomial.}
 
-\item{lags}{a vector of lags for sparse polynomials.}
+\item{lags}{an optional vector of lags for sparse polynomials. If \code{NULL},
+lags are determined by \code{s}.}
 
-\item{coef}{a vector of math expressions.}
+\item{coef}{an optional vector of mathematical expressions defining the 
+coefficients of the lag polynomial. If \code{NULL}, the names in \code{param} 
+are used.}
 }
 \value{
-\code{lagpol} returns an object of class "lagpol" with the following
-  components: \describe{ \item{coef}{Vector of coefficients c(coef_1, ...,
-  coef_p) provided to create the lag polynomial.}
-
-  \item{pol}{Base lag polynomial, c(1, -coef_1, ..., -coef_d).}
-
-  \item{Pol}{Power lag polynomial when p > 1.} }
+\code{lagpol} An object of class `lagpol` with the following
+  components:
+\describe{   
+  \item{\code{coef}}{vector of coefficients c(coef_1, ..., coef_p) provided to 
+  create the lag polynomial.}
+  \item{\code{pol}}{base lag polynomial vector: 
+  \eqn{1 - \text{coef}_1 B^s - \dots - \text{coef}_d B^{sd}}.}
+  \item{\code{Pol}}{lag polynomial raised to the power `p`. 
+  If `p = 1`, this equals `pol`.}
+  }
 }
 \description{
-\code{lagpol} creates a lag polynomial of the form \eqn{(1 - coef_1 B^s - ...
-- coef_d B^sd)^p}. This class of lag polynomials is defined by a vector of d
-coefficients c(coef_1, ..., coef_d), the powers s and p, and a vector of k
-parameters c(param_1, ..., param_k). The vector c(coef_1, ..., coef_d) is
-actually a vector of math expressions to compute the value of each
-coefficient in terms of the parameters.
+\code{lagpol} creates a lag polynomial of the form: 
+\deqn{(1 - coef_1 B^s - ... - coef_d B^{sd})^p}
+This class of lag polynomials is defined by:
+\itemize{
+\item the base lag polynomial \eqn{1 - coef_1 B^s - ... - coef_d B^{sd}},
+\item the exponent `p` of the base lag polynomial (default is `p = 1`),
+\item the spacing parameter `s` in sparse lag polynomials 
+(default is `s = 1`),
+\item the vector of `d` coefficients `c(coef_1, ..., coef_d)`, which can be 
+ mathematical expresions dependent on `k` parameters 
+ `c(param_1, ..., param_k)`.
+ }
 }
 \examples{
-lagpol(param = c(phi = 0.8) )
+# Simple AR(1) lag polynomial: 1 - 0.8B
+lagpol(param = c(phi = 0.8))
+
+# AR(2) lag polynomial with seasonal lag s = 4: 1 - 1.2B^4 + 0.6B^8
 lagpol(param = c(phi1 = 1.2, phi2 = -0.6), s = 4)
+
+# Integration operator squared: (1 - B)^2 = 1 - 2B + B^2
 lagpol(param = c(delta = 1), p = 2)
+
+# Lag polynomial using explicit coefficients
+lagpol(coef = c("1"), p = 2)  # (1 - B)^2 = 1 - 2B + B^2
+
+# Custom coefficients defined by mathematical expressions
+lagpol(param = c(theta = 0.8), coef = c("2*cos(pi/6)*sqrt(theta)", "-theta"))
 
 }

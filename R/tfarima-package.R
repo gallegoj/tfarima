@@ -36,17 +36,18 @@
 #' Data: A Case Study of Forecasting Seasonal Time Series," Bell Journal of
 #' Economics, The RAND Corporation, vol. 2(2), pages 515-541, Autumn.
 #'
-#' @keywords package
-#' @docType package
+#' @keywords internal
+"_PACKAGE"
 #' @importFrom Rcpp evalCpp
 #' @importFrom numDeriv jacobian
 #' @importFrom MASS ginv
-#' @importFrom stats acf as.ts bartlett.test Box.test cycle density dnorm end
-#' @importFrom stats frequency is.ts is.mts lm median na.pass optim optimize
-#' @importFrom stats plot.ts pnorm predict printCoefmat qnorm resid residuals  
-#' @importFrom stats rnorm sd start time ts tsdiag update var window rbinom
-#' @importFrom stats toeplitz
+#' @importFrom stats acf AIC as.ts bartlett.test BIC Box.test cycle density  
+#' @importFrom stats dnorm end frequency is.ts is.mts lm logLik median na.pass  
+#' @importFrom stats optim optimize plot.ts pnorm predict printCoefmat qnorm   
+#' @importFrom stats resid residuals rnorm sd start time ts tsdiag update var 
+#' @importFrom stats window rbinom toeplitz
 #' @importFrom graphics abline axis hist layout lcm legend lines mtext par
-#' @importFrom graphics plot  plot.new points text title
+#' @importFrom graphics plot  plot.new points segments text title 
+#' @importFrom utils tail
 #' @useDynLib tfarima, .registration=TRUE
 NULL

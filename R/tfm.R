@@ -1,57 +1,94 @@
-#' Transfer function models
+## tfarima/R/tfm.R
+## Jose L Gallego (UC)
+
+#' Transfer Function Model Constructor
 #'
-#' \code{tfm} creates a multiple input transfer function model.
+#' Creates and optionally fits a multiple-input transfer function model. 
+#' A transfer function model relates an output time series to one or more 
+#' input series (transfer functions), exogenous regressors, and a noise model.
 #'
-#' @param output a ts object or a numeric vector.
-#' @param xreg a matrix of regressors.
-#' @param inputs a list of tf objects.
-#' @param noise a um object for the noise.
-#' @param fit logical. If TRUE, model is fitted.
-#' @param envir environment in which the function arguments are evaluated. If
-#'   NULL the calling environment of this function will be used.
-#' @param new.name logical. Argument used internally: if TRUE a new name is
-#'   assigned to the output, otherwise it keeps its name saved in noise$z.
-#' @param ... additional arguments.
+#' @param output A numeric vector or \code{ts} object representing the 
+#'   dependent (output) time series. If \code{NULL}, it is taken from 
+#'   \code{noise$z}.
+#' @param xreg A numeric matrix or \code{ts} object of exogenous regressors. 
+#'   Columns correspond to different regressors. Defaults to \code{NULL}.
+#' @param inputs A list of transfer function objects of class \code{tf}. 
+#'   Each element represents one stochastic input. Can also be a single 
+#'   \code{tf} object. Defaults to \code{NULL}.
+#' @param noise An object of class \code{um} describing the univariate 
+#'   noise model. This defines the ARIMA-type structure for the residuals.
+#' @param fit Logical. If \code{TRUE} (default), the model parameters are 
+#'   estimated by maximum likelihood after construction.
+#' @param new.name Logical. Internal use. If \code{TRUE} (default), a new 
+#'   name is assigned to the output series. Otherwise, the name stored in 
+#'   \code{noise$z} is preserved.
+#' @param envir Environment in which the function arguments are evaluated. 
+#'   If \code{NULL}, the calling environment is used.   
+#' @param ... Additional arguments passed to \code{\link{fit.tfm}} when 
+#'   \code{fit = TRUE}.
 #'
-#' @return An object of the class \code{tfm}.
+#' @details
+#' All series must have the same frequency. Input series must span at least 
+#' the same period as output. The function applies differencing and Box-Cox 
+#' transformation as specified in \code{noise}.
 #'
-#' @seealso \code{\link{tf}} and \code{\link{um}}.
+#' @return Object of class \code{tfm} with components: output, xreg, inputs, 
+#'   noise, param, kx, k, optim, method, and call.
+#'
+#' @seealso \code{\link{tf}}, \code{\link{um}}, \code{\link{fit.tfm}}
 #'
 #' @references
+#' Box, G. E., Jenkins, G. M., Reinsel, G. C., & Ljung, G. M. (2015).
+#' \emph{Time Series Analysis: Forecasting and Control} (5th ed.). Wiley.
 #'
-#' Box, G.E., Jenkins, G.M., Reinsel, G.C. and Ljung, G.M. (2015) Time Series
-#' Analysis: Forecasting and Control. John Wiley & Sons, Hoboken.
+#' @examples
+#' \dontrun{
+#' Y <- seriesJ$Y - mean(seriesJ$Y)
+#' X <- seriesJ$X - mean(seriesJ$X)
+#' umx <- um(X, ar = 3)
+#' umy <- fit(umx, Y)
+#' tfx <- tfest(Y, X, delay = 3, p = 2, q = 2, um.x = umx, um.y = umy)
+#' tfmy <- tfm(Y, inputs = tfx, noise = um(ar = 2))
+#' }
 #'
 #' @export
 tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
-                envir = NULL, new.name = TRUE,  ...) {
+                new.name = TRUE, envir = parent.frame (), ...) {
   call <- match.call()
   stopifnot(is.um(noise))
-  if (is.null (envir)) envir <- parent.frame ()
 
   if (!is.null(inputs)) {
     if (inherits(inputs, "tf")) {
       inputs <- list(inputs)
     } else {
       inputs <- inputs[!sapply(inputs, is.null)]
+      if (any(!sapply(inputs, is.tf)))
+        stop("inputs must be 'tf' objects")
     }
     k <- length(inputs)
   } else k <- 0
   
   if (is.null(output)) {
-    if (is.null(noise$z)) stop("missing output")
-    else output <- eval(parse(text = noise$z), envir)
+    if (is.null(noise$z)) stop("missing output series")
+    else {
+      if (exists(noise$z, envir = envir)) {
+        output <- get(noise$z, envir = envir)
+      } else stop("Output not found in environment: ", output)    
+    }
   } else if (is.character(output)) {
     noise$z <- output
-    output <- eval(parse(text = noise$z), envir)
+    if (exists(output, envir = envir)) {
+      output <- get(output, envir = envir)
+    } else stop("Output not found in environment: ", output)    
   } else if (is.numeric(output)) {
-    if (new.name)
-      noise$z <- deparse(substitute(output))
-  } else stop("invalid output")
-
+    if (new.name) noise$z <- deparse(substitute(output))
+  } else {
+    stop("Invalid output type: must be ts, character or numeric")
+  }
   N <- length(output)
   stopifnot(N > noise$d)
   if (!is.ts(output)) output <- as.ts(output)
+  
   start <- start(output)
   end <- end(output)
   s <- frequency(output)
@@ -62,7 +99,6 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
   param <- list()
   if (k > 0) {
     for (i in 1:k) {
-      stopifnot(inherits(inputs[[i]], "tf"))
       if (!is.ts(inputs[[i]]$x)) 
         inputs[[i]]$x <- ts(inputs[[i]]$x, start = start, frequency = s)
       if (frequency(inputs[[i]]$x) != s) stop("invalid frequency for input")
@@ -84,7 +120,7 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
     }
     
     param <- lapply(inputs, function(x) x$param)
-    param <- unlist(param)
+    param <- unlist(unname(param))
     param <- param[!duplicated(names(param))]
     param <- as.list(param)
   }
@@ -96,7 +132,7 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
     cn <- colnames(xreg)
     if (is.null(cn)) {
       if (kx == 1) cn <- xn
-      else cn <- paste(xn, 1:kx, sep = "")
+      else cn <- paste0(xn, 1:kx)
     }
     if (!is.ts(xreg)) xreg <- ts(xreg, start = start, frequency = s)
     if (frequency(xreg) != s) stop("invalid frequency for xreg inputs")
@@ -110,10 +146,14 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
     colnames(xreg) <- cn
     X <- apply(xreg, 2, function(x) {
       x <- diffC(x, noise$nabla, FALSE)
-      if (length(x) > n) x[1:n]
-      else x
+      if (length(x) > n) x[1:n] else x
     })
-    reg <- lm(y ~ X - 1)
+    reg <- tryCatch(
+      lm(y ~ X - 1),
+      error = function(e) {
+        stop(sprintf("Failed to estimate 'xreg' parameters: %s", e$message))
+      }
+    )    
     b <- reg$coefficients
     names(b) <- cn
     param <- c(b, param)
@@ -128,90 +168,67 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
               param = param, kx = kx, k = k, optim = NULL, method = NULL,
               call = call)
   class(mod) <- "tfm"
-  if (fit) mod <- fit.tfm(mod, envir = envir, ...)
+  
+  if (fit) {
+    mod <- tryCatch(
+      fit.tfm(mod, envir = envir, ...),
+      error = function(e) {
+        warning("Model fitting failed: ", e$message)
+        mod
+      }
+    )
+  }  
 
   return(mod)
 
 }
 
-#' Coefficients of a transfer function model
+#' Fit a Transfer Function Model
 #'
-#' \code{coef} extracts the "coefficients" from a TF model.
+#' Estimates the parameters of a transfer function model of class \code{tfm} by
+#' (conditional or exact) maximum likelihood.
 #'
-#' @param object a \code{tfm} object.
-#' @param ... other arguments.
+#' @param mdl An object of class \code{tfm} created with \code{\link{tfm}}.
+#' @param y Optional \code{ts} object containing the output series. If
+#'   \code{NULL}, the output stored in \code{noise} is used.
+#' @param method Character string specifying likelihood method: "exact" for
+#'   exact maximum likelihood or "cond" for conditional maximum likelihood.
+#'   Default is "exact".
+#' @param optim.method Character. Optimization method passed to
+#'   \code{\link{optim}}. Default is \code{"BFGS"}. Other options:
+#'   "Nelder-Mead", "CG", "L-BFGS-B".
+#' @param show.iter Logical. If \code{TRUE}, prints iteration progress of the
+#'   likelihood optimization.
+#' @param fit.noise Logical. If \code{TRUE} (default), the parameters of the
+#'   noise model are estimated. If \code{FALSE}, noise parameters are fixed at
+#'   their current values.
+#' @param envir Environment in which the function arguments are evaluated. If
+#'   \code{NULL}, the calling environment is used.
+#' @param ... Additional arguments.
 #'
-#' @return A numeric vector.
+#' @return An updated object of class \code{tfm} containing fitted parameters,
+#'   estimated innovation variance, and optimization details.
 #'
-#' @export
-coef.tfm <- function(object, ...) {
-  param.tfm(object)
-}
-
-
-#' @rdname diagchk
-#' @param y an object of class \code{ts}.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#' @export
-diagchk.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
-                        lag.max = NULL, lags.at = NULL, freq.at = NULL,
-                        std = TRUE, envir = NULL, ...) {
-  if (is.null (envir)) envir <- parent.frame ()
-  u <- residuals.tfm(mdl, y, method, envir = envir)
-  ide(u, graphs = c("plot", "hist", "acf", "pacf", "cpgram"), ylab = "u",
-      lag.max = lag.max, lags.at = lags.at, freq.at = freq.at,
-      std = std, envir=envir, ...)
-}
-
-
-.diff_tfm <- function(mdl, nabla) {
-  if (mdl$kx > 0) {
-    xreg <- apply(mdl$xreg, 2, function(x) {
-      x <- diffC(x, nabla, FALSE)
-    })
-    mdl$xreg <- xreg
-  }
-  
-  if (mdl$k > 0) {
-    d <- length(nabla) - 1
-    for (j in 1:mdl$k) {
-      end <- end(mdl$inputs[[j]]$x)
-      s <- frequency(mdl$inputs[[j]]$x)
-      x <- diffC(mdl$inputs[[j]]$x, nabla, mdl$inputs[[j]]$um$bc)
-      mdl$inputs[[j]]$x <- ts(x, end = end, frequency = s)
-      n <- mdl$inputs[[j]]$t.end - mdl$inputs[[j]]$t.start + 1
-      mdl$inputs[[j]]$t.end <- mdl$inputs[[j]]$t.end - d
-      n <- n - d
-      mdl$inputs[[j]]$t.start <- mdl$inputs[[j]]$t.end - n + 1
-      mdl$inputs[[j]]$um$bc <- FALSE
-    }
-  }
-  
-  nabla <- polydivC(mdl$noise$nabla, nabla, FALSE)
-  mdl$noise$nabla <- nabla
-  mdl$noise$i <- list(as.lagpol(nabla))
-    
-  mdl
-}
-
-
-#' @rdname fit
-#' @param y a \code{ts} object.
-#' @param fit.noise logical. If TRUE parameters of the noise model are fixed.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#' @param ... additional arguments.
+#' @seealso \code{\link{tfm}}
 #'
-#' @return A \code{tfm} object.
+#' @examples
+#' \dontrun{
+#' Y <- seriesJ$Y - mean(seriesJ$Y)
+#' X <- seriesJ$X - mean(seriesJ$X)
+#' umx <- um(X, ar = 3)
+#' umy <- fit(umx, Y)
+#' tfx <- tfest(Y, X, delay = 3, p = 2, q = 2, um.x = umx, um.y = umy)
+#' tfmy <- tfm(Y, inputs = tfx, noise = um(ar = 2), fit = FALSE)
+#' tfmy_fit <- fit(tfmy)
+#' }
 #' @export
 fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
                     optim.method = "BFGS", show.iter = FALSE,
                     fit.noise = TRUE, envir = NULL, ...){
-
+  
   stopifnot(inherits(mdl, "tfm"))
   if (is.null (envir)) envir <- parent.frame ()
-
+  
   if (!fit.noise) {
     par.noise <- names(mdl$noise$param)
     mdl$noise$param <- unname(mdl$noise$param)
@@ -221,46 +238,47 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
   #   stop("Non-stationary AR preestimates for inputs")
   if (!is.stationary.um(mdl$noise))
     stop("Non-stationary AR preestimates")
-  if (!is.invertible.um(mdl$noise))
+  if (!is.invertible.um(mdl$noise) && !is.null(mdl$noise$param))
     stop("Non-invertible MA preestimates")
   if (length(method) == 2 && !is.null(mdl$noise$method)) 
     method <- mdl$noise$method
   method <- match.arg(method)
   mdl$noise$method <- method
   exact <- method == "exact"
-
-  noiseTFM <- function() {
-    if (is.null(mdl$noise$mu)) ystar <- w
-    else ystar <- w - mdl$noise$mu
+  
+  noiseTFM <- function(par) {
+    mdl <- .update_tfm(mdl, par)
+    if (is.null(mdl$noise$mu)) wstar <- w
+    else wstar <- w - mdl$noise$mu
     if (mdl$kx > 0) {
-      ystar <- ystar - xreg %*% unlist(mdl$param[1:mdl$kx])
+      wstar <- wstar - xreg %*% unlist(mdl$param[1:mdl$kx])
     }
     if (mdl$k > 0) {
       for (i in 1:mdl$k) {
         x <- filterC(X[[i]], mdl$inputs[[i]]$theta,
                      mdl$inputs[[i]]$phi, mdl$inputs[[i]]$delay)
-        if (t0[i] > 1 || t1[i] > 1) ystar <- ystar - x[t0[i]:t1[i]]
-        else ystar <- ystar - x
+        if (t0[i] > 1 || t1[i] > 1) wstar <- wstar - x[t0[i]:t1[i]]
+        else wstar <- wstar - x
       }
     }
-    ystar
+    list(mdl = mdl, wstar = wstar)
   }
   
-  logLikTFM <- function(b) {
-    mdl <<- update.tfm(mdl, b)
+  logLikTFM <- function(par) {
+    lst <- noiseTFM(par)
+    mdl <- lst$mdl
+    wstar <- lst$wstar
     if (mdl$noise$is.adm) {
-      wstar <- noiseTFM()
       if (exact) ll <- -ellarmaC(wstar, mdl$noise$phi, mdl$noise$theta)
       else ll <- -cllarmaC(wstar, mdl$noise$phi, mdl$noise$theta)
     } else {
       ll <- ll0
     }
-    if (show.iter) print(c(loglik = ll, b))
-    mdl$noise$is.adm <<- TRUE
+    if (show.iter) print(c(loglik = ll, par))
     return(ll)
   }
-
-  y <- output.tfm(mdl, y, envir)
+  
+  y <- .output_tfm(mdl, y, envir)
   start <- start(y)
   end <- end(y)
   s <- frequency(y)
@@ -291,23 +309,22 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
       x
     })
   }
-
-  b <- param.tfm(mdl)
-  ll0 <- 1.797693e+308
-  ll0 <- logLikTFM(b)
-  opt <- optim(b, logLikTFM, method = optim.method, hessian = F)
+  
+  b0 <- param.tfm(mdl)
+  ll0 <- logLikTFM(b0)
+  opt <- optim(b0, logLikTFM, method = optim.method, ...)
   if(opt$convergence > 0)
     warning(gettextf("possible convergence problem: optim gave code = %d",
                      opt$convergence), domain = NA)
-
-  mdl <- update.tfm(mdl, opt$par)
+  
+  mdl <- .update_tfm(mdl, opt$par)
   wstar <- noise.tfm(mdl, y, diff = TRUE, envir=envir)
   if (!is.null(mdl$noise$mu)) wstar <- wstar - mdl$noise$mu
   if (method == "cond")
     res <- condresC(wstar, mdl$noise$phi, mdl$noise$theta, TRUE)
   else res <- gresC(wstar, mdl$noise$phi, mdl$noise$theta)
   mdl$noise$sig2 <- sum(res^2)/length(res)
-  mdl$noise$optim <- opt
+  mdl$optim <- mdl$noise$optim <- opt
   mdl$noise$method <- method
   
   if (!fit.noise) names(mdl$noise$param) <- par.noise 
@@ -316,214 +333,104 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
   
 }
 
-
-#' @export
-logLik.tfm <-function(object, y = NULL, method = c("exact", "cond"), envir=NULL, ...) {
-  method <- match.arg(method)
-  if (is.null (envir)) envir <- parent.frame ()
-  w <- noise.tfm(object, y, TRUE, envir=envir)
-  if (!is.null(object$noise$mu))
-    w <- w - object$noise$mu
-  if (method == "exact") ll <- ellarmaC(w, object$noise$phi, object$noise$theta)
-  else ll <- cllarmaC(w, object$noise$phi, object$noise$theta)
-  return(ll)
-  
-}
-
-
-#' @rdname modify
-#' @export
-modify.tfm <- function(mdl, ...) {
-  args <- list(...)
-  ar <- args$ar
-  i <- args$i
-  ma <- args$ma
-  bc <- args$bc
-  sig2 <- args$sig2
-  fit <- args$fit
-  um <- modify.um(mdl$noise, ar = ar, i = i, ma = ma, bc = bc, sig2 = sig2,
-                  fit = fit)
-  tfm(xreg = mdl$xreg, inputs = mdl$inputs, noise = um)
-}
-
-
-#' Noise of a transfer function model
+#' Summarize Transfer Function Model
 #' 
-#' \code{noise} computes the noise of a linear transfer function model.     
+#' Produces summary statistics for a fitted transfer function model including
+#' parameter estimates, standard errors, and diagnostic tests.
+#' 
+#' @param object A fitted \code{tfm} object.
+#' @param y Optional \code{ts} object for alternative output series.
+#' @param method Character: "exact" or "cond" for residual calculation.
+#' @param digits Number of significant digits for printing.
+#' @param envir Environment for evaluation. NULL uses calling environment.
+#' @param ... Additional arguments:
+#'   \code{p.values} (logical) returns only p-values;
+#'   \code{table} (logical) returns only coefficient table.
 #'
-#' @param tfm an object of the class \code{tfm}.
-#' @param y output of the TF model if it is different to that of the 
-#' \code{tfm} object.
-#' @param diff logical. If TRUE, the noise is differenced with
-#' the "i" operator of the univariate model of the noise.
-#' @param exp logical. If TRUE, the antilog transformation is applied.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#' @param ... additional arguments.
+#' @details
+#' Computes parameter estimates with standard errors (from Jacobian),
+#' z-statistics, p-values, AIC, BIC, log-likelihood, Ljung-Box tests
+#' (at lags p+q+1 and n/4+p+q), and Bartlett heteroscedasticity test.
 #'
-#' @return A "ts" object.
-#' 
-#' @export
-noise <- function (tfm, ...) { UseMethod("noise") }
-
-#' @rdname noise
-#' @export
-noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir = NULL, ...) {
-  y <- output.tfm(tfm, y, envir = envir)
-  start <- start(y)
-  end <- end(y)
-  s <- frequency(y)
-  N <- length(y)
-  if (tfm$noise$bc) y <- log(y)
-  
-  if (diff && tfm$noise$d > 0) {
-    y <- diffC(y, tfm$noise$nabla, FALSE)
-    n <- length(y)
-    if (tfm$kx > 0) {
-      for (i in 1:tfm$kx) {
-        x <- diffC(tfm$xreg[, i], tfm$noise$nabla, FALSE)
-        if (length(x) > n) 
-          y <- y - x[1:n, ]*tfm$param[[i]]
-        else
-          y <- y - x*tfm$param[[i]]
-      }
-    }
-    if (tfm$k > 0) {
-      for (i in 1:tfm$k) {
-        x <- diffC(tfm$inputs[[i]]$x, tfm$noise$nabla, tfm$inputs[[i]]$um$bc)
-        x <- filterC(x, tfm$inputs[[i]]$theta,
-                     tfm$inputs[[i]]$phi, tfm$inputs[[i]]$delay)
-        t0 <- tfm$inputs[[i]]$t.start
-        t1 <- tfm$inputs[[i]]$t.end
-        if (t0 > 1 || length(tfm$inputs[[i]]$x) > t1) 
-          y <- y - x[t0:(t0+n-1)]
-        else
-          y <- y - x
-      }
-    }
-  }
-  else {
-    if (tfm$kx > 0) {
-      if (nrow(tfm$xreg) > N) {
-        y <- y - as.matrix(tfm$xreg[1:N, ]) %*% unlist(tfm$param[1:tfm$kx])
-      } else
-        y <- y - tfm$xreg %*% unlist(tfm$param[1:tfm$kx])
-    }
-    if (tfm$k > 0) {
-      for (i in 1:tfm$k) {
-        if (tfm$inputs[[i]]$um$bc) {
-          x <- filterC(log(tfm$inputs[[i]]$x), tfm$inputs[[i]]$theta,
-                       tfm$inputs[[i]]$phi, tfm$inputs[[i]]$delay)
-        } else {
-          x <- filterC(tfm$inputs[[i]]$x, tfm$inputs[[i]]$theta,
-                       tfm$inputs[[i]]$phi, tfm$inputs[[i]]$delay)
-        }
-        t0 <- tfm$inputs[[i]]$t.start
-        t1 <- tfm$inputs[[i]]$t.end
-        if (t0 > 1 || length(tfm$inputs[[i]]$x) > t1)
-          y <- y - x[t0:t1]
-        else
-          y <- y - x
-      }
-    }
-    if (tfm$noise$bc && exp) y <- exp(y)
-  }
-  
-  y <- ts(y, end = end, frequency = s)
-  if (!is.null(ncol(y))) y <- y[, 1]
-  y
-}
-
-#' @rdname setinputs
-#' @export
-setinputs.tfm <- function(mdl, xreg = NULL, inputs = NULL, y = NULL, 
-                          envir = parent.frame (), ...) {
-  stopifnot(is.tfm(mdl))
-  if (!is.null(y)) mdl$noise$z <- deparse(substitute(y))
-  y <- output.tfm(mdl, y, envir)
-  if (!is.null(xreg)) {
-    if (mdl$kx > 0) {
-      name <- c(colnames(mdl$xreg), colnames(xreg))
-      xreg <- cbind(mdl$xreg, xreg)
-      colnames(xreg) <- name
-    }
-  } else xreg <- mdl$xreg
-  
-  if (!is.null(inputs) && mdl$k > 0) inputs <- c(mdl$inputs, inputs)  
-  else if(mdl$k > 0) inputs <- mdl$inputs
-  tfm(output = y, xreg = xreg, inputs = inputs, noise = mdl$noise, 
-      new.name = FALSE, envir = envir, ...)
-}
-
-
-#' Summarizing Transfer Function models
-#' 
-#' \code{summary} method for class "tfm".
-#' 
-#' @param object a \code{tfm} object.
-#' @param y a "ts" object.
-#' @param method exact or conditional maximum likelihood.
-#' @param digits number of significant digits to use when printing.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#' @param ... additional arguments.
-#' @return A \code{tfm} object.
+#' @return Object of class \code{summary.tfm} containing: call, coefficient
+#'   table, variance-covariance matrix, residuals, diagnostic statistics,
+#'   information criteria, and time series attributes.
+#'
+#' @seealso \code{\link{print.summary.tfm}}
+#'
+#' @examples
+#' \dontrun{
+#' Y <- seriesJ$Y - mean(seriesJ$Y)
+#' X <- seriesJ$X - mean(seriesJ$X)
+#' umx <- um(X, ar = 3)
+#' umy <- fit(umx, Y)
+#' tfx <- tfest(Y, X, delay = 3, p = 2, q = 2, um.x = umx, um.y = umy)
+#' tfmy <- tfm(Y, inputs = tfx, noise = um(ar = 2))
+#' sm <- summary(tfmy)
+#' print(sm)
+#' }
+#'
 #' @export
 summary.tfm <- function(object, y = NULL, method = c("exact", "cond"),
                         digits = max(3L, getOption("digits") - 3L), 
-                        envir=NULL, ...) {
-
+                        envir = parent.frame(), ...) {
+  
   stopifnot(inherits(object, "tfm"))
-  if (is.null (envir)) envir <- parent.frame ()
   model.name <- deparse(substitute(object))
-
+  
   args <- list(...)
   if(is.null(args[["p.values"]])) p.values <- FALSE
   else p.values <- args[["p.values"]]
   if(is.null(args[["table"]])) table <- FALSE
   else table <- args[["table"]]
-
+  
   method <- match.arg(method)
   if (!is.null(object$noise$method)) method <- object$noise$method
-
-  logLikTFM <- function(b){
-    object <<- update.tfm(object, b)
-    wstar <- noise.tfm(object, y, diff = TRUE, envir=envir)
-    if (!is.null(object$noise$mu)) wstar <- wstar - object$noise$mu
-    if (method == "cond") ll <- cllarmaC(wstar, object$noise$phi, object$noise$theta)
-    else ll <- ellarmaC(wstar, object$noise$phi, object$noise$theta)
-    return(ll)
-  }
-
+  
   resTFM <- function(b) {
-    object <<- update.tfm(object, b)
-    wstar <- noise.tfm(object, y, diff = TRUE, envir=envir)
-    if (!is.null(object$noise$mu)) wstar <- wstar - object$noise$mu
+    mdl <- .update_tfm(object, b)
+    wstar <- noise.tfm(mdl, y, diff = TRUE, envir=envir)
+    if (!is.null(mdl$noise$mu)) wstar <- wstar - mdl$noise$mu
     if (method == "cond")
-      res <- condresC(wstar, object$noise$phi, object$noise$theta, TRUE)
-    else res <- gresC(wstar, object$noise$phi, object$noise$theta)
+      res <- condresC(wstar, mdl$noise$phi, mdl$noise$theta, TRUE)
+    else res <- gresC(wstar, mdl$noise$phi, mdl$noise$theta)
     as.vector(res)
   }
   
-  y <- output.tfm(object, y, envir)
+  y <- .output_tfm(object, y, envir)
   w <- diffC(y, object$noise$nabla, object$noise$bc)
   N <- length(y)
   n <- length(w)
   b <- param.tfm(object)
-  ll <- logLikTFM(b)
+  
+  ll <- logLik(object, y, method, envir)
   aic <- (-2.0*ll+2*length(b))/n
   bic <- (-2*ll+log(n)*length(b))/n
+  
   res <- resTFM(b)
   J <- numDeriv::jacobian(resTFM, b)
   g <- t(J) %*% res
   ssr <- sum(res^2)
   object$noise$sig2 <- ssr/length(res)
-  H <- t(J) %*% J
-  varb <- solve(H)*object$noise$sig2
+  if (!is.null(object$optim$hessian)) H <- object$optim$hessian
+  else H <- t(J) %*% J
+  varb <- tryCatch ({ 
+    solve(H)*object$noise$sig2
+  }, error = function(e) {
+    message("Error inverting matrix: ", e$message)
+    return(NULL)
+  })
   b <- param.tfm(object)
-  se <- sqrt(diag(varb))
-  z <- b/se
-  p <- pnorm(abs(z), lower.tail = F)*2
+  if (is.null(varb)) {
+    warning("Could not compute standard errors: Hessian is singular")
+    se <- rep(NA_real_, length(b))
+    z <- rep(NA_real_, length(b))
+    p <- rep(NA_real_, length(b))
+  } else {
+    se <- sqrt(diag(varb))
+    z <- b/se
+    p <- pnorm(abs(z), lower.tail = FALSE)*2
+  }  
 
   if (p.values) return(p)
   X <- cbind(b, g, se, z, p)
@@ -531,7 +438,7 @@ summary.tfm <- function(object, y = NULL, method = c("exact", "cond"),
   rownames(X) <- names(b)
   
   if (table) return(X)
-
+  
   res <- noise.tfm(object, y, envir = envir)
   if (!is.null(object$noise$mu)) res <- res - object$noise$mu
   if (method == "cond") {
@@ -584,63 +491,561 @@ summary.tfm <- function(object, y = NULL, method = c("exact", "cond"),
   
 }
 
+#' Print Summary of Transfer Function Model
+#'
+#' Print method for objects of class \code{summary.tfm}.
+#'
+#' @param x A \code{summary.tfm} object.
+#' @param stats Logical. If TRUE, prints diagnostic statistics.
+#' @param short Logical. If TRUE, prints abbreviated output.
+#' @param digits Number of significant digits.
+#' @param ... Additional arguments.
+#'
+#' @seealso \code{\link{summary.tfm}}
+#'
 #' @export
 print.summary.tfm <- function(x, stats = TRUE, short = FALSE,
                               digits = max(3L, getOption("digits") - 3L), ...) {
   print.summary.um(x, stats, digits, short = short, ...)
 }
 
+#' Print Transfer Function Model
+#'
+#' Print method for objects of class \code{tfm}.
+#'
+#' @param x A \code{tfm} object.
+#' @param ... Additional arguments passed to \code{\link{summary.tfm}} 
+#'   and \code{\link{print.summary.tfm}}.
+#'
+#' @details
+#' Prints a summary of the transfer function model by calling 
+#' \code{summary(x)} with \code{short = TRUE}.
+#'
+#' @seealso \code{\link{tfm}}, \code{\link{summary.tfm}}
+#'
+#' @export
+print.tfm <- function(x, ...) {
+  print(summary(x), short = TRUE, ...)
+}
+
+#' Signal component of a TF model
+#'
+#' \code{signal} extracts the signal of a TF model.
+#'
+#' @param mdl an object of the class \code{tfm}.
+#' @param y output of the TF model if it is different to that of the \code{tfm}
+#'   object.
+#' @param diff logical. If TRUE, the signal is differenced with the "i" operator
+#'   of the univariate model of the noise.
+#' @param type Character vector specifying signal components to extract: "xreg"
+#'   for exogenous regressors only,"inputs" for transfer function inputs only.
+#'   If both provided (default), includes all components.
+#' @param envir Environment in which the function arguments are evaluated. By
+#'   default, the calling environment is used.
+#' @param ... additional arguments.
+#'
+#' @return A "ts" object.
+#' @export
+signal <- function (mdl, ...) { UseMethod("signal") }
+
+#' @rdname signal
+#' @export
+signal.tfm <- function(mdl, y = NULL, diff = FALSE, type = c("xreg", "inputs"),
+                       envir = parent.frame(), ...) {
+  stopifnot(is.tfm(mdl))
+  type <- match.arg(type, several.ok = TRUE)
+  y <- .output_tfm(mdl, y, envir=envir)
+  start <- start(y)
+  end <- end(y)
+  s <- frequency(y)
+  N <- length(y)
+  y <- y*0
+  if ("xreg" %in% type) {
+    if (mdl$kx > 0) {
+      if (nrow(mdl$xreg) > N)
+        y <- y + as.matrix(mdl$xreg[1:N, ]) %*% unlist(mdl$param[1:mdl$kx])
+      else
+        y <- y + mdl$xreg %*% unlist(mdl$param[1:mdl$kx])
+    }
+  }
+  
+  if ("inputs" %in% type) {
+    if (mdl$k > 0) {
+      for (i in 1:mdl$k) {
+        x <- filterC(mdl$inputs[[i]]$x, mdl$inputs[[i]]$theta,
+                     mdl$inputs[[i]]$phi, mdl$inputs[[i]]$delay)
+        t0 <- mdl$inputs[[i]]$t.start
+        t1 <- mdl$inputs[[i]]$t.end
+        if (t0 > 1 || length(mdl$inputs[[i]]$x) > t1) y <- y + x[t0:t1]
+        else y <- y + x
+      }
+    }
+  }
+  if (diff && N > mdl$noise$d) y <- diffC(y, mdl$noise$nabla, FALSE)
+  
+  ts(y, end = end, frequency = s)
+}
+
+#' Extract Noise Component from Transfer Function Model
+#' 
+#' Computes the noise series (output minus fitted signal) from a transfer
+#' function model.
+#'
+#' @param mdl A \code{tfm} object.
+#' @param y Optional \code{ts} object for alternative output series.
+#' @param diff Logical. If TRUE (default), returns differenced noise series
+#'   (stationary). If FALSE, returns noise in original scale.
+#' @param exp Logical. If TRUE, applies exponential transformation (inverse
+#'   of log). Only relevant when \code{diff = FALSE} and Box-Cox transformation
+#'   was used (\code{bc = TRUE}).
+#' @param envir Environment for evaluation. NULL uses calling environment.
+#' @param ... Additional arguments.
+#'
+#' @return A \code{ts} object containing the noise series, computed as
+#'   output minus all transfer function and regressor effects.
+#' 
+#' @details
+#' The noise represents the component of the output not explained by the
+#' transfer functions and exogenous regressors. When \code{diff = TRUE},
+#' the differencing operator from the noise model is applied, resulting in
+#' a stationary series suitable for ARMA modeling.
+#'
+#' @seealso \code{\link{signal.tfm}}, \code{\link{residuals.tfm}}, \code{\link{tfm}}
+#' 
+#' @export
+noise <- function (mdl, ...) { UseMethod("noise") }
+
+#' @rdname noise
+#' @export
+noise.tfm <- function(mdl, y = NULL, diff = TRUE, exp = FALSE,
+                      envir = parent.frame(), ...) {
+  stopifnot(is.tfm(mdl))
+  y <- .output_tfm(mdl, y, envir = envir)
+  if (diff && exp) {
+    warning("'exp' is ignored when 'diff = TRUE'", call. = FALSE)
+  }  
+  start <- start(y)
+  end <- end(y)
+  s <- frequency(y)
+  N <- length(y)
+  if (mdl$noise$bc) y <- log(y)
+  
+  if (diff && mdl$noise$d > 0) {
+    y <- diffC(y, mdl$noise$nabla, FALSE)
+    n <- length(y)
+    if (mdl$kx > 0) {
+      for (i in 1:mdl$kx) {
+        x <- diffC(mdl$xreg[, i], mdl$noise$nabla, FALSE)
+        if (length(x) > n) x <- x[1:n]
+        y <- y - x*mdl$param[[i]]
+      }
+    }
+    if (mdl$k > 0) {
+      for (i in 1:mdl$k) {
+        x <- diffC(mdl$inputs[[i]]$x, mdl$noise$nabla, mdl$inputs[[i]]$um$bc)
+        x <- filterC(x, mdl$inputs[[i]]$theta,
+                     mdl$inputs[[i]]$phi, mdl$inputs[[i]]$delay)
+        t0 <- mdl$inputs[[i]]$t.start
+        t1 <- mdl$inputs[[i]]$t.end
+        y <- y - x[t0:(t0+n-1)]
+      }
+    }
+  }
+  else {
+    if (mdl$kx > 0) {
+      if (nrow(mdl$xreg) > N) {
+        y <- y - as.matrix(mdl$xreg[1:N, ]) %*% unlist(mdl$param[1:mdl$kx])
+      } else
+        y <- y - mdl$xreg %*% unlist(mdl$param[1:mdl$kx])
+    }
+    if (mdl$k > 0) {
+      for (i in 1:mdl$k) {
+        if (mdl$inputs[[i]]$um$bc) {
+          x <- filterC(log(mdl$inputs[[i]]$x), mdl$inputs[[i]]$theta,
+                       mdl$inputs[[i]]$phi, mdl$inputs[[i]]$delay)
+        } else {
+          x <- filterC(mdl$inputs[[i]]$x, mdl$inputs[[i]]$theta,
+                       mdl$inputs[[i]]$phi, mdl$inputs[[i]]$delay)
+        }
+        t0 <- mdl$inputs[[i]]$t.start
+        t1 <- mdl$inputs[[i]]$t.end
+        y <- y - x[t0:t1]
+      }
+    }
+    if (mdl$noise$bc && exp) y <- exp(y)
+  }
+  ts(as.vector(y), end = end, frequency = s)
+}
+
+#' Extract Residuals from Transfer Function Model
+#'
+#' Computes exact or conditional residuals from a fitted transfer function model.
+#'
+#' @param object A fitted \code{tfm} object.
+#' @param y Optional \code{ts} object for alternative output series.
+#' @param method Character: "exact" estimates presample values  to
+#'   compute residuals; "cond" fixes presample values at zero.
+#' @param envir Environment for evaluation. NULL uses calling environment.
+#' @param ... Currently unused.
+#'
+#' @return A \code{ts} object containing model residuals with the same
+#'   time series attributes as the output series.
+#'
+#' @export
+residuals.tfm <- function(object, y = NULL, method = c("exact", "cond"),
+                          envir=parent.frame(), ...) {
+  
+  stopifnot(inherits(object, "tfm"))
+  method <- match.arg(method)
+  
+  w <- noise.tfm(object, y, envir=envir)
+  if (!is.null(object$noise$mu)) w <- w - object$noise$mu
+  if (method == "cond")
+    res <- condresC(w, object$noise$phi, object$noise$theta, TRUE)
+  else 
+    res <- exactresC(w, object$noise$phi, object$noise$theta)
+  res <- as.vector(res)
+  if (is.ts(w))
+    res <- ts(res, end = end(w), frequency = frequency(w))
+  else
+    res <- res
+  
+  return(res)
+  
+}
+
+#' Diagnostic Checking for Transfer Function Models
+#'
+#' Produces diagnostic plots for residuals of a fitted transfer function model.
+#'
+#' @param mdl A fitted \code{tfm} object.
+#' @param y Optional \code{ts} object for alternative output series.
+#' @param method Character: "exact" or "cond" for residual calculation.
+#' @param lag.max Maximum lag for ACF/PACF plots.
+#' @param lags.at Specific lags to display in ACF/PACF.
+#' @param freq.at Specific frequencies for cumulative periodogram.
+#' @param std Logical. If TRUE, standardizes residuals.
+#' @param envir Environment for evaluation. NULL uses calling environment.
+#' @param ... Additional arguments passed to \code{\link{ide}}.
+#'
+#' @details
+#' Generates five diagnostic plots: time series plot of residuals, 
+#' histogram, ACF, PACF, and cumulative periodogram. Uses the \code{\link{ide}}
+#' function for plotting.
+#'
+#' @seealso \code{\link{tfm}}, \code{\link{tsdiag.tfm}}
+#'
+#' @export
+diagchk.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
+                        lag.max = NULL, lags.at = NULL, freq.at = NULL,
+                        std = TRUE, envir = NULL, ...) {
+  if (is.null (envir)) envir <- parent.frame ()
+  u <- residuals.tfm(mdl, y, method, envir = envir)
+  ide(u, graphs = c("plot", "hist", "acf", "pacf", "cpgram"), ylab = "u",
+      lag.max = lag.max, lags.at = lags.at, freq.at = freq.at,
+      std = std, envir=envir, ...)
+}
+
+#' Cross-correlation check
+#'
+#' \code{ccf} displays ccf between prewhitened inputs and residuals.
+#'
+#' @param x a \code{tfm} object.
+#' @param lag.max number of lags.
+#' @param method Exact/conditional residuals.
+#' @param envir environment in which the function arguments are evaluated.
+#' @param ... additional arguments.
+#'
+#' @export
+ccf.tfm <- function(x, lag.max = NULL, method = c("exact", "cond"), 
+                    envir = parent.frame (), ...) {
+  stopifnot(is.tfm(x))
+  if (x$k < 1) 
+    stop("Model has no transfer function inputs")
+  j <- c()
+  for (i in 1:x$k) 
+    if (x$inputs[[i]]$um$k > 0)
+      j <- c(j, i)
+  
+  k <- length(j)
+  if (k < 1) 
+    stop("Model has no transfer function inputs")
+  
+  if (k > 1) {
+    tryCatch({
+      oldpar <- par(mfrow = c(k, 1), mar = c(3, 4, 2, 1))
+      on.exit(par(oldpar))
+    }, error = function(e) {
+      stop(
+        "Graphics device too small for ", k, " plots.\n",
+        "Resize window or use: dev.new(width=7, height=", 3*k, ")"
+      )
+    })
+  }  
+  u <- residuals.tfm(x, method = method, envir = envir)
+  for (i in j) {
+    end <- end(x$inputs[[i]]$x)
+    s <- frequency(x$inputs[[i]]$x)
+    a <- x$inputs[[i]]$x[x$inputs[[i]]$n.back:length(x$inputs[[i]]$x)]
+    a <- ts(a, end = end, frequency = s)
+    a <- residuals.um(x$inputs[[i]]$um, a, method, envir=envir)
+    a <- window(a, start = start(u), end = end(u))
+    pccf(a, u, lag.max = lag.max)
+  }
+  
+  invisible(NULL)
+}
+
+#' Forecast Transfer Function Model
+#'
+#' Computes point forecasts and prediction intervals for transfer function models.
+#' 
+#' @param object A fitted \code{tfm} object.
+#' @param newdata Optional matrix or vector of future values for exogenous
+#'   regressors and inputs. Rows correspond to forecast horizon, columns to
+#'   predictors.
+#' @param y Optional \code{ts} object for alternative output series.
+#' @param ori Forecast origin (observation index). Default is last observation.
+#' @param n.ahead Number of steps ahead to forecast. Default is series frequency.
+#' @param level Confidence level(s) for prediction intervals (0-1). Default is 0.95.
+#'   Can be a vector for multiple intervals.
+#' @param i Optional differencing operator (lagpol) to apply before forecasting.
+#' @param envir Environment for evaluation. NULL uses calling environment.
+#' @param ... Additional arguments (currently unused).
+#' 
+#' @details 
+#' Future values for transfer function inputs can be provided in three ways:
+#' (1) extending input series beyond output length, (2) automatic forecasting
+#' from associated \code{um} models, or (3) via the \code{newdata} argument.
+#' 
+#' If Box-Cox transformation was used, forecasts are back-transformed and
+#' intervals adjusted accordingly.
+#'
+#' @return Object of class \code{predict.tfm} containing:
+#' \item{z}{Complete series including forecasts}
+#' \item{rmse}{Root mean square error for each forecast}
+#' \item{low, upp}{Lower and upper prediction interval bounds (matrices)}
+#' \item{level}{Confidence level(s) used}
+#' \item{dates}{Time points for all observations}
+#' \item{ori, ori.date}{Forecast origin (index and date)}
+#' \item{n.ahead}{Number of forecasts}
+#'
+#' @seealso \code{\link{tfm}}, \code{\link{fit.tfm}}
+#'
+#' @export
+predict.tfm <- function(object, newdata=NULL, y = NULL, ori = NULL, n.ahead = NULL,
+                        level = 0.95, i = NULL,  envir=NULL, ...) {
+  stopifnot(is.tfm(object))
+  if (is.null (envir)) envir <- parent.frame ()
+  y <- .output_tfm(object, y, envir=envir)
+  if (!is.null(i)) {
+    i <- .lagpol0(i, "i", envir=envir)
+    nabla <- polyexpand(i)
+    object <- .diff_tfm(object, nabla)
+    end <- end(y)
+    s <- frequency(y)
+    y <- as.vector(diffC(y, nabla, object$noise$bc))
+    if (object$noise$bc){
+      y <- y*100
+      object$noise$sig2 <- object$noise$sig2*100^2
+    }
+    object$noise$bc <- FALSE
+    y <- ts(y, end = end, frequency = s)
+  }
+  
+  z <- noise.tfm(object, y, FALSE, envir=envir)
+  if (is.null(object$noise$mu)) mu <- 0
+  else mu <- object$noise$mu
+  
+  if (is.null(ori)) ori <- length(z)
+  if (is.null(n.ahead)) n.ahead <- frequency(z)
+  
+  X <-  forecastC(z, FALSE, mu, object$noise$phi, object$noise$nabla,
+                  object$noise$theta, object$noise$sig2, ori, n.ahead)
+  t <- (ori+1):(ori+n.ahead)
+  z <- ts(X[, 1], start = start(z), frequency = frequency(z))
+  start <- start(z)
+  end <- end(z)
+  n <- length(z)
+  s <- frequency(z)
+  
+  if (!is.null(newdata)) {
+    newdata <- as.matrix(newdata)
+    stopifnot(nrow(newdata) >= n.ahead)
+  }
+  
+  if (object$kx > 0) {
+    Xf <- NULL
+    if (!is.null(newdata)) {
+      nms <- colnames(object$xreg)
+      nm1 <- colnames(newdata)
+      if (all(nms %in% nm1)) {
+        Xf <- as.matrix(newdata[1:n.ahead, nms, drop = FALSE])
+      } else if(any(nms %in% nm1)) {
+        if (nrow(object$xreg) < n) 
+          stop("insufficient number of forecasts for input") 
+        Xf <- as.matrix(object$xreg[t, , drop = FALSE])
+        Xf[, nms %in% nm1] <- newdata[1:n.ahead, nms[nms %in% nm1]]
+      }
+    }  
+    
+    if (is.null(Xf)) {
+      if (nrow(object$xreg) < n) 
+        stop("insufficient number of forecasts for input") 
+      Xf <- as.matrix(object$xreg[t, ])  
+    }
+    
+    z[t] <- z[t] +  Xf %*% unlist(object$param[1:object$kx])
+  }
+  
+  if (object$k > 0) {
+    for (i in 1:object$k) {
+      start1 <- start(object$inputs[[i]]$x)
+      if ( any(colnames(newdata) %in% object$inputs[[i]]$x.name) ) {
+        x <- newdata[, object$inputs[[i]]$x.name]
+        t1 <- object$inputs[[i]]$t.end
+        object$inputs[[i]]$x <- c(object$inputs[[i]]$x[1:t1], x)
+      } else if (length(object$inputs[[i]]$x) - object$inputs[[i]]$t.start + 1 < n) {      
+        if (has.um.tf(object$inputs[[i]])) {
+          end1 <- end(object$inputs[[i]]$x)
+          nahead <- (end[1] - end1[1])*s + end[2] - end1[2]
+          object$inputs[[i]] <- 
+            predict.tf(object$inputs[[i]], n.ahead = nahead)
+        } else stop("insufficient number of forecasts for input")
+      }
+      x <- object$inputs[[i]]$x
+      if (object$inputs[[i]]$um$bc) x <- log(x)
+      x <- filterC(x, object$inputs[[i]]$theta,
+                   object$inputs[[i]]$phi, object$inputs[[i]]$delay)
+      x <- ts(as.numeric(x), start = start1, frequency = s)
+      x <- window(x, start = start, end = end) 
+      z[t] <- z[t] + x[t] 
+      if (has.um.tf(object$inputs[[i]])) {
+        v <- var.predict.tf(object$inputs[[i]], n.ahead)
+        X[t, 4] <- X[t, 4] + v
+      }
+    }
+  }
+  
+  dates <- time(zoo::as.zoo(z))
+  if (any(level <= 0 || level >= 1)) level[level <= 0 || level >= 1] <- 0.95
+  level <- unique(level)
+  cv <- qnorm((1-level)/2, lower.tail = F)
+  se <- sqrt(X[t, 4])
+  z[1:ori] <- y
+  if (object$noise$bc) {
+    z[t] <- exp(z[t])
+    low <- sapply(cv, function(x) z[t]*exp(-x*se)) 
+    upp <- sapply(cv, function(x) z[t]*exp(x*se))
+  } else {
+    low <- sapply(cv, function(x) z[t] - x*se) 
+    upp <- sapply(cv, function(x) z[t] + x*se)
+  }
+  
+  out <- list(z = z, rmse = se, low = low, upp = upp, level = level,
+              dates = dates, ori = ori, n.ahead = n.ahead, ori.date = dates[ori])
+  class(out) <- c("predict.tfm", "predict.um") 
+  out  
+}
+
+#' @rdname modify
+#' @export
+modify.tfm <- function(mdl, ar = NULL, i = NULL, ma = NULL, mu = NULL, 
+                       sig2 = NULL, bc = NULL, ...) {
+  um1 <- modify.um(mdl$noise, ar = ar, i = i, ma = ma, bc = bc, sig2 = sig2,
+                   fit = FALSE, ...)
+  um1$z <- mdl$noise$z
+  tfm(xreg = mdl$xreg, inputs = mdl$inputs, noise = um1, ...)
+}
+
+#' @rdname setinputs
+#' 
+#' @details
+#' For \code{tfm} objects: If the model already has inputs of the same type,
+#' new ones are appended (combined). The model is re-fitted by default unless
+#' \code{fit = FALSE}.
+#'
+#' @export
+setinputs.tfm <- function(mdl, xreg = NULL, inputs = NULL, y = NULL, 
+                          envir = parent.frame (), ...) {
+  stopifnot(is.tfm(mdl))
+  if (!is.null(y)) mdl$noise$z <- deparse(substitute(y))
+  y <- .output_tfm(mdl, y, envir)
+  if (!is.null(xreg)) {
+    xreg <- as.matrix(xreg)
+    if (mdl$kx > 0) {
+      stopifnot(nrow(mdl$xreg) == nrow(xreg))
+      nms <- colnames(mdl$xreg)
+      nms1 <- colnames(xreg)
+      if (any(nms1 %in% nms))
+        stop("Input name in use")
+      xreg <- cbind(mdl$xreg, xreg)
+      colnames(xreg) <- c(nms, nms1)
+    }
+  } else xreg <- mdl$xreg
+  
+  if (!is.null(inputs) && mdl$k > 0) {
+    if (is.tf(inputs)) inputs <- list(inputs)
+    if (!all(sapply(inputs, is.tf)))
+      stop("'inputs' must be a 'tf' object or list of 'tf' objects")
+    inputs <- c(mdl$inputs, inputs)  
+  } else if(mdl$k > 0) inputs <- mdl$inputs
+  tfm(output = y, xreg = xreg, inputs = inputs, noise = mdl$noise, 
+      new.name = FALSE, envir = envir, ...)
+}
+
 #' @rdname calendar
 #' @export
-calendar.tfm <-
-  function(mdl, y = NULL, form = c("dif", "td", "td7", "td6", "wd"),
-           ref = 0, lom = TRUE, lpyear = TRUE, easter = FALSE, len = 4, 
-           easter.mon = FALSE, n.ahead = 0, p.value = 1, envir = NULL, ...)
-{
-  if (is.null (envir)) envir <- parent.frame ()
-  if (is.null(y)) y <- output.tfm(mdl, y, envir = envir)
-  else mdl$noise$z <- deparse(substitute(y))
+calendar.tfm <- function(mdl, y = NULL, 
+                         form = c("dif", "td", "td7", "td6", "wd"), 
+                         ref = 0, lom = TRUE, lpyear = TRUE, easter = FALSE,
+                         len = 4, easter.mon = FALSE, n.ahead = 0, p.value = 1, 
+                         envir = parent.frame (), ...) {
+  stopifnot(is.tfm(mdl))
+  if (!is.null(y)) y.name <- deparse(substitute(y))
+  else y.name <- NULL
+  y <- .output_tfm(mdl, y, envir = envir)
   if (frequency(y) != 12) stop("function only implemented for monthly ts")
-
-  if (is.null(n.ahead)) n.ahead <- 0  
+  
   n.ahead <- abs(n.ahead)
   xreg <- CalendarVar(y, form, ref, lom, lpyear, easter, len, easter.mon, n.ahead)
   tfm1 <- setinputs.tfm(mdl, xreg, y = y)
-  if (p.value < 0.999) {
-    p <- summary.tfm(tfm1, p.values = TRUE)
-    p <- (p[1:ncol(xreg)] <= p.value)
-    if (all(p)) return(tfm1)
-    if (any(p)) {
-      xreg <- xreg[, p]
-      tfm1 <- tfm(y, xreg = xreg, noise = tfm1$noise, envir = envir, new.name = FALSE, ...)
-      return(tfm1)
-    }
-    return(tfm1$noise)
+  if (!is.null(y.name)) mdl$noize$z <- y.name
+  if (p.value > 0.999) return(tfm1)
+  
+  p <- summary.tfm(tfm1, p.values = TRUE)
+  p <- (p[1:ncol(xreg)] <= p.value)
+  if (all(p)) return(tfm1)
+  if (any(p)) {
+    xreg <- tfm1$xreg[, p, drop = FALSE]
+    tfm1 <- tfm(y, xreg = xreg, inputs = tfm1$inputs, noise = tfm1$noise,
+                envir = envir, new.name = FALSE, ...)
+    return(tfm1)
   }
-  return(tfm1)
+  return(mdl)
 }
-
 
 #' @rdname outliers
 #' @param y an object of class \code{ts}, optional.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
 #' @export
 outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"), 
                          dates = NULL,  c = 3, calendar = FALSE, easter = FALSE, 
-                         resid = c("exact", "cond"), n.ahead = NULL, 
-                         p.value = 1, tc.fix = TRUE, envir=NULL, ...) {
-  if (is.null (envir)) envir <- parent.frame ()
-  if (is.null(n.ahead)) n.ahead <- 0L
-  else n.ahead <- abs(n.ahead)
+                         resid = c("exact", "cond"), n.ahead = 0, 
+                         p.value = 1, tc.fix = TRUE, 
+                         envir = parent.frame (), ...) {
+  stopifnot(is.tfm(mdl))
+  n.ahead <- abs(n.ahead)
   if (!is.null(y)) mdl$noise$z <- deparse(substitute(y))
-  y <- output.tfm(mdl, y, envir)
-  if (mdl$kx > 0)
-    n.ahead <- length(y) - nrow(mdl$xreg)
+  y <- .output_tfm(mdl, y, envir)
+  if (mdl$kx > 0) {
+    if (nrow(mdl$xreg) - length(y) < n.ahead)
+      stop(paste0("'n.ahead' incompatible with xreg"))
+    n.ahead <- nrow(mdl$xreg) - length(y)
+  }
   N <- noise.tfm(mdl, y, diff = FALSE, envir=envir)
   start <- start(N)
   freq <- frequency(N)
-  if( freq < 2) {
+  if( freq < 12) {
     calendar <- FALSE
     easter <- FALSE
   }
@@ -648,38 +1053,22 @@ outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"),
     resid <- "cond"
   resid <- match.arg(resid)
   eres <- resid == "exact"
-  if (is.numeric(types)) {
-    if (length(types) == 1) {
-      if (types == 1)types <- "AO"
-      else if (types == 2) types <- c("AO", "LS")
-      else if (types == 3) types <- c("AO", "LS", "TC")
-      else types <- c("AO", "LS", "TC", "IO")
-    } else {
-      types <- c("AO", "LS", "TC", "IO")[types]
-    }    
-  }
-  types <- toupper(types)
-  types <- match.arg(c("AO", "LS", "TC", "IO"), types, several.ok = TRUE)
-  types <- sapply(c("AO", "LS", "TC", "IO"), function(x) (x %in% types)*1L)
-  
-  if (is.null(dates)) indx = 0  
-  else if (is.numeric(dates)) {
-    if (length(dates) == 2 && (dates[2] >= 1 && dates[2] <= freq)) {
-      indx <- (dates[1] - start[1] + 1)*freq - (start[2] - 1) - (freq - dates[2])
-    } 
-    else {
-      indx <- dates
-    }
-  } else if (is.list(dates)) { 
-    indx <- sapply(dates, function(x) {
-      if (freq > 1)
-        (x[1] - start[1] + 1)*freq - (start[2] - 1) - (freq - x[2])
-      else 
-        (date[1] - start[1] + 1)*freq
-    })
-  } else stop("invalid stop argument")
-  indx <- unique(indx)
-  
+  types <- match.arg(types, several.ok = TRUE)
+  types <- c("AO", "LS", "TC", "IO") %in% types
+  if (!is.null(dates)) {
+    if (is.numeric(dates) && length(dates) == 2) dates <- list(dates)
+    if (is.list(dates)) {
+      indx <- sapply(dates, function(x) {
+        if (length(x) != 2) stop("invalid date format")
+        if (freq > 1) (x[1] - start[1] + 1)*freq - (start[2] - 1) - (freq - x[2])
+        else (date[1] - start[1] + 1)
+      })
+      if (any(indx) < 1||indx > length(y)) stop("invalid date format")
+    } else if (is.numeric(dates)) indx <- dates
+    else indx <- 0
+    indx <- unique(indx)
+  }  else indx <- 0
+
   bc <- mdl$noise$bc
   mdl$noise$bc <- FALSE
   if (is.null(mdl$noise$mu)) mu <- 0
@@ -687,11 +1076,9 @@ outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"),
   
   tfm1 <- NULL
   if (calendar||easter) {
-    if (calendar)
-      tfm1 <- calendar.um(mdl$noise, N, easter = easter, 
+    if (calendar) tfm1 <- calendar.um(mdl$noise, N, easter = easter, 
                           n.ahead = n.ahead, envir=envir, ...)
-    else
-      tfm1 <- easter.um(mdl$noise, N, n.ahead, envir = envir, ...)
+    else tfm1 <- easter.um(mdl$noise, N, n.ahead, envir = envir, ...)
     N <- noise.tfm(tfm1, diff = FALSE, envir=envir)
     A <- outliersC(N, FALSE,  mu, tfm1$noise$phi, tfm1$noise$nabla, 
                    tfm1$noise$theta, types, indx, eres, abs(c))
@@ -742,44 +1129,38 @@ outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"),
     X <- ts(X, start = start, frequency = freq)
     colnames(X) <- names
   } else X <- NULL
-
+  
   if (any(!i)) {
     tfi <- lapply((1:nrow(df))[!i], function(k) {
       p <- double(n)
       p[df[k, 1]] <- 1
       p <- ts(p, start = start, frequency = freq)
-      prefix <- paste(df[k, 3], df[k, 2], sep = "")
-      if (df[k, 3] == "IO") tf(p, w0 = df[k, 4], ma = mdl$noise$ma, ar = c(mdl$noise$i, mdl$noise$ar), par.prefix = prefix)
-      else if (df[k, 3] == "TC") tf(p, w0 = df[k, 4], ar = 1, par.prefix = prefix)
-      else stop("unkown input")
+      prefix <- paste0(df[k, 3], df[k, 2])
+      if (df[k, 3] == "IO") {
+        tf(p, w0 = df[k, 4], ma = mdl$noise$ma,
+           ar = c(mdl$noise$i, mdl$noise$ar), par.prefix = prefix)
+      } else if (df[k, 3] == "TC") {
+        tf(p, w0 = df[k, 4], ar = 1, par.prefix = prefix)
+      } else stop("unkown input")
     })
   } else tfi <- NULL 
   
+  nms <- c()
+  xreg <- cbind()
   if (mdl$kx > 0) {
-    names <- colnames(mdl$xreg)
-    xreg <- mdl$xreg
-    if (calendar||easter) {
-      names <- c(names, colnames(tfm1$xreg))
-      xreg <- cbind(xreg, tfm1$xreg)
-    }
-    if (any(i)) {
-      names <- c(names, colnames(X))
-      xreg <- cbind(xreg, X)
-    }
-    colnames(xreg) <- names
-  } else if (calendar||easter) {
-    names <- colnames(tfm1$xreg)
-    xreg <- tfm1$xreg
-    if (any(i)) {
-      names <- c(names, colnames(X))
-      xreg <- cbind(xreg, X)
-    }
-    colnames(xreg) <- names
-  } else if (any(i))
-    xreg <- X
-  else
-    xreg <- NULL
-  
+    nms <- c(nms, colnames(mdl$xreg))
+    xreg <- cbind(xreg, mdl$xreg)
+  }
+  if (calendar||easter) {
+    nms <- c(nms, colnames(tfm1$xreg))
+    xreg <- cbind(xreg, tfm1$xreg)
+  }
+  if (any(i)) {
+    nms <- c(nms, colnames(X))
+    xreg <- cbind(xreg, X)
+  }
+  if (!is.null(nms)) colnames(xreg) <- nms
+
   if (is.null(tfi)) tfi <- mdl$inputs
   else if (!is.null(mdl$inputs)) tfi <- list.tf(mdl$inputs, tfi)
   mdl$noise$bc <- bc
@@ -787,11 +1168,9 @@ outliers.tfm <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"),
               new.name = FALSE, envir = envir)
   if (p.value < 0.999) 
     tfm1 <- varsel.tfm(tfm1, NULL, p.value = p.value, envir = envir)
-  
   return(tfm1)
   
 }
-
 
 #' @rdname intervention
 #' @export
@@ -799,41 +1178,32 @@ intervention.tfm <- function(mdl, y = NULL, type, time, n.ahead = 0,
                              envir = parent.frame(), ...) {
   stopifnot(is.tfm(mdl))
   type <- toupper(type)
-  y <- output.tfm(mdl, y, envir = envir)
-  if (any(type == "IO")) 
-    u <- residuals(mdl, y, envir = envir)
-  n <- noise.tfm(mdl, y, diff = FALSE, exp = TRUE, envir = envir)
+  if (!all(type %in% c("AO", "P", "LS", "S", "TC", "IO", "R")))
+    stop("invalid intervention type")
+  
+  y <- .output_tfm(mdl, y, envir = envir)
   s <- frequency(y)
+  
+  N <- noise.tfm(mdl, y, diff = FALSE, exp = TRUE, envir = envir)
   k1 <- length(type)
+  
   # convert time to list of dates
-  if (is.list(time))
-    k2 <- length(time)
-  else if (is.matrix(time)) {
-    if (ncol(time) == 1 || nrow(time) == 1) {
-      if (s > 1) stop("invalid time argument")
-      time <- lapply(as.vector(time), function(x) c(x, 1))
-    } else if (ncol(time) == 2)
-      time <- lapply(1:nrow(time), function(x) time[x, ])
-    else if (nrow(time) == 2) # ncol(time) > 2
-      time <- lapply(1:ncol(time), function(x) time[, x])
-    else
-      stop("invalid time argument")
-    k2 <- length(time)
-  } else if (is.vector(time)) {
-    k2 <- length(time)
-    if (k2 == 1) {
-      if (s != 1) stop("invalid time argument")
-      time <- list(c(time, 1))
-    } else if (k2 == 2) {
-      stopifnot(time[2] >= 1 && time[2] <=s)
-      time <- list(time)
-      k2 <- 1
-    } else {
-      stopifnot(s == 1)
-      time <- lapply(time, function(x) c(x, 1))
+  if (!is.list(time)) {
+    if (is.vector(time)) {
+      if (s == 1) time <- lapply(1:nrow(time), function(x) time[x, ])
+      else if (length(time) %% 2 == 0) {
+        time <- matrix(time , ncol = 2)
+      } else stop("invalid date format")
+    } else if(is.matrix(time)) {
+      x <- dim(time)
+      if (x[1] != 2 && x[2] == 2) stop("invalid date format")
+      if (x[1] == 2 && x[2] != 2) time <- t(time)
+      else if(x[1] == 2 && x[2] != 2 && all(time[2, ] <= s)) time <- t(time)
     }
-  } else stop("invalid time argument")
-
+    time <- lapply(1:nrow(time), function(x) time[x, ])
+  }
+  k2 <- length(time)
+  
   testing <- FALSE
   if (k1 == 1 && k2 > k1) { 
     type <- rep(type, k2)
@@ -846,22 +1216,22 @@ intervention.tfm <- function(mdl, y = NULL, type, time, n.ahead = 0,
   } else if (k1 != k2) stop("type and time are incompatible arguments")
   
   X <- sapply(1:k1, function(k) {
-    if (type[k] == "AO" || type[k] == "P" || type[k] == "IO" || type[k] == "TC")
-      InterventionVar(y, time[[k]], "P", n.ahead)
-    else if (type[k] == "LS" || type[k] == "S")
-      InterventionVar(y, time[[k]], "S", n.ahead)
-    else if (type[k] == "R")
-      InterventionVar(y, time[[k]], "R", n.ahead)
-    else
-      stop("type of intervention/outlier unknown")
-  })
+    type1 <- switch(
+      type[k],
+      "AO" = , "P" = , "IO" = , "TC" = "P",
+      "LS" = , "S" = "S",
+      "R" = "R",
+      stop("Unknown type: ", type[k])
+    )
+    InterventionVar(y, time[[k]], type1, n.ahead)
+  })  
   
   names <- sapply(1:k1, function(k) {
     if (s > 1) paste0(type[k], time[[k]][1], ".", time[[k]][2])
     else paste0(type[k], time[[k]][1])
   })
   colnames(X) <- names
-
+  
   i <- type != "IO" & type != "TC" # xreg inputs
   if (testing) {
     tbl <- sapply(1:k1, function(k) {
@@ -871,12 +1241,15 @@ intervention.tfm <- function(mdl, y = NULL, type, time, n.ahead = 0,
         colnames(x) <- names[k]
         tfm1 <- setinputs(mdl, xreg = x, ...)
       } else {
+        x <- ts(x, end = end(N), frequency = frequency(N))
         if (type[k] == "TC") {
-          tf <- tfest(n, x, p = 1, q = 0, um.y = mdl$noise, 
+          tf <- tfest(N, x, p = 1, q = 0, um.y = mdl$noise, 
                       par.prefix = names[k], envir = envir)
           tf$x.name <- names[k]
         } else { # "IO"
-          tf <- tf(x, w0 = tsvalue(u, time[[k]]), ma = mdl$noise$ma,
+          u <- residuals(mdl, y, envir = envir)
+          w0 <- tsvalue(u, time[[k]])
+          tf <- tf(x, w0 = w0, ma = mdl$noise$ma, 
                    ar = c(mdl$noise$i, mdl$noise$ar), par.prefix = names[k], 
                    envir = envir)
         }
@@ -884,303 +1257,243 @@ intervention.tfm <- function(mdl, y = NULL, type, time, n.ahead = 0,
       }
       if (type[k] == "TC") {
         s <- summary(tfm1, table = TRUE)
-        d <- s[paste0(names[k], ".d1"), 1]
+        d <- s[names(tf$param)[2], 1]
         name <- names[k]
         names[k] <<- paste0(names[k], "(", format(d, digits = 2), ")")
         s[name, ]
       } else summary(tfm1, table = TRUE)[names[k], ]
     })
     colnames(tbl) <- names
+    tbl <- tbl[, order(tbl[5, ])]
     return(tbl)
   } else {
-      if (all(i)) {
-        return(setinputs(mdl, xreg = X, ...))
+    if (all(i)) {
+      return(setinputs(mdl, xreg = X, ...))
+    } else {
+      if (any(i)) {
+        X1 <- X[, i, drop = FALSE]
+        colnames(X1) <- names[i]
       } else {
-        if (any(i)) {
-          X1 <- X[, i]
-          if (is.vector(X1))
-            X1 <- matrix(X1, ncol = 1)
-          colnames(X1) <- names[i]
-        } else {
-          X1 <- NULL
+        X1 <- NULL
+      }
+      ltf <- lapply( (1:k1)[!i], function(k) {
+        x <- X[, k]
+        x <- ts(x, start = start(y), frequency = frequency(y))
+        if (type[k] == "TC") {
+          tf <- tfest(N, x, p = 1, q = 0, um.y = mdl$noise, 
+                      par.prefix = names[k]) 
+          tf$x.name <- names[k]
+        } else { # "IO"
+          u <- residuals(mdl, y, envir = envir)
+          tf <- tf(x, w0 = tsvalue(u, time[[k]]), ma = mdl$noise$ma,
+                   ar = c(mdl$noise$i, mdl$noise$ar), par.prefix = names[k])
         }
-        ltf <- lapply( (1:k1)[!i], function(k) {
-          x <- X[, k]
-          x <- ts(x, start = start(y), frequency = frequency(y))
-          if (type[k] == "TC") {
-            tf <- tfest(n, x, p = 1, q = 0, um.y = mdl$noise, 
-                        par.prefix = names[k]) 
-            tf$x.name <- names[k]
-          } else { # "IO"
-            tf <- tf(x, w0 = tsvalue(u, time[[k]]), ma = mdl$noise$ma,
-                     ar = c(mdl$noise$i, mdl$noise$ar), par.prefix = names[k])
-          }
-          return(tf)
-        })
-        return(setinputs(mdl, xreg = X1, inputs = ltf, y = y, envir = envir, ...))
-      }
-  }
-}
-
-#' Forecasting with transfer function models
-#'
-#' \code{predict} computes point and interval predictions for a time series
-#' based on a \code{tfm} object.
-#' 
-#' @param object an object of class \code{\link{um}}.
-#' @param y an object of class \code{\link{ts}}.
-#' @param ori the origin of prediction. By default, it is the last observation.
-#' @param n.ahead number of steps ahead.
-#' @param level confidence level.
-#' @param i transformation of the series \code{y} to be forecasted. It is a
-#' lagpol as those of a \code{\link{um}} object.  
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#' @param newdata new data for the predictors for the forecast period. This is
-#'   a matrix if there is more than one predictor. The number of columns is
-#'   equal to the number of predictors, the number of rows equal to
-#'   \code{n.ahead}. If there is one predictor only the data may be provided
-#'   alternatively as a vector.    
-#' @param ... additional arguments.
-#' 
-#' @details Forecasts for the inputs of a \code{tfm} object can be provided
-#' in tree ways: (1) extending the time series with forecasts so that the length
-#' of the intput is greater than the length of the output, (2) computed 
-#' internally from the \code{um} object associated to the input and (3) with 
-#' the \code{newdata} argument.  
-#'
-#' @export predict.tfm
-#' @export
-predict.tfm <- function(object, newdata=NULL, y = NULL, ori = NULL, n.ahead = NULL,
-                        level = 0.95, i = NULL,  envir=NULL, ...) {
-  stopifnot(is.tfm(object))
-  if (is.null (envir)) envir <- parent.frame ()
-  y <- output.tfm(object, y, envir=envir)
-  if (!is.null(i)) {
-    i <- .lagpol0(i, "i","delta", envir=envir)
-    nabla <- polyexpand(i)
-    object <- .diff_tfm(object, nabla)
-    end <- end(y)
-    s <- frequency(y)
-    y <- as.vector(diffC(y, nabla, object$noise$bc))
-    if (object$noise$bc){
-      y <- y*100
-      object$noise$sig2 <- object$noise$sig2*100^2
-    }
-    object$noise$bc <- FALSE
-    y <- ts(y, end = end, frequency = s)
-  }
-  
-  z <- noise.tfm(object, y, FALSE, envir=envir)
-  if (is.null(object$noise$mu)) mu <- 0
-  else mu <- object$noise$mu
-
-  if (is.null(ori)) ori <- length(z)
-  if (is.null(n.ahead)) n.ahead <- frequency(z)
-  
-  X <-  forecastC(z, FALSE, mu, object$noise$phi, object$noise$nabla,
-                  object$noise$theta, object$noise$sig2, ori, n.ahead)
-  t <- (ori+1):(ori+n.ahead)
-  z <- ts(X[, 1], start = start(z), frequency = frequency(z))
-  start <- start(z)
-  end <- end(z)
-  n <- length(z)
-  s <- frequency(z)
-  
-  if (!is.null(newdata)) {
-    newdata <- as.matrix(newdata)
-    stopifnot(nrow(newdata) >= n.ahead)
-  }
-  
-  if (object$kx > 0) {
-    if (nrow(object$xreg) < n) {
-      if (is.null(newdata)) 
-        stop("insufficient number of forecasts for input") 
-      if (ncol(newdata) < object$kx) 
-        stop("wrong object 'newdata'")
-      Xf <- cbind(newdata[1:n.ahead, 1:object$kx])
-      if (ncol(newdata) > object$kx) 
-        newdata <- newdata[,object$kx:ncol(newdata)]
-      else 
-        newdata <- NULL
-    } else Xf <- as.matrix(object$xreg[t, ])
-    z[t] <- z[t] +  Xf %*% unlist(object$param[1:object$kx])
-  }
-  
-  if (object$k > 0) {
-    for (i in 1:object$k) {
-      start1 <- start(object$inputs[[i]]$x)
-      if ( any(colnames(newdata) == object$inputs[[i]]$x.name) ) {
-        x <- newdata[, object$inputs[[i]]$x.name]
-        t1 <- object$inputs[[i]]$t.end
-        object$inputs[[i]]$x <- c(object$inputs[[i]]$x[1:t1], x)
-      } else if (length(object$inputs[[i]]$x) - object$inputs[[i]]$t.start + 1 < n) {      
-        if (has.um.tf(object$inputs[[i]])) {
-          end1 <- end(object$inputs[[i]]$x)
-          nahead <- (end[1] - end1[1])*s + end[2] - end1[2]
-          object$inputs[[i]] <- 
-            predict.tf(object$inputs[[i]], n.ahead = nahead)
-        } else stop("insufficient number of forecasts for input")
-      }
-      x <- object$inputs[[i]]$x
-      if (object$inputs[[i]]$um$bc) x <- log(x)
-      x <- filterC(x, object$inputs[[i]]$theta,
-                   object$inputs[[i]]$phi, object$inputs[[i]]$delay)
-      x <- ts(as.numeric(x), start = start1, frequency = s)
-      x <- window(x, start = start, end = end) 
-      z[t] <- z[t] + x[t] 
-      if (has.um.tf(object$inputs[[i]])) {
-        v <- var.predict.tf(object$inputs[[i]], n.ahead)
-        X[t, 4] <- X[t, 4] + v
-      }
+        return(tf)
+      })
+      return(setinputs(mdl, xreg = X1, inputs = ltf, y = y, envir = envir, ...))
     }
   }
-  
-  dates <- time(zoo::as.zoo(z))
-  if (any(level <= 0 || level >= 1)) level[level <= 0 || level >= 1] <- 0.95
-  level <- unique(level)
-  cv <- qnorm((1-level)/2, lower.tail = F)
-  se <- sqrt(X[t, 4])
-  z[1:ori] <- y
-  if (object$noise$bc) {
-    z[t] <- exp(z[t])
-    low <- sapply(cv, function(x) z[t]*exp(-x*se)) 
-    upp <- sapply(cv, function(x) z[t]*exp(x*se))
-  } else {
-    low <- sapply(cv, function(x) z[t] - x*se) 
-    upp <- sapply(cv, function(x) z[t] + x*se)
-  }
-  
-  out <- list(z = z, rmse = se, low = low, upp = upp, level = level,
-              dates = dates, ori = ori, n.ahead = n.ahead, ori.date = dates[ori])
-  class(out) <- c("predict.tfm", "predict.um") 
-  out  
 }
 
-
-#' @export
-print.tfm <- function(x, ...) {
-  print(summary(x), short = TRUE, ...)
-}
-
-
-#' Residuals of a transfer function model
+#' Variable selection
 #'
-#' \code{residuals} computes the exact or conditional residuals of a TF model.
+#' \code{varsel} omits non-significant inputs from a transfer function model.
 #'
-#' @param object a \code{tfm} object.
-#' @param y output of the TF model (if it is different to that of the "tfm" 
-#' object).
-#' @param method a character string specifying the method to compute the
-#' residuals, exact or conditional.
+#' @param tfm a \code{tfm} object.
+#' @param y a "ts" object.
+#' @param p.value probability value to decide whether or not to omit an input.
 #' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#' @param ... additional arguments.
+#'    By default, the calling environment of this function will be used.
+#' @param ... other arguments.
+#' @return A \code{tfm} object or a "um" if no input is significant at that level.
+#' @export
+varsel <- function (tfm, ...) { UseMethod("varsel") }
+
+#' @rdname varsel
+#' @export
+varsel.tfm <- function(tfm, y = NULL, p.value = 0.10,
+                       envir = parent.frame(), ...) {
+  stopifnot(is.tfm(tfm))
+  if (is.null(y)) y <- .output_tfm(tfm, y, envir)
+  else tfm$noise$z <- deparse(substitute(y))
+  
+  p <- tryCatch(
+    summary(tfm, y, p.values = TRUE, envir = envir),
+    error = function(e) {
+      stop("Failed to compute p-values: ", e$message)
+    }
+  )  
+  if (is.null(p) || length(p) == 0) return(tfm)
+  b <- param.tfm(tfm)
+  nms <- names(b)
+  names(p) <- nms
+  xreg <- NULL
+  if (!is.null(tfm$xreg)) {
+    P <- (p[1:ncol(tfm$xreg)] <= p.value)
+    if (all(P)) xreg <- tfm$xreg
+    else if (any(P)) {
+      xreg <- tfm$xreg[, P, drop = FALSE]
+      if (!is.matrix(xreg)) {
+        xreg <- as.matrix(xreg)
+        colnames(xreg) <- colnames(tfm$xreg)[P]
+      }
+    } 
+  } 
+  
+  tfi <- NULL
+  if (tfm$k > 0) {
+    tfi <- lapply(tfm$inputs, function(tf) {
+      nmw0 <- as.character(tf$w0.expr)
+      if (!nmw0 %in% names(p)) {
+        warning(sprintf(
+          "No p-value found for parameter '%s'. Keeping input.",
+          nmw0
+        ))
+        return(tf)
+      }
+      if (p[nmw0] <= p.value) return(tf)
+      else return(NULL)
+    })  
+    tfi[sapply(tfi, is.null)] <- NULL
+  } 
+  
+  if (is.null(xreg) && is.null(tfi)) return(tfm$noise)
+  tfm(y, xreg = xreg, inputs = tfi, noise = tfm$noise, new.name = FALSE, ...)
+}
+
+#' Coefficients of a Transfer Function Model
 #'
-#' @return A "ts" object.
+#' Extracts the estimated coefficients from a fitted transfer function model 
+#' of class \code{tfm}. This is a method for the generic \code{\link{coef}} 
+#' function.
+#'
+#' @param object An object of class \code{tfm}.
+#' @param ... Further arguments (currently unused).
+#'
+#' @return A named numeric vector with the estimated coefficients of the model, 
+#' including regression coefficients, transfer function parameters, and noise 
+#' model parameters.
+#'
+#' @seealso \code{\link{tfm}}
+#'
+#' @examples
+#' \dontrun{
+#' mdl <- tfm(y, xreg = X, noise = um())
+#' coef(mdl)
+#' }
+#' @export
+coef.tfm <- function(object, ...) {
+  param.tfm(object)
+}
+
+#' Log-Likelihood of Transfer Function Model
+#'
+#' Computes the log-likelihood for a fitted transfer function model.
+#'
+#' @param object A fitted \code{tfm} object.
+#' @param y Optional \code{ts} object for alternative output series.
+#' @param method Character: "exact" estimates presample values; "cond" fixes
+#'   presample values at zero.
+#' @param envir Environment for evaluation. 
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return Numeric value of the log-likelihood.
+#'
+#' @seealso \code{\link{tfm}}, \code{\link{fit.tfm}}, \code{\link{AIC.tfm}}
 #'
 #' @export
-residuals.tfm <- function(object, y = NULL, method = c("exact", "cond"), envir=NULL, ...) {
-
-  stopifnot(inherits(object, "tfm"))
-  if (is.null (envir)) envir <- parent.frame ()
+logLik.tfm <-function(object, y = NULL, method = c("exact", "cond"), 
+                      envir = parent.frame (), ...) {
   method <- match.arg(method)
-
-  w <- noise.tfm(object, y, envir=envir)
-  if (!is.null(object$noise$mu)) w <- w - object$noise$mu
-  if (method == "cond")
-    res <- condresC(w, object$noise$phi, object$noise$theta, TRUE)
-  else 
-    res <- exactresC(w, object$noise$phi, object$noise$theta)
-  
-  if (is.ts(w))
-    res <- ts(res[, 1], end = end(w), frequency = frequency(w))
-  else
-    res <- res[, 1]
-  
-  return(res)
-  
+  w <- noise.tfm(object, y, TRUE, envir=envir)
+  if (!is.null(object$noise$mu))
+    w <- w - object$noise$mu
+  if (method == "exact") ll <- ellarmaC(w, object$noise$phi, object$noise$theta)
+  else ll <- cllarmaC(w, object$noise$phi, object$noise$theta)
+  return(ll)
 }
 
-#' Signal component of a TF model
+#' AIC and BIC for Transfer Function Models
 #'
-#' \code{signal} extracts the signal of a TF model.
+#' Computes Akaike's Information Criterion (AIC) and Bayesian Information
+#' Criterion (BIC) for transfer function models.
 #'
-#' @param mdl an object of the class \code{tfm}.
-#' @param y output of the TF model if it is different to that of the 
-#' \code{tfm} object.
-#' @param diff logical. If TRUE, the noise is differenced with
-#' the "i" operator of the univariate model of the noise.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#' @param ... additional arguments.
+#' @param object A fitted \code{tfm} object.
+#' @param ... Additional \code{tfm} objects for model comparison.
+#' @param k Numeric. Penalty per parameter. Default is 2 for AIC.
+#'   Use \code{k = log(n)} for BIC where n is sample size.
 #'
-#' @return A "ts" object.
+#' @return If one model: numeric value of AIC/BIC. If multiple models:
+#'   data frame with columns df (degrees of freedom) and AIC for each model.
+#'
+#' @details
+#' AIC = -2*logLik + k*npar, where npar is the number of parameters.
+#' Lower values indicate better fit penalized for complexity.
+#'
+#' @seealso \code{\link{logLik.tfm}}, \code{\link{BIC.tfm}}
+#'
+#' @examples
+#' \dontrun{
+#' model1 <- tfm(output, inputs = tf1, noise = noise1)
+#' model2 <- tfm(output, inputs = tf2, noise = noise2)
+#' 
+#' # Single model AIC
+#' AIC(model1)
+#' 
+#' # Compare models
+#' AIC(model1, model2)
+#' 
+#' # BIC
+#' BIC(model1)
+#' }
+#'
 #' @export
-signal <- function (mdl, ...) { UseMethod("signal") }
-
-#' @rdname signal
-#' @export
-signal.tfm <- function(mdl, y = NULL, diff = TRUE, envir=NULL, ...) {
-  if (is.null (envir)) envir <- parent.frame ()
-  y <- output.tfm(mdl, y, envir=envir)
-  start <- start(y)
-  end <- end(y)
-  s <- frequency(y)
-  N <- length(y)
+AIC.tfm <- function(object, ..., k = 2) {
   
-  y <- y*0
-  if (diff && mdl$noise$d > 0) {
-    y <- diffC(y, mdl$noise$nabla, FALSE)
-    n <- length(y)
-    if (mdl$kx > 0) {
-      for (i in 1:mdl$kx) {
-        x <- diffC(mdl$xreg[, i], mdl$noise$nabla, FALSE)
-        if (length(x) > n) 
-          y <- y + x[1:n, ]*mdl$param[[i]]
-        else
-          y <- y + x*mdl$param[[i]]
-      }
-    }
-    if (mdl$k > 0) {
-      for (i in 1:mdl$k) {
-        x <- filterC(mdl$inputs[[i]]$x, mdl$inputs[[i]]$theta,
-                     mdl$inputs[[i]]$phi, mdl$inputs[[i]]$delay)
-        t0 <- mdl$inputs[[i]]$t.start
-        t1 <- mdl$inputs[[i]]$t.end
-        if (t0 > 1 || length(mdl$inputs[[i]]$x) > t1) 
-          y <- y + diffC(x[t0:t1], mdl$noise$nabla, mdl$inputs[[i]]$um$bc)
-        else
-          y <- y + diffC(x, mdl$noise$nabla, mdl$inputs[[i]]$um$bc)
-      }
-    }
-  }
-  else {
-    if (mdl$kx > 0) {
-      if (nrow(mdl$xreg) > N)
-        y <- y + as.matrix(mdl$xreg[1:N, ]) %*% unlist(mdl$param[1:mdl$kx])
-      else
-        y <- y + mdl$xreg %*% unlist(mdl$param[1:mdl$kx])
-    }
-    if (mdl$k > 0) {
-      for (i in 1:mdl$k) {
-        x <- filterC(mdl$inputs[[i]]$x, mdl$inputs[[i]]$theta,
-                     mdl$inputs[[i]]$phi, mdl$inputs[[i]]$delay)
-        t0 <- mdl$inputs[[i]]$t.start
-        t1 <- mdl$inputs[[i]]$t.end
-        if (t0 > 1 || length(mdl$inputs[[i]]$x) > t1)
-          y <- y + x[t0:t1]
-        else
-          y <- y + x
-      }
-    }
+  # Obtener lista de modelos
+  models <- list(object, ...)
+  
+  # Si solo hay un modelo
+  if (length(models) == 1) {
+    ll <- logLik(object)
+    npar <- length(param.tfm(object))
+    aic <- -2 * ll + k * npar
+    return(aic)
   }
   
-  ts(y, end = end, frequency = s)
+  # Múltiples modelos: crear tabla comparativa
+  model_names <- as.character(match.call()[-1])
+  model_names <- model_names[model_names != "k"]
   
+  results <- data.frame(
+    df = integer(length(models)),
+    AIC = numeric(length(models)),
+    row.names = model_names
+  )
+  
+  for (i in seq_along(models)) {
+    if (!inherits(models[[i]], "tfm")) {
+      stop(sprintf("Object %d is not a 'tfm' object", i))
+    }
+    ll <- logLik(models[[i]])
+    npar <- length(param.tfm(models[[i]]))
+    results$df[i] <- npar
+    results$AIC[i] <- -2 * ll + k * npar
+  }
+  
+  return(results)
 }
 
-
+#' @rdname AIC.tfm
+#' @export
+BIC.tfm <- function(object, ...) {
+  
+  # BIC usa k = log(n)
+  y <- .output_tfm(object)
+  w <- diffC(y, object$noise$nabla, object$noise$bc)
+  n <- length(w)
+  AIC.tfm(object, ..., k = log(n))
+}
 
 #  This function is based on the arima function of the stats package
 #  of R. Below the copyright statement of the arima function is reproduced. 
@@ -1216,10 +1529,24 @@ signal.tfm <- function(mdl, y = NULL, diff = TRUE, envir=NULL, ...) {
 tsdiag.tfm <- function(object, gof.lag = 10, ...)
 {
   ## plot standardized residuals, acf of residuals, Ljung-Box p-values
-  oldpar <- par(mfrow = c(3, 1))
-  on.exit(par(oldpar))
+  stopifnot(is.tfm(object))
   rs <- residuals(object)
   stdres <- rs/sqrt(object$noise$sig2)
+  n <- length(rs)
+  if (gof.lag >= n || gof.lag < 1) {
+    warning(sprintf(
+      "gof.lag (%d) is too large for %d residuals. Using gof.lag = %d",
+      gof.lag, n, floor(n / 2)
+    ))
+    gof.lag <- floor(n/4)
+  }
+  
+  oldpar <- par(
+    mfrow = c(3, 1),
+    mar = c(3, 4, 2, 1) + 0.1,  # bottom, left, top, right
+    oma = c(0, 0, 0, 0)
+  )
+  on.exit(par(oldpar))  
   plot(stdres, type = "h", main = "Standardized Residuals", ylab = "")
   abline(h = 0)
   acf(rs, plot = TRUE, main = "ACF of Residuals",
@@ -1230,191 +1557,129 @@ tsdiag.tfm <- function(object, gof.lag = 10, ...)
   plot(1L:nlag, pval, xlab = "lag", ylab = "p value", ylim = c(0,1),
        main = "p values for Ljung-Box statistic")
   abline(h = 0.05, lty = 2, col = "blue")
+  
+  
+  invisible(list(
+    std.residuals = stdres,
+    acf = acf(rs, plot = FALSE, na.action = na.pass),
+    ljung.box.pvalues = pval
+  ))
+  
 }
 
-
-#' Variable selection
-#'
-#' \code{varsel} omits non-significant inputs from a transfer function model.
-#'
-#' @param tfm a \code{tfm} object.
-#' @param y a "ts" object.
-#' @param p.value probability value to decide whether or not to omit an input.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#' @param ... other arguments.
-#' @return A \code{tfm} object or a "um" if no input is significant at that level.
+#' @rdname sim
 #' @export
-varsel <- function (tfm, ...) { UseMethod("varsel") }
-
-#' @rdname varsel
-#' @export
-varsel.tfm <- function(tfm, y = NULL, p.value = 0.10, envir = NULL, ...) {
-  if (is.null (envir)) envir <- parent.frame()
-  if (is.null(y)) y <- output.tfm(tfm, y, envir)
-  else tfm$noise$z <- deparse(substitute(y))
+sim.tfm <- function(mdl, envir = parent.frame(), ...) {
+  stopifnot(is.tfm(mdl))
+  N <- sim(mdl$noise, envir = envir, ...)
+  S <- signal.tfm(mdl, diff = FALSE, envir = envir)
+  end <- end(N)
+  freq <- frequency(N)
   
-  p <- summary.tfm(tfm, y, p.values = TRUE)
-  b <- param.tfm(tfm)
-  nms <- names(b)
-  names(p) <- nms
-  if (!is.null(tfm$xreg)) {
-    P <- (p[1:ncol(tfm$xreg)] <= p.value)
-    if (all(P)) xreg <- tfm$xreg
-    else if (any(P)) {
-      xreg <- tfm$xreg[, P]
-    } else xreg <- NULL
-  } else xreg <- NULL
-  if (tfm$k > 0) {
-    tfi <- lapply(tfm$inputs, function(tf) {
-      if (p[as.character(tf$w0.expr)] < p.value) {
-        if (tf$par.prefix == "TC" && tf$p == 1 && length(tf$param) == 2 && tf$delay == 0) {
-          if ( p[names(tfm$inputs[[3]]$param)[2]] < p.value ) tf
-          else {
-            tf1 <- tf(tf$x, w0 = tf$w0, par.prefix = tf$par.prefix)
-            tf1$x.name <- tf$x.name
-            tf1
-          }
-        } else tf
-      }
-      else NULL
-    })
-    tfi[sapply(tfi, is.null)] <- NULL
-  } else tfi <- NULL
-  
-  if (is.null(xreg) && is.null(tfi)) return(tfm$noise)
-  
-  tfm(y, xreg = xreg, inputs = tfi, noise = tfm$noise, new.name = FALSE, ...)
+  if (mdl$noise$bc) unname(ts(exp(S)*N, end = end, frequency = freq))
+  else unname(ts(S+N, end = end, frequency = freq))
 }
 
+#' @noRd
 is.tfm <- function(tfm) {
   inherits(tfm, "tfm")
 }
 
-
+#' @noRd
 param.tfm <- function(tfm) {
   unlist(tfm$param, use.names = TRUE)
 }
 
-output.tfm <- function(tfm, y = NULL, envir = NULL) {
+# Update tfm object parameters from vector
+# @param object tfm object
+# @param param numeric vector of parameter values
+# @return tfm object with updated parameters in all components
+# @noRd
+.update_tfm <- function(object, param) {
+  object$param[] <- param
+  object$inputs <- lapply(object$inputs, .update_tf, param = param)
+  object$noise <- .update_um(object$noise, param)
+  return(object)
+}
+
+# Remove differencing from tfm to predict transformed output
+# Adjusts model by dividing out nabla from noise and applying it to inputs
+# @param mdl tfm object
+# @param nabla differencing operator to remove from model
+# @return modified tfm for predicting differenced series
+# @noRd
+.diff_tfm <- function(mdl, nabla) {
+  stopifnot(is.tfm(mdl))
+  if (mdl$kx > 0) {
+    xreg <- apply(mdl$xreg, 2, function(x) {
+      x <- diffC(x, nabla, FALSE)
+    })
+    mdl$xreg <- xreg
+  }
+  
+  if (mdl$k > 0) {
+    d <- length(nabla) - 1
+    for (j in 1:mdl$k) {
+      end <- end(mdl$inputs[[j]]$x)
+      s <- frequency(mdl$inputs[[j]]$x)
+      x <- diffC(mdl$inputs[[j]]$x, nabla, mdl$inputs[[j]]$um$bc)
+      mdl$inputs[[j]]$x <- ts(x, end = end, frequency = s)
+      n <- mdl$inputs[[j]]$t.end - mdl$inputs[[j]]$t.start + 1
+      mdl$inputs[[j]]$t.end <- mdl$inputs[[j]]$t.end - d
+      n <- n - d
+      mdl$inputs[[j]]$t.start <- mdl$inputs[[j]]$t.end - n + 1
+      mdl$inputs[[j]]$um$bc <- FALSE
+    }
+  }
+  
+  nabla <- polydivC(mdl$noise$nabla, nabla, FALSE, 1e-5)
+  mdl$noise$nabla <- nabla
+  mdl$noise$i <- list(as.lagpol(nabla))
+  mdl
+}
+
+#' Extract output series from tfm object
+#' @param object tfm object
+#' @param y optional ts object (if NULL, extracts from object)
+#' @param envir environment for evaluation
+#' @return ts object containing the output series
+#' @noRd
+.output_tfm <- function(object, y = NULL, envir = parent.frame (), ...) {
   if (is.null(y)) {
-    if (is.ts(tfm$output)) return(tfm$output)
-    if (is.null(tfm$output)) stop("argment y required")
+    if (is.ts(object$output)) return(object$output)
+    if (is.null(object$output)) stop("argment y required")
     else {
-      if (is.null (envir)) envir <- parent.frame ()
-      y <- eval(parse(text = tfm$output), envir)
+      y <- eval(parse(text = object$output), envir)
     }
   }  
-  if (is.ts(y)) return(y)
   if (!is.numeric(y)) stop("output must be a numeric vector")
-  ts(y)
+  as.ts(y)
 } 
 
-update.tfm <- function(tfm, param) {
-  tfm$param[] <- param
-  tfm$inputs <- lapply(tfm$inputs, update.tf, param = param)
-  tfm$noise <- update.um(tfm$noise, param)
-  return(tfm)
-}
 
 
-#' Cross-correlation check
-#'
-#' \code{ccf} displays ccf between prewhitened inputs and residuals.
-#'
-#' @param tfm a \code{tfm} object.
-#' @param lag.max number of lags.
-#' @param method Exact/conditional residuals.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#' @param ... additional arguments.
-#'
-#'
-ccf.tfm <- function(tfm, lag.max = NULL, method = c("exact", "cond"), envir=NULL, ...) {
-
-  if (is.null (envir)) envir <- parent.frame ()
-  if (tfm$k < 1) stop("no stochastic input")
-
-  j <- c()
-  for (i in 1:tfm$k) 
-    if (tfm$inputs[[i]]$um$k > 0)
-      j <- c(j, i)
-  
-  k <- length(j)
-  if (k < 1) stop("no stochastic input")
-  
-  
-  if (k > 1) {
-    oldpar <- par(no.readonly = TRUE)
-    on.exit(par(oldpar))
-    par(mfrow = c(k, 1))
-  }
-
-  u <- residuals.tfm(tfm, method = method, envir = envir)
-  for (i in j) {
-    end <- end(tfm$inputs[[i]]$x)
-    s <- frequency(tfm$inputs[[i]]$x)
-    x <- tfm$inputs[[i]]$x[tfm$inputs[[i]]$n.back:length(tfm$inputs[[i]]$x)]
-    x <- ts(x, end = end, frequency = s)
-    x <- residuals.um(tfm$inputs[[i]]$um, x, method, envir=envir)
-    x <- window(x, start = start(u), end = end(u))
-    pccf(x, u, lag.max = lag.max)
-  }
-  
-  invisible(NULL)
-  
-}
 
 
-#' @rdname ucomp
+
+
+#' @rdname decomp
 #' @param y an object of class \code{\link{ts}}.
 #' @param envir environment in which the function arguments are evaluated.
 #'    If NULL the calling environment of this function will be used.
 #' @export
-ucomp.tfm <- function(mdl, y = NULL,
+decomp.tfm <- function(mdl, y = NULL,
                       method = c("mixed", "forecast", "backcast"), 
                       envir = NULL, ...) {
 
   if (is.null (envir)) envir <- parent.frame ()
   y <- noise.tfm(mdl, y, FALSE, TRUE, envir = envir)
-  uc <- ucomp.um(mdl$noise, y, method)
+  uc <- decomp.um(mdl$noise, y, method)
   return(uc)
 
 }
 
 
-#' @rdname sim
-#' @param y0 initial conditions for the nonstationary series.
-#' 
-#' @export
-sim.tfm <- function(mdl, n = 100, y0 = NULL, seed = NULL, ...) {
-  
-  z <- signal.tfm(mdl, diff = TRUE)
-  end <- end(z)
-  s <- frequency(z)
-  
-  d <- mdl$noise$d
-  if (!is.null(seed)) set.seed(seed)
-  a <- rnorm(n - d, 0, sqrt(mdl$noise$sig2))
-  if (is.null(mdl$noise$mu)) mu <- 0
-  else mu <- mdl$noise$mu
-  
-  z <- z + simC(a, FALSE, mu, mdl$noise$phi, 1, mdl$noise$theta, 0)
-  if (d > 0) {
-    y <- double(n)
-    b <- -mdl$noise$nabla[2:(d+1)]
-    if (!is.null(y0)) {
-      if (length(y0) >= d) y[1:d] <- y0[1:d]
-    } 
-    
-    for (i in (d+1):n) 
-      y[i] <- z[i-d] + sum(y[(i-1):(i-d)] * b) 
-  } else y <- z
-  
-  if (mdl$noise$bc) ts(exp(y), end = end, frequency = s)
-  else ts(y, end = end, frequency = s)
-  
-}
+
 
 
 

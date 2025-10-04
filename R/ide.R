@@ -178,11 +178,10 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
                 frequency = frequency(y))
 
       if (!is.null(i)) {
-        if (inherits(i, "lagpol")) i <- i$pol
-        else if (is.lagpol.list(i)) i <- polyexpand(i)
+        if (inherits(i, "lagpol")) i1 <- i$pol
+        else if (is.lagpol.list(i)) i1 <- polyexpand(i)
         else stop("i must be a list of lag polynomials")
-        y <- ts(diffC(y, i, FALSE), end = end(y), frequency = frequency(y))
-        ylab <- "w"
+        y <- ts(diffC(y, i1, FALSE), end = end(y), frequency = frequency(y))
       }  
     
       n <- length(y)
@@ -211,7 +210,7 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
     
       for (j in 1:n.graphs) { 
         if (graphs[j] ==  "plot") {
-          plot(y, xlab = "t", ylab = tslabel(ylab, bc, d, D, s, S), type = "n", 
+          plot(y, xlab = "t", ylab = tslabel(ylab, bc, d, D, s, S, i), type = "n", 
                col = "black", ylim = c(miny, maxy))
           abline(h = seq(miny, maxy, sy), lty = 2, col = "gray")
           abline(h = my, col = "gray")  
@@ -311,11 +310,11 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
           fx <- dnorm(x, mean(y), sd(y))
           if (j ==  2 & graphs[1] ==  "plot") {
             plot(fy$y, fy$x, ylim = c(miny, maxy), xlim = c(0, max(max(fy$y), max(fx))), type = "l",
-                 ylab = tslabel(ylab, bc, d, D, s, S), xlab = "Density")
+                 ylab = tslabel(ylab, bc, d, D, s, S, i), xlab = "Density")
             lines(fx, x, col = "gray")
           } else {
             plot(x, fx, xlim = c(miny, maxy), ylim = c(0, max(max(fy$y), max(fx))), type = "l",
-                 xlab = tslabel(ylab, bc, d, D, s, S), ylab = "Density", col = "gray")
+                 xlab = tslabel(ylab, bc, d, D, s, S, i), ylab = "Density", col = "gray")
             lines(fy$x, fy$y)
           }
         } else if (graphs[j] ==  "pgram") {
@@ -377,71 +376,147 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
   invisible(NULL)
 }
 
-tslabel <- function(ylab, bc, d, D, s, S) {
+#' Prewhitened cross correlation function
+#'
+#' \code{pccf} displays cross correlation function between input and output
+#' after prewhitening both through a univariate model.
+#'
+#' @param x input, a 'ts' object or a numeric vector.
+#' @param y output, a 'ts' object or a numeric vector.
+#' @param um.x univariate model for input.
+#' @param um.y univariate model for output.
+#' @param lag.max number of lags, integer.
+#' @param main title of the graph.
+#' @param nu.weights logical. If TRUE the coefficients of the IRF are 
+#' computed instead of the cross-correlations.
+#' @param plot logical value to indicate if the ccf graph must be graphed or
+#'   computed.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
+#' @param ... additional arguments.
+#'
+#' @return The estimated cross correlations are displayed in a graph or returned
+#'   into a numeric vector.
+#' @export
+pccf <- function(x, y, um.x = NULL, um.y = NULL, lag.max = NULL, plot = TRUE,
+                 envir=NULL, main = NULL, nu.weights = FALSE, ...) {
+  if (is.null (envir)) envir <- parent.frame ()
+  xlab <- deparse(substitute(x))
+  ylab <- deparse(substitute(y))
   
-  if (S & s < 2) S <- FALSE
+  if (!is.ts(y)) y <- ts(y)
+  if (!is.ts(x)) x <- ts(x)
+  if (!is.null(ncol(x))) x <- x[, 1]
+  if (!is.null(ncol(y))) y <- y[, 1]
   
-  if (S & d > 0) {
+  s <- frequency(y)
+  if (s != frequency(x)) stop("incompatible series")
+  
+  if (!is.null(um.x)) {
+    x <- residuals.um(um.x, x, method = "cond", envir=envir)
+    if (is.null(um.y)) y <- residuals.um(um.x, y, method = "cond", envir=envir)
+    else y <- residuals.um(um.y, y, method = "cond", envir=envir)
+  } else if (!is.null(um.y)) {
+    y <- residuals.um(um.y, y, method = "cond", envir=envir)
+    x <- residuals.um(um.y, x, method = "cond", envir=envir)
+  }
+  
+  x <- window(x, start = start(y), end = end(y))
+  
+  cc <- stats::ccf(x, y, lag.max = lag.max, plot = FALSE)
+  lag.max <- (dim(cc$lag)[1]-1)/2
+  
+  if (plot) {
+    oldpar <- par(no.readonly = TRUE)
+    on.exit(par(oldpar))
+    if (is.null(main))
+      main <- substitute(rho*"("*xlab[t+k]*","*ylab[t]*")",
+                         list(xlab = xlab, ylab = ylab))
+    if (main !=  "")
+      par(mar = c(3.0, 3.0, 3.5, 1.0), mgp = c(1.5, 0.6, 0))
+    else
+      par(mar = c(3.0, 3.0, 1.0, 1.0), mgp = c(1.5, 0.6, 0))
+    # stats::ccf(x, y, lag.max = lag.max, ylab = "CCF", ci.col = "gray",
+    #            main = main, plot = plot)
+    # abline(v = 0, col = "gray", lty = 2)
+    cc$lag[,1,1] <- (-lag.max) : lag.max
+    plot(cc, main = main, ylab = "CCF", ci.col = "gray")
+    invisible()
+  } else {
+    cc <- stats::ccf(x, y, lag.max = lag.max, plot = FALSE)
+    if (nu.weights) cc <- cc*sd(y)/sd(x)
+    return(cc)
+  }
+}
+
+tslabel <- function(ylab, bc, d, D, s, S, i) {
+  # Initial adjustments
+  if (S && s < 2) S <- FALSE
+  if (!is.null(i)) {
+    if (is.lagpol(i)) i <- list(i)
+    if (is.lagpol.list(i)) {
+      for (j in 1:length(i)) {
+        if (is.lagpol(i[[j]])) {
+          if (i[[j]]$s == 1 && i[[j]]$nlags == 1 && i[[j]]$pol[2] == -1) {
+            d <- d + i[[j]]$p
+            i[[j]] <- NULL
+          } else if (i[[j]]$s == s && i[[j]]$nlags == 1 && i[[j]]$pol[s+1] == -1) {
+            D <- D + i[[j]]$p
+            i[[j]] <- NULL
+          }
+        }
+      }
+      i <- i[!sapply(i, is.null)]
+    } else i <- NULL
+  }
+  if (S && d > 0) {
     S <- FALSE
     d <- d - 1
     D <- D + 1
   }
-
-  if (bc) {
-    if (d > 0) {
-      if (D > 0) {
-        if (d > 1) {
-          if (D > 1) substitute(nabla^d*nabla^D[s]*log*(ylab[t]), list(ylab=ylab, d = d, D = D, s = s))
-          else substitute(nabla^d*nabla[s]*log*(ylab[t]), list(ylab=ylab, d = d,s = s))
-        } else {
-          if (D > 1) substitute(nabla*nabla^D[s]*log*(ylab[t]), list(ylab=ylab, D = D, s = s))
-          else substitute(nabla*nabla[s]*log*(ylab[t]), list(ylab=ylab, s = s))
-        }
-      } else {
-        if (d > 1) substitute(nabla^d*log*(ylab[t]), list(ylab=ylab, d = d))
-        else substitute(nabla*log*(ylab[t]), list(ylab=ylab))
-      }
-    } else if (D > 0) {
-      if (S) {
-        if (D > 1) substitute(nabla[s]^D*S[s]*log*(ylab[t]), list(ylab=ylab, D = D, s = s))
-        else substitute(nabla[s]*S[s]*log*(ylab[t]), list(ylab=ylab, s = s))   
-      } else {
-        if (D > 1) substitute(nabla[s]^D*log*(ylab[t]), list(ylab=ylab, D = D, s = s))
-        else substitute(nabla[s]*log*(ylab[t]), list(ylab=ylab, s = s))
-      }
-    } else if (S) {
-      substitute(S[s]*log*(ylab[t]), list(ylab=ylab, s = s))
-    } else {
-      substitute(log*(ylab[t]), list(ylab=ylab))
-    }
-  } else {
-    if (d > 0) {
-      if (D > 0) {
-        if (d > 1) {
-          if (D > 1) substitute(nabla^d*nabla^D[s]*ylab[t], list(ylab=ylab, d = d, D = D, s = s))
-          else substitute(nabla^d*nabla[s]*ylab[t], list(ylab=ylab, d = d,s = s))
-        } else {
-          if (D > 1) substitute(nabla*nabla^D[s]*ylab[t], list(ylab=ylab, D = D, s = s))
-          else substitute(nabla*nabla[s]*ylab[t], list(ylab=ylab, s = s))
-        }
-      } else {
-        if (d > 1) substitute(nabla^d*ylab[t], list(ylab=ylab, d = d))
-        else substitute(nabla*ylab[t], list(ylab=ylab))
-      }
-    } else if (D > 0) {
-      if (S) {
-        if (D > 1) substitute(nabla[s]^D*S[s]*ylab[t], list(ylab=ylab, D = D, s = s))
-        else substitute(nabla[s]*S[s]*ylab[t], list(ylab=ylab, s = s))   
-      } else {
-        if (D > 1) substitute(nabla[s]^D*ylab[t], list(ylab=ylab, D = D, s = s))
-        else substitute(nabla[s]*ylab[t], list(ylab=ylab, s = s))
-      }
-    } else if (S) {
-      substitute(S[s]*ylab[t], list(ylab=ylab, s = s))
-    } else {
-      substitute(ylab[t], list(ylab=ylab))
+  
+  # Build differentiation operator components
+  parts <- character()
+  
+  # Non-seasonal differences
+  if (d > 0) {
+    parts <- c(parts, if (d > 1) paste0("nabla^", d) else "nabla")
+  }
+  
+  # Seasonal differences
+  if (is.lagpol.list(i)) {
+    for (j in 1:length(i)) {
+      if (i[[j]]$s > 1 && i[[j]]$nlags == 1 && i[[j]]$pol[i[[j]]$s+1] == -1) {
+        parts <- c(parts, if (i[[j]]$p > 1) {
+          paste0("nabla[", i[[j]]$s, "]^", i[[j]]$p) 
+          } else {
+            paste0("nabla[", i[[j]]$s, "]")
+          })
+      } else ylab <- "w"
     }
   }
+  
+  if (D > 0) {
+    parts <- c(parts, if (D > 1) paste0("nabla[", s, "]^", D) else paste0("nabla[", s, "]"))
+  }
+  
+  # Seasonal sum operator
+  if (S) {
+    parts <- c(parts, paste0("S[", s, "]"))
+  }
+  
+  # Join operators with *
+  diff_op <- if (length(parts) > 0) paste(parts, collapse = "*") else ""
+  
+  # Build dependent variable
+  var <- if (bc) "log*(ylab[t])" else "ylab[t]"
+  
+  # Combine operator and variable
+  expr_str <- if (nchar(diff_op) > 0) paste0(diff_op, "*", var) else var
+  
+  # Parse and substitute
+  expr <- parse(text = expr_str)[[1]]
+  eval(substitute(substitute(e, list(ylab = ylab)), list(e = expr)))
 }
 
 

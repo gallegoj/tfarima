@@ -7,16 +7,21 @@
 \usage{
 factors(lp, ...)
 
-\method{factors}{lagpol}(lp, tol = 1e-05, expand = FALSE, ...)
+\method{factors}{lagpol}(lp, full = TRUE, tol = 1e-05, expand = FALSE, ...)
 }
 \arguments{
 \item{lp}{an object of class \code{lagpol}.}
 
 \item{...}{additional arguments.}
 
-\item{tol}{tolerance for real and unit roots.}
+\item{full}{logical value. If TRUE, the lag polynomial is completely
+factored. Otherwise, it is factored separating positive real roots from the
+others.}
 
-\item{expand}{logical if the expanded polynomial should be returned.}
+\item{tol}{tolerance for nonzero coefficients.}
+
+\item{expand}{logical value to indicate whether or not the factored lag
+polynomial must be expanded.}
 }
 \value{
 \code{factors} returns a list with the simplifying factors of the lag

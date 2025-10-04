@@ -1,3 +1,6 @@
+## tfarima/R/tf.R
+## Jose L Gallego (UC)
+
 #' Transfer function for input
 #'
 #' \code{tf} creates a rational transfer function for an input, V(B) = w0(1 -
@@ -6,19 +9,35 @@
 #' both polynomials in the numerator and denominator are normalized and can be
 #' specified with the \code{lagpol} function in the same way as the operators of
 #' univariate models.
+#' @param x Input time series. A ts object or numeric vector. If NULL, input
+#'   should be provided inside the \code{um} object.
+#' @param delay Integer. Number of periods to delay the input (d in the transfer
+#'   function).
+#' @param w0 Numeric. Constant term of the transfer function polynomial V(B).
+#' @param ar Character string or list. Specification of autoregressive
+#'   polynomials in the denominator.
+#' @param ma Character string or list. Specification of moving average
+#'   polynomials in the numerator.
+#' @param um Univariate model object. Model for the stochastic component of the
+#'   input series.
+#' @param n.back Integer. Number of backcasts to compute for extending the input
+#'   series backward.
+#' @param par.prefix Character. Prefix for parameter names in transfer function.
+#' @param envir Environment. Environment for evaluating function arguments. If
+#'   NULL, uses the calling environment.
 #'
-#' @param x input, a ts object or a numeric vector.
-#' @param delay integer.
-#' @param w0 constant term of the polynomial V(B), double.
-#' @param ar list of stationary AR polynomials.
-#' @param ma list of MA polynomials.
-#' @param um univariate model for stochastic input.
-#' @param n.back number of backcasts to extend the input.
-#' @param par.prefix prefix name for parameters.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#'
-#' @return An object of the class "tf".
+#' @return An object of class "tf" containing the transfer function specification.
+#' Key components include:
+#' \describe{
+#'   \item{x}{Input time series data (possibly extended with backcasts).}
+#'   \item{delay}{Number of periods delay in the transfer function.}
+#'   \item{w0}{Constant gain parameter.}
+#'   \item{phi}{AR polynomial coefficients (denominator).}
+#'   \item{theta}{MA polynomial coefficients (numerator).}
+#'   \item{p, q}{Orders of AR and MA polynomials respectively.}
+#'   \item{param}{Named list of all model parameters.}
+#'   \item{um}{Univariate model for the input series.}
+#' }
 #'
 #' @references
 #'
@@ -27,19 +46,19 @@
 #'
 #' Wei, W.W.S. (2006) Time Series Analysis Univariate and Multivariate Methods.
 #' 2nd Edition, Addison Wesley, New York, 33-59.
-#' 
+#'
 #' @seealso \code{\link{um}}.
-#' 
+#'
 #' @examples
-#' 
+#'
 #' x <- rep(0, 100)
 #' x[50] <- 1
 #' tfx <- tf(x, w0 = 0.8, ar = "(1 - 0.5B)(1 - 0.7B^12)")
 #'
 #' @export
-tf <- function(x = NULL, delay = 0,  w0 = 0, ar = NULL, ma = NULL,
-               um = NULL, n.back = NULL, par.prefix = "", envir=NULL) {
-  if (is.null (envir)) envir <- parent.frame ()
+tf <- function(x = NULL, delay = 0,  w0 = 0.01, ar = NULL, ma = NULL, um = NULL, 
+               n.back = NULL, par.prefix = "", envir = parent.frame ()) {
+  
   if (is.null(x)) {
     if (is.null(um)) stop("input x required")
     else if (is.null(um$z)) stop("input x required")
@@ -58,31 +77,41 @@ tf <- function(x = NULL, delay = 0,  w0 = 0, ar = NULL, ma = NULL,
   
   if (!is.ts(x)) {
     stopifnot(is.numeric(x))
-    x <- ts(x)
+    x <- as.ts(x)
   }
+  
+  if (!is.numeric(delay) || length(delay) != 1 || delay < 0 ||
+      delay != as.integer(delay)) {
+    stop("delay must be a non-negative integer")
+  }
+  if (!is.numeric(w0) || length(w0) != 1) {
+    stop("w0 must be a single numeric value")
+  }  
 
+  if (is.numeric(ar)) {if (any(ar == 0)) ar <- NULL}
   if (!is.null(ar)) {
-    ar <- .lagpol0(ar, "ar", paste(par.prefix, ".d", sep = ""), envir=envir)
+    if (is.null(names(ar))) names(ar) <- paste0(par.prefix, ".d")
+    ar <- .lagpol0(ar, "ar", envir=envir)
     phi <- polyexpand(ar)
   } else {
     phi <- 1.0
   }
   names(phi) <- paste("[phi", 0:(length(phi)-1), "]", sep = "")
 
+  if (is.numeric(ma)) {if (any(ma == 0)) ma <- NULL}
   if (!is.null(ma)) {
-    ma <- .lagpol0(ma, "ma", paste(par.prefix, ".w", sep = ""), envir=envir)
+    if (is.null(names(ma))) names(ma) <- paste0(par.prefix, ".w")
+    ma <- .lagpol0(ma, "ma", envir=envir)
     theta <- polyexpand(ma)
   } else {
     theta <- 1.0
   }
   theta <- theta*w0  
   names(theta) <- paste("[theta", delay:(delay+length(theta)-1), "]", sep = "")
-  
-  param <- unlist( lapply(c(ar, ma), function(x) unlist(x$param)) )
-  if ( is.null(names(w0)) ) {
-      names(w0) <- par.prefix
-  }
-  
+  param <- lapply(c(ar, ma), function(x) unlist(x$param))
+  param <- unname(param)
+  param <- unlist(param)
+  if ( is.null(names(w0)) ) names(w0) <- par.prefix
   param <- as.list(c(w0, param))
   param <- param[!duplicated(names(param))]
   w0.expr <- parse(text = names(w0))
@@ -109,22 +138,235 @@ tf <- function(x = NULL, delay = 0,  w0 = 0, ar = NULL, ma = NULL,
 
 
 
+#' Helper function to create a tf object
+#'
+#' \code{tfest} estimates the transfer function
+#'  \deqn{V(B) = w_0 * (theta(B)/phi(B)) * B^d}
+#' that relates the input X_t to the output Y_t.
+#' 
+#' @param y Output series, a ts object or numeric vector.
+#' @param x Input series, a ts object or numeric vector.
+#' @param delay Integer. Number of periods delay (default 0).
+#' @param p Integer. Order of the AR polynomial (default 1).
+#' @param q Integer. Order of the MA polynomial (default 2).
+#' @param um.y Univariate model for output series, um object or NULL.
+#' @param um.x Univariate model for input series, um object or NULL.
+#' @param n.back Integer. Number of backcasts to compute.
+#' @param par.prefix Character. Prefix for parameter names.
+#' @param envir Environment for evaluating arguments. If NULL, uses calling
+#'   environment.
+#'
+#' @return An object of class \code{\link{tf}} containing preestimated transfer
+#'   function parameters.
+#'
+#' @details Uses prewhitening to estimate initial parameter values.
+#'
+#' @examples
+#'
+#' Y <- seriesJ$Y - mean(seriesJ$Y)
+#' X <- seriesJ$X - mean(seriesJ$X)
+#' umx <- um(X, ar = 3)
+#' umy <- fit(umx, Y)
+#' tfx <- tfest(Y, X, delay = 3, p = 2, q = 2, um.x = umx, um.y = umy)
+#'
+#' @export
+tfest <- function(y, x, delay = 0, p = 1, q = 2, um.y = NULL, um.x = NULL,
+                  n.back = NULL, par.prefix = "", 
+                  envir = envir <- parent.frame ()) {
+  
+  stopifnot(p >= 0, q >= 0, delay >= 0)
+  if (is.null(um.y)) stop("Univariate model for output required")
+  x.name <- deparse(substitute(x))
+  if (!is.ts(y)) y <- ts(y)
+  if (!is.ts(x)) x <- ts(x)
+  s <- frequency(y)
+  if (s != frequency(x)) stop("incompatible series")
+  x.copy <- x
+  if (is.null(n.back)) n.back  <- length(x)/4
+  if (par.prefix == "") par.prefix <- x.name
+  tf.x <- tf(x, delay = delay, ar = p, ma = q, um = um.x, par.prefix = par.prefix)
+  tf.x$x.name <- x.name
+  if (is.null(um.y)) um.y <- um()
+  else um.y$param <- NULL
+  tfm.x <- tfm(y, inputs = tf.x, noise = um.y, envir = envir)
+  return(tfm.x$inputs[[1]])
+}
+
+#' Impulse response function
+#' 
+#' Computes and plots the impulse response function (IRF) or step response 
+#' function (SRF) of a transfer function.
+#' 
+#' @param tf An object of class "tf".
+#' @param lag.max Integer. Maximum number of lags to compute (default 10).
+#' @param cum Logical. If TRUE computes step response function (cumulative), 
+#'   if FALSE computes impulse response function (default FALSE).
+#' @param plot Logical. If TRUE creates a plot, if FALSE returns values only (default TRUE).
+#' 
+#' @return If \code{plot = FALSE}, a named numeric vector with IRF/SRF values.
+#'   If \code{plot = TRUE}, creates a plot and returns nothing (invisibly).
+#'   
+#' @examples
+#' # Create transfer function
+#' x <- rep(0, 100); x[50] <- 1
+#' tfx <- tf(x, w0 = 0.8, ar = "(1 - 0.5B)")
+#' 
+#' # Plot impulse response function
+#' irf(tfx, lag.max = 15)
+#' 
+#' # Get step response values without plot
+#' srf_values <- irf(tfx, lag.max = 10, cum = TRUE, plot = FALSE)
+#' 
+#' @export
+irf <- function(tf, lag.max = 10, cum = FALSE, plot = TRUE) {
+  stopifnot(is.tf(tf))
+  stopifnot(is.numeric(lag.max), length(lag.max) == 1, lag.max > 0)
+  stopifnot(is.logical(cum), is.logical(plot))
+  psi <- as.numeric( polyratioC(tf$theta, tf$phi, lag.max - tf$delay) )
+  if (tf$delay > 0) {
+    psi <- c(rep(0, tf$delay), psi)
+  }
+  if (cum) {
+    psi <- cumsum(psi)
+    names(psi) <- paste("[NU", 0:lag.max, "]", sep = "")
+    ylab <- "SRF"
+  } else {
+    names(psi) <- paste("[nu", 0:lag.max, "]", sep = "")
+    ylab <- "IRF"
+  }
+  
+  if (plot) {
+    oldpar <- par(no.readonly = TRUE)
+    on.exit(par(oldpar))
+    max_psi <- max(abs(psi))
+    if (max_psi == 0) max_psi <- 1
+    par(mar = c(3.0, 3.0, 1.0, 1.0), mgp = c(1.5, 0.6, 0))
+    plot(0:lag.max, psi, type = "h", ylim = c(-max_psi, max_psi), 
+         xlab = "Lag", ylab = ylab)
+    abline(h = 0, col = "gray")
+    invisible(psi)
+  } else {
+    psi
+  }
+}
 
 
 
+#' Output of a transfer function or a transfer function model
+#' 
+#' \code{output} filters the input using the transfer function.
+#' 
+#' @param object an object of the S3 class "tf".
+#' @param ... additional arguments.
+#' 
+#' @return A "ts" object
+#' @export
+output <- function(object, ...) {
+  UseMethod("output")
+}
+
+#' @rdname output
+#' @export
+output.tf <- function(object, ...) {
+  stopifnot(is.tf(object))
+  x <- filterC(object$x, object$theta, object$phi, object$delay)
+  ts(x, end = end(object$x), frequency = frequency(object$x))
+}
+
+#' Predict transfer function
+#' @param object Transfer function object.
+#' @param n.ahead Periods to predict.
+#' @param ... Unused.
+#' @return Point forecast for input.
+#' @export
+predict.tf <- function(object, n.ahead, ...) {
+  start = start(object$x)
+  frequency = frequency(object$x)
+  if (object$um$p + object$um$d + object$um$q > 0) {
+    ori <- length(object$x)
+    if(is.null(object$um$mu)) mu <- 0
+    else mu <- object$um$mu
+    X <-  forecastC(object$x, object$um$bc, mu, object$um$phi, object$um$nabla,
+                    object$um$theta, object$um$sig2, ori, n.ahead)
+    object$x <- ts(X[, 1], start = start(object$x), frequency = frequency(object$x))
+  } 
+  object
+}
+
+#' Print method for transfer function objects
+#' @rdname print
+#' @export
+print.tf <- function(x, ...) {
+  if (!is.tf(x)) {
+    stop("Object must be of class 'tf'")
+  }  
+  cat("Input:", x$x.name, "\n")
+  cat("Sample:", start(x$x), " - ", end(x$x), "\n")
+  cat("Freq.:", frequency(x$x), "\n")
+  cat("Delay:", x$delay, "\n")
+  
+  if ( !is.null(x$ar) ) {
+    if (length(x$ar) > 1) {
+      cat("AR polynomials:\n")
+      print(x$ar)
+    }
+    cat("AR polynomial:\n")
+    print.lagpol(x$phi)
+  }
+  
+  cat("w0:", x$w0, "\n")
+  if ( !is.null(x$ma) ) {
+    cat("Normalized MA polynomials:\n")
+    print(x$ma)
+    cat("MA polynomial:\n")
+    print.lagpol(x$theta)
+  }
+  invisible(x)
+}
+
+#' @rdname roots
+#' @param opr character. Operators for which roots are computed. Options: "arma",
+#'   "ar" or "ma".
+#' @export   
+roots.tf <- function(x, opr = c("arma", "ar", "ma"), ...) {
+  stopifnot(is.tf(x))
+  opr <- match.arg(opr)
+  
+  t <- list()
+  if (startsWith(opr, "ar") & x$kar) {
+    t <- lapply(x$ar, roots.lagpol)
+  }
+  
+  if (endsWith(opr, "ma") & x$kma) {
+    t <- c(t, lapply(x$ma, roots.lagpol))
+  }
+  t
+}
+
+# Helper functions for tf objects
 
 is.tf <- function(tf) {
   return(inherits(tf, "tf"))
 }
 
-has.um.tf <- function(tf) {
-  stopifnot(is.tf(tf))
-  (tf$um$p + tf$um$d + tf$um$q) > 0
-}
-
 is.list.tf <- function(ltf) {
   if(!base::is.list(ltf)) return(FALSE)
   all( sapply(ltf, is.tf) )
+}
+
+is.stationary.tf <- function(tf) {
+  if (tf$kar > 0) all(sapply(tf$ar, admreg.lagpol))
+  else return(TRUE)
+}
+
+is.invertible.tf <- function(tf) {
+  if (tf$kma > 0) all(sapply(tf$ma, admreg.lagpol))
+  else return(TRUE)
+}
+
+has.um.tf <- function(tf) {
+  stopifnot(is.tf(tf))
+  (tf$um$p + tf$um$d + tf$um$q) > 0
 }
 
 list.tf <- function(...) {
@@ -142,23 +384,22 @@ list.tf <- function(...) {
   ltf
 }
 
-
-
 param.tf <- function(tf) {
   unlist(tf$param, use.names = FALSE)
 }
 
-is.stationary.tf <- function(tf) {
-  if (tf$kar > 0) all(sapply(tf$ar, admreg.lagpol))
-  else return(TRUE)
-}
-
-is.invertible.tf <- function(tf) {
-  if (tf$kma > 0) all(sapply(tf$ma, admreg.lagpol))
-  else return(TRUE)
-}
-
-update.tf <- function(tf, param){
+#' Update an object \code{tf} 
+#' 
+#' \code{.update_tf} updates an object of class \code{tf} with a new vector 
+#' of parameters
+#' 
+#' @param tf an object of class \code{tf}.
+#' @param param a numeric vector.
+#' 
+#' @return 
+#' An object of class \code{tf}.
+#' @noRd
+.update_tf <- function(tf, param){
   tf$param[] <- param[names(tf$param)]
   tf$w0 <- eval(tf$w0.expr, envir = tf$param)
   if (tf$kar > 0) {
@@ -177,234 +418,33 @@ update.tf <- function(tf, param){
   
 }
 
-print.tf <- function(tf) {
-  cat("Input:", tf$x.name, "\n")
-  cat("Sample:", start(tf$x), " - ", end(tf$x), "\n")
-  cat("Freq.:", frequency(tf$x), "\n")
-  cat("Delay:", tf$delay, "\n")
-  
-  if ( !is.null(tf$ar) ) {
-    if (length(tf$ar) > 1) {
-      cat("AR polynomials:\n")
-      print(tf$ar)
-    }
-    cat("AR polynomial:\n")
-    print.lagpol(tf$phi)
-  }
-  
-  cat("w0:", tf$w0, "\n")
-  
-  if ( !is.null(tf$ma) ) {
-    cat("Normalized MA polynomials:\n")
-    print(tf$ma)
-    cat("MA polynomial:\n")
-    print.lagpol(tf$theta)
-  }
-  
-}
-
-irf.tf <- function(tf, lag.max = 10, cum = FALSE, plot = TRUE) {
-  stopifnot(inherits(tf, "tf"))
-  psi <- as.numeric( polyratioC(tf$theta, tf$phi, lag.max - tf$delay) )
-  if (tf$delay > 0) {
-    psi <- c(rep(0, tf$delay), psi)
-  }
-  if (cum) {
-    psi <- cumsum(psi)
-    names(psi) <- paste("[NU", 0:lag.max, "]", sep = "")
-    ylab <- "SRF"
-  } else {
-    names(psi) <- paste("[nu", 0:lag.max, "]", sep = "")
-    ylab <- "IRF"
-  }
-  
-  if (plot) {
-    oldpar <- par(no.readonly = TRUE)
-    on.exit(par(oldpar))
-    max <- max(abs(psi))
-    par(mar = c(3.0, 3.0, 1.0, 1.0), mgp = c(1.5, 0.6, 0))
-    plot(0:lag.max, psi, type = "h", ylim = c(-max, max), xlab = "Lag", ylab = ylab)
-    abline(h = 0)
-    invisible()
-  } else {
-    psi
-  }
-}
-
-#' Output of a transfer function
-#' 
-#' \code{output} filters the input using the transfer function.
-#' 
-#' @param tf an object of the S3 class "tf".
-#' 
-#' @return A "ts" object
-#' @export
-output.tf <- function(tf) {
-  stopifnot(inherits(tf, "tf"))
-  x <- filterC(tf$x, tf$theta, tf$phi, tf$delay)
-  ts(x, end = end(tf$x), frequency = frequency(tf$x))
-}
-
-#' Preestimates of a transfer function
-#' 
-#' \code{tfest} provides preestimates of the transfer function
-#' between an output and an input.
-#' 
-#' @param y output, a ts object or a numeric vector.
-#' @param x input, a ts object or a numeric vector.
-#' @param p order of the AR polynomial, integer
-#' @param q order of the MA polynomial, integer.
-#' @param delay integer.
-#' @param um.y univariate model for output, um object or NULL.
-#' @param um.x univariate model for input, um object or NULL.
-#' @param n.back number of backcasts.
-#' @param par.prefix prefix name for parameters.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#' @return A "tf" S3 object
-#' @export
-tfest <- function(y, x, delay = 0, p = 1, q = 2, um.y = NULL, um.x = NULL,
-                  n.back = NULL, par.prefix = "", envir = NULL) {
-
-  stopifnot(p >= 0, q >= 0, delay >= 0)
-  if (is.null(um.y)) stop("Univariate model for output required")
-  if (is.null (envir)) envir <- parent.frame ()
-  x.name <- deparse(substitute(x))
-  if (!is.ts(y)) y <- ts(y)
-  if (!is.ts(x)) x <- ts(x)
-  s <- frequency(y)
-  if (s != frequency(x)) stop("incompatible series")
-  x.copy <- x
-  if (is.null(n.back)) n.back  <- length(x)/4
-  if (par.prefix == "") par.prefix <- x.name
-  tf.x <- tf(x, delay = delay, ar = p, ma = q, um = um.x, par.prefix = par.prefix)
-  tf.x$x.name <- x.name
-  if (is.null(um.y)) um.y <- um()
-  else um.y$param <- NULL
-  tfm.x <- tfm(y, inputs = tf.x, noise = um.y, envir = envir)
-  return(tfm.x$inputs[[1]])
-
-}
-
-
-#' Prewhitened cross correlation function
-#'
-#' \code{pccf} displays cross correlation function between input and output
-#' after prewhitening both through a univariate model.
-#'
-#' @param x input, a 'ts' object or a numeric vector.
-#' @param y output, a 'ts' object or a numeric vector.
-#' @param um.x univariate model for input.
-#' @param um.y univariate model for output.
-#' @param lag.max number of lags, integer.
-#' @param main title of the graph.
-#' @param nu.weights logical. If TRUE the coefficients of the IRF are 
-#' computed instead of the cross-correlations.
-#' @param plot logical value to indicate if the ccf graph must be graphed or
-#'   computed.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#' @param ... additional arguments.
-#'
-#' @return The estimated cross correlations are displayed in a graph or returned
-#'   into a numeric vector.
-#' @export
-pccf <- function(x, y, um.x = NULL, um.y = NULL, lag.max = NULL, plot = TRUE,
-                 envir=NULL, main = NULL, nu.weights = FALSE, ...) {
-  if (is.null (envir)) envir <- parent.frame ()
-  xlab <- deparse(substitute(x))
-  ylab <- deparse(substitute(y))
-
-  if (!is.ts(y)) y <- ts(y)
-  if (!is.ts(x)) x <- ts(x)
-  if (!is.null(ncol(x))) x <- x[, 1]
-  if (!is.null(ncol(y))) y <- y[, 1]
-
-  s <- frequency(y)
-  if (s != frequency(x)) stop("incompatible series")
-
-  if (!is.null(um.x)) {
-    x <- residuals.um(um.x, x, method = "cond", envir=envir)
-    if (is.null(um.y)) y <- residuals.um(um.x, y, method = "cond", envir=envir)
-    else y <- residuals.um(um.y, y, method = "cond", envir=envir)
-  } else if (!is.null(um.y)) {
-    y <- residuals.um(um.y, y, method = "cond", envir=envir)
-    x <- residuals.um(um.y, x, method = "cond", envir=envir)
-  }
-
-  x <- window(x, start = start(y), end = end(y))
-
-  cc <- stats::ccf(x, y, lag.max = lag.max, plot = FALSE)
-  lag.max <- (dim(cc$lag)[1]-1)/2
-
-  if (plot) {
-    oldpar <- par(no.readonly = TRUE)
-    on.exit(par(oldpar))
-    if (is.null(main))
-      main <- substitute(rho*"("*xlab[t+k]*","*ylab[t]*")",
-                         list(xlab = xlab, ylab = ylab))
-    if (main !=  "")
-      par(mar = c(3.0, 3.0, 3.5, 1.0), mgp = c(1.5, 0.6, 0))
-    else
-      par(mar = c(3.0, 3.0, 1.0, 1.0), mgp = c(1.5, 0.6, 0))
-    # stats::ccf(x, y, lag.max = lag.max, ylab = "CCF", ci.col = "gray",
-    #            main = main, plot = plot)
-    # abline(v = 0, col = "gray", lty = 2)
-    cc$lag[,1,1] <- (-lag.max) : lag.max
-    plot(cc, main = main, ylab = "CCF", ci.col = "gray")
-    invisible()
-  } else {
-    cc <- stats::ccf(x, y, lag.max = lag.max, plot = FALSE)
-    if (nu.weights) cc <- cc*sd(y)/sd(x)
-    return(cc)
-  }
-}
-
-roots.tf <- function(tf, opr = c("arma", "ar", "ma")) {
-  stopifnot(inherits(tf, "tf"))
-  opr <- match.arg(opr)
-  
-  t <- list()
-  if (startsWith(opr, "ar") & tf$kar) {
-    t <- lapply(tf$ar, roots.lagpol)
-  }
-  
-  if (endsWith(opr, "ma") & tf$kma) {
-    t <- c(t, lapply(tf$ma, roots.lagpol))
-  }
-  t
-}
-
-sim.tf <- function(tf, N=100, x0=NULL, envir=NULL) {
-  if (is.null (envir)) envir <- parent.frame ()
-  if (is.null(tf$um)) {
-    x <- tf$x
-  } else {
-   x <- sim.um(tf$um, N, x0, envir=envir)
-  }
-  output.tf(tf)
-}
-
-predict.tf <- function(tf, n.ahead) {
-  start = start(tf$x)
-  frequency = frequency(tf$x)
-  if (tf$um$p + tf$um$d + tf$um$q > 0) {
-    ori <- length(tf$x)
-    if(is.null(tf$um$mu)) mu <- 0
-    else mu <- tf$um$mu
-    X <-  forecastC(tf$x, tf$um$bc, mu, tf$um$phi, tf$um$nabla,
-                    tf$um$theta, tf$um$sig2, ori, n.ahead)
-    tf$x <- ts(X[, 1], start = start(tf$x), frequency = frequency(tf$x))
-  } 
-  tf
-}
-
 var.predict.tf <- function(tf, n.ahead = 10) {
   stopifnot(inherits(tf, "tf"))
-  
   num <- polymultC( tf$theta, tf$um$theta )
   den <- polymultC(tf$phi, polymultC(tf$um$phi, tf$um$nabla))
   psi <- as.numeric( polyratioC(num, den, n.ahead - 1) )
   names(psi) <- paste("psi", 0:(n.ahead - 1), sep = "")
   cumsum(psi^2)*tf$um$sig2
 }
+
+
+
+
+
+
+
+
+
+#' @export
+sim.tf <- function(mdl, N=100, x0=NULL, envir=NULL, ...) {
+  if (is.null (envir)) envir <- parent.frame ()
+  if (is.null(mdl$um)) {
+    x <- mdl$x
+  } else {
+   x <- sim.um(mdl$um, N, x0, envir=envir)
+  }
+  output.tf(mdl)
+}
+
+
+

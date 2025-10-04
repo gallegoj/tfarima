@@ -37,7 +37,14 @@ Thompson, H. E. and Tiao, G. C. (1971) "Analysis of Telephone
 Data: A Case Study of Forecasting Seasonal Time Series," Bell Journal of
 Economics, The RAND Corporation, vol. 2(2), pages 515-541, Autumn.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/gallegoj/tfarima}
+}
+
+}
 \author{
 Jose Luis Gallego \email{jose.gallego@unican.es}
 }
-\keyword{package}
+\keyword{internal}

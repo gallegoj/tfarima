@@ -4,17 +4,22 @@
 \alias{ccf.tfm}
 \title{Cross-correlation check}
 \usage{
-ccf.tfm(tfm, lag.max = NULL, method = c("exact", "cond"), envir = NULL, ...)
+ccf.tfm(
+  x,
+  lag.max = NULL,
+  method = c("exact", "cond"),
+  envir = parent.frame(),
+  ...
+)
 }
 \arguments{
-\item{tfm}{a \code{tfm} object.}
+\item{x}{a \code{tfm} object.}
 
 \item{lag.max}{number of lags.}
 
 \item{method}{Exact/conditional residuals.}
 
-\item{envir}{environment in which the function arguments are evaluated.
-If NULL the calling environment of this function will be used.}
+\item{envir}{environment in which the function arguments are evaluated.}
 
 \item{...}{additional arguments.}
 }

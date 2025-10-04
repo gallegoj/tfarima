@@ -2,34 +2,59 @@
 % Please edit documentation in R/tfm.R
 \name{summary.tfm}
 \alias{summary.tfm}
-\title{Summarizing Transfer Function models}
+\title{Summarize Transfer Function Model}
 \usage{
 \method{summary}{tfm}(
   object,
   y = NULL,
   method = c("exact", "cond"),
   digits = max(3L, getOption("digits") - 3L),
-  envir = NULL,
+  envir = parent.frame(),
   ...
 )
 }
 \arguments{
-\item{object}{a \code{tfm} object.}
+\item{object}{A fitted \code{tfm} object.}
 
-\item{y}{a "ts" object.}
+\item{y}{Optional \code{ts} object for alternative output series.}
 
-\item{method}{exact or conditional maximum likelihood.}
+\item{method}{Character: "exact" or "cond" for residual calculation.}
 
-\item{digits}{number of significant digits to use when printing.}
+\item{digits}{Number of significant digits for printing.}
 
-\item{envir}{environment in which the function arguments are evaluated.
-If NULL the calling environment of this function will be used.}
+\item{envir}{Environment for evaluation. NULL uses calling environment.}
 
-\item{...}{additional arguments.}
+\item{...}{Additional arguments:
+\code{p.values} (logical) returns only p-values;
+\code{table} (logical) returns only coefficient table.}
 }
 \value{
-A \code{tfm} object.
+Object of class \code{summary.tfm} containing: call, coefficient
+  table, variance-covariance matrix, residuals, diagnostic statistics,
+  information criteria, and time series attributes.
 }
 \description{
-\code{summary} method for class "tfm".
+Produces summary statistics for a fitted transfer function model including
+parameter estimates, standard errors, and diagnostic tests.
+}
+\details{
+Computes parameter estimates with standard errors (from Jacobian),
+z-statistics, p-values, AIC, BIC, log-likelihood, Ljung-Box tests
+(at lags p+q+1 and n/4+p+q), and Bartlett heteroscedasticity test.
+}
+\examples{
+\dontrun{
+Y <- seriesJ$Y - mean(seriesJ$Y)
+X <- seriesJ$X - mean(seriesJ$X)
+umx <- um(X, ar = 3)
+umy <- fit(umx, Y)
+tfx <- tfest(Y, X, delay = 3, p = 2, q = 2, um.x = umx, um.y = umy)
+tfmy <- tfm(Y, inputs = tfx, noise = um(ar = 2))
+sm <- summary(tfmy)
+print(sm)
+}
+
+}
+\seealso{
+\code{\link{print.summary.tfm}}
 }

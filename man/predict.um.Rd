@@ -35,7 +35,7 @@ If NULL the calling environment of this function will be used.}
 \item{...}{additional arguments.}
 }
 \value{
-An object of class "\code{\link{tfm}}".
+An object of class "\code{\link{predict.um}}".
 }
 \description{
 \code{predict} computes point and interval predictions for a time series 

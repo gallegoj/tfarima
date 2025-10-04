@@ -7,7 +7,7 @@
 \usage{
 varsel(tfm, ...)
 
-\method{varsel}{tfm}(tfm, y = NULL, p.value = 0.1, envir = NULL, ...)
+\method{varsel}{tfm}(tfm, y = NULL, p.value = 0.1, envir = parent.frame(), ...)
 }
 \arguments{
 \item{tfm}{a \code{tfm} object.}
@@ -19,7 +19,7 @@ varsel(tfm, ...)
 \item{p.value}{probability value to decide whether or not to omit an input.}
 
 \item{envir}{environment in which the function arguments are evaluated.
-If NULL the calling environment of this function will be used.}
+By default, the calling environment of this function will be used.}
 }
 \value{
 A \code{tfm} object or a "um" if no input is significant at that level.

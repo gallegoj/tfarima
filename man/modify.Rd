@@ -6,7 +6,16 @@
 \alias{modify.um}
 \title{Modifying a TF or an ARIMA model}
 \usage{
-\method{modify}{tfm}(mdl, ...)
+\method{modify}{tfm}(
+  mdl,
+  ar = NULL,
+  i = NULL,
+  ma = NULL,
+  mu = NULL,
+  sig2 = NULL,
+  bc = NULL,
+  ...
+)
 
 modify(mdl, ...)
 
@@ -18,14 +27,11 @@ modify(mdl, ...)
   mu = NULL,
   sig2 = NULL,
   bc = NULL,
-  fit = TRUE,
   ...
 )
 }
 \arguments{
 \item{mdl}{an object of class \code{um} or \code{tfm}.}
-
-\item{...}{additional arguments.}
 
 \item{ar}{list of stationary AR lag polynomials.}
 
@@ -39,7 +45,7 @@ modify(mdl, ...)
 
 \item{bc}{logical. If TRUE logs are taken.}
 
-\item{fit}{logical. If TRUE, model is fitted.}
+\item{...}{additional arguments.}
 }
 \value{
 An object of class \code{um} or \code{um}.

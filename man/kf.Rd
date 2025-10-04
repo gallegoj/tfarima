@@ -2,29 +2,27 @@
 % Please edit documentation in R/stsm.R
 \name{kf}
 \alias{kf}
-\alias{kf.stsm}
-\title{Kalman filter for STS models}
+\title{Kalman filter for SS models}
 \usage{
-kf(mdl, ...)
-
-\method{kf}{stsm}(mdl, y = NULL, x1 = NULL, P1 = NULL, filtered = FALSE, ...)
+kf(mdl, z = NULL, x0 = NULL, P0 = NULL, filtered = FALSE, ...)
 }
 \arguments{
-\item{mdl}{an object of class \code{stsm}.}
+\item{mdl}{an object of class \code{ssm}.}
+
+\item{z}{time series to be filtered when it differs from the model series.}
+
+\item{x0}{initial state vector.}
+
+\item{P0}{covariance matrix of x1.}
+
+\item{filtered}{logical. If TRUE, the filtered states x_\{t|t\} and their
+covariance matrices P_\{t|t\} are returned. Otherwise, the forecasted states 
+x_\{t|t-1\} and thier covariance matrices P_\{t|t-1\} are returned.}
 
 \item{...}{additional arguments.}
-
-\item{y}{time series to be filtered when it differs from the model series.}
-
-\item{x1}{initial state vector.}
-
-\item{P1}{covariance matrix of x1.}
-
-\item{filtered}{logical. If TRUE, the filtered states x_{t|t} and their covariances
-matrices P_{t|t} are returned. Otherwise, x_{t|t-1} and P_{t|t-1} are}
 }
 \value{
-An list with the innovations, the conditional states and their
+A list with the innovations, the conditional states and their
   covariance matrices.
 }
 \description{

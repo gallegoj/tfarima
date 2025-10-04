@@ -3,63 +3,98 @@
 
 #' Lag polynomials
 #'
-#' \code{lagpol} creates a lag polynomial of the form \eqn{(1 - coef_1 B^s - ...
-#' - coef_d B^sd)^p}. This class of lag polynomials is defined by a vector of d
-#' coefficients c(coef_1, ..., coef_d), the powers s and p, and a vector of k
-#' parameters c(param_1, ..., param_k). The vector c(coef_1, ..., coef_d) is
-#' actually a vector of math expressions to compute the value of each
-#' coefficient in terms of the parameters.
+#' \code{lagpol} creates a lag polynomial of the form: 
+#' \deqn{(1 - coef_1 B^s - ... - coef_d B^{sd})^p}
+#' This class of lag polynomials is defined by:
+#' \itemize{
+#' \item the base lag polynomial \eqn{1 - coef_1 B^s - ... - coef_d B^{sd}},
+#' \item the exponent `p` of the base lag polynomial (default is `p = 1`),
+#' \item the spacing parameter `s` in sparse lag polynomials 
+#' (default is `s = 1`),
+#' \item the vector of `d` coefficients `c(coef_1, ..., coef_d)`, which can be 
+#'  mathematical expresions dependent on `k` parameters 
+#'  `c(param_1, ..., param_k)`.
+#'  }
+#' 
+#' @param param a vector/list of named parameters. These parameters can be used 
+#' within the coefficient expressions.
+#' @param coef an optional vector of mathematical expressions defining the 
+#' coefficients of the lag polynomial. If \code{NULL}, the names in \code{param} 
+#' are used.
+#' @param s an integer specifying the lag spacing or seasonal period.
+#' @param p an integer specifying the exponent applied to the base lag polynomial.
+#' @param lags an optional vector of lags for sparse polynomials. If \code{NULL},
+#'  lags are determined by \code{s}.
 #'
-#' @param param a vector/list of named parameters.
-#' @param coef a vector of math expressions.
-#' @param s the seasonal period, integer.
-#' @param p the power of lag polynomial, integer.
-#' @param lags a vector of lags for sparse polynomials.
-#'
-#' @return \code{lagpol} returns an object of class "lagpol" with the following
-#'   components: \describe{ \item{coef}{Vector of coefficients c(coef_1, ...,
-#'   coef_p) provided to create the lag polynomial.}
-#'
-#'   \item{pol}{Base lag polynomial, c(1, -coef_1, ..., -coef_d).}
-#'
-#'   \item{Pol}{Power lag polynomial when p > 1.} }
+#' @return \code{lagpol} An object of class `lagpol` with the following
+#'   components:
+#' \describe{   
+#'   \item{\code{coef}}{vector of coefficients c(coef_1, ..., coef_p) provided to 
+#'   create the lag polynomial.}
+#'   \item{\code{pol}}{base lag polynomial vector: 
+#'   \eqn{1 - \text{coef}_1 B^s - \dots - \text{coef}_d B^{sd}}.}
+#'   \item{\code{Pol}}{lag polynomial raised to the power `p`. 
+#'   If `p = 1`, this equals `pol`.}
+#'   }
 #'   
 #' @examples
-#' lagpol(param = c(phi = 0.8) )
+#' # Simple AR(1) lag polynomial: 1 - 0.8B
+#' lagpol(param = c(phi = 0.8))
+#'
+#' # AR(2) lag polynomial with seasonal lag s = 4: 1 - 1.2B^4 + 0.6B^8
 #' lagpol(param = c(phi1 = 1.2, phi2 = -0.6), s = 4)
+#'
+#' # Integration operator squared: (1 - B)^2 = 1 - 2B + B^2
 #' lagpol(param = c(delta = 1), p = 2)
 #'
+#' # Lag polynomial using explicit coefficients
+#' lagpol(coef = c("1"), p = 2)  # (1 - B)^2 = 1 - 2B + B^2
+#'
+#' # Custom coefficients defined by mathematical expressions
+#' lagpol(param = c(theta = 0.8), coef = c("2*cos(pi/6)*sqrt(theta)", "-theta"))
+#' 
 #' @export
 lagpol <- function(param = NULL, s = 1, p = 1, lags = NULL, coef = NULL) 
 {
+  if(is.null(param) && is.null(coef)) {
+    stop("0 arguments passed to 'lagpol' which requires 'param' or 'coef")
+  }
+
   if ( is.numeric(param) ) param <- as.list(param)
   else if ( is.null(param) ) param <- list()
   else if (!is.list(param)) stop("'param' argument must be a list")
+  
   param <- param[!duplicated(names(param))]
   names <- names(param)
-  if (is.null(names) && is.null(coef)) stop("unnamed parameters")
+  if ((is.null(names) || any(names == "")) && is.null(coef)) 
+    stop("All parameters in 'param' must be named.")
+  
   if (is.null(coef)) coef <- names(param)
   coef <- lapply(coef, function(x) parse(text = x))
   cc <- sapply(coef, function(x) eval(x, envir = param))
+  
   s <- as.integer(s)
   p <- as.integer(p)
-  
+  if (s < 1 || p < 1) stop("'s' and 'p' must be >= 1.")  
+
   ncoef <- length(cc)
   if (!is.null(lags)) {
     lags <- unique(sort(lags))
-    if ( length(lags) != ncoef) stop("Invalid vector of lags")
+    if (length(lags) != ncoef || any(lags <= 0)) stop("Invalid 'lags' vector.")    
   } else {
     lags <- (1:ncoef) * s
   }
+  
   nlags <- length(lags)
   pol <- c(1, rep(0, lags[nlags]))
   pol[lags+1] <- -cc
   
-  if (p > 1) Pol <- as.vector( polyraiseC(pol, p) )
+  if (p > 1) Pol <- as.numeric( polyraiseC(pol, p) )
   else Pol <- pol
   
-  names(pol) <- paste("[B", 0:(length(pol)-1), "]", sep = "")
-  names(Pol) <- paste("[B", 0:(length(Pol)-1), "]", sep = "")
+  names(pol) <- paste0("B^", 0:(length(pol)-1))
+  names(Pol) <- paste0("B^", 0:(length(Pol)-1))
+  
   lp <- list(pol = pol, Pol = Pol, d = length(pol) - 1, s = s, p = p, 
               lags = lags, nlags = nlags, param = param, 
               k = length(param), coef = coef, ncoef = ncoef)
@@ -71,65 +106,17 @@ lagpol <- function(param = NULL, s = 1, p = 1, lags = NULL, coef = NULL)
   
 }
 
-#' Restricted lag polynomials
-#'
-#' \code{rest.lagpol} creates two special types of restricted lag polynomials
-#' that can be useful to model seasonal time series:
-#' 1 + theta^(1/s)B + theta^(2/s)B^2 + ... + + theta^((s-1)/s)B^{s-1} 
-#' and
-#' 1 - 2cos(2pif/s)sqrt(theta)B+ thetaB^2
-#' 
-#' @param param double, the value of the parameter with a name.
-#' @param s the seasonal period, integer.
-#' @param p the power of lag polynomial, integer.
-#' @param f frequency for second order lag polynomials.
-#'
-#' @return \code{rest.lagpol} returns an object of class "lagpol".
-#'
-#' @examples
-#' rest.lagpol(param = c(Theta = 0.8), s = 12)
-#' rest.lagpol(param = c(Theta = 0.8), s = 12, f = 1)
-#'
-#' @export
-#' @export
-restr.lagpol <- function(param = c(Theta = 0.8), s = 12, f = NULL, p = 1) {
-  if (length(f) > 1) {
-    lst <- lapply(f, function(x) {
-      restr.lagpol(param, s, f = x, p = p)
-    })
-    return(lst)
-  }
-  stopifnot(s > 1)
-  stopifnot(length(param) == 1)
-  stopifnot(param >= 0.0 && param <= 1.0)
-  coef.name = names(param)
-  if (is.null(coef.name)) coef.name <- "theta"
-  if (is.null(f)) {
-    coef <- paste0("-abs(", coef.name, ")^(", 1:(s-1), "/", s, ")")
-    lagpol(param = param, p = p, coef = coef)  
-  } else {
-    stopifnot(f >= 0 && f <= s/2)
-    if (f == 0)
-      coef <- paste0("abs(", coef.name, ")^(1/", s, ")")
-    else if (floor(f) == floor(s/2))
-      coef <- paste0("-abs(", coef.name, ")^(1/", s, ")")
-    else
-      coef <- c(paste0("2*cos(2*pi*", f, "/", s, ")*abs(", coef.name, ")^(1/", s, ")"),
-                paste0("-abs(", coef.name, ")^(2/", s, ")"))
-    lagpol(param = param, p = p, coef = coef)  
-  }
-}
-
 # Exported methods of lagpol
 
-#' Lag polynomial
+#' Lag polynomial converter
 #' 
-#' \code{as.lagpol} converts a numeric vector c(1, -a_1, \dots, -a_d) into 
-#' a lag polynomial \eqn{(1 - a_1 B - ... - a_p B^p)}.
+#' \code{as.lagpol} converts a numeric vector \code{c(1, -a_1, \dots, -a_d)} 
+#' into a lag polynomial \eqn{(1 - a_1 B - ... - a_p B^p)}.
 #' 
-#' @param pol a numeric vector.
-#' @param p integer power.
-#' @param coef.name name prefix for coefficients.
+#' @param pol the numeric vector to be converted into an object of class lag 
+#' polynomial.
+#' @param p the exponent of the lag polynomial, positive integer.
+#' @param coef.name name prefix for coefficients, character.
 #' 
 #' @return An object of class \code{lagpol}.
 #' 
@@ -138,23 +125,29 @@ restr.lagpol <- function(param = c(Theta = 0.8), s = 12, f = NULL, p = 1) {
 #' as.lagpol(c(1, 0, 0, 0, -0.8))
 #' @export 
 as.lagpol <- function(pol, p = 1, coef.name = "a") {
-  
   if (is.lagpol(pol)) return(pol)
+  if (!is.numeric(pol)) return(NULL)
   pol <- as.numeric(pol)
   pol[1] <- 1
   k <- length(pol) - 1
   if (k == 0) return(NULL)
-  pol[1] <- 0
-  lags <- pol != 0
+  if (!is.numeric(p) || length(p) != 1 || p <= 0 || p != as.integer(p)) {
+    stop("'p' must be a positive integer.")
+  }
+  if (!is.character(coef.name) || length(coef.name) != 1) {
+    stop("'coef.name' must be a character string.")
+  }  
+  pol <- as.numeric(pol)
+  pol <- pol[-1]
+  if (all(pol == 0)) {
+    stop("'pol' must have at least one non-zero coefficient.")
+  }  
+  lags <- which(pol != 0)
   pol <- -pol[lags]
-  lags <- (0:k)[lags]
-  if (length(lags) < 1) return(NULL)
-  names(pol) <- paste(coef.name, lags, sep = "")
+  names(pol) <- paste0(coef.name, lags)
   lp <- lagpol(pol, lags = lags, p = p)
   return(lp)
-  
 }
-
 
 #' Inverse of a lag polynomial
 #'
@@ -176,33 +169,59 @@ inv <- function (lp, ...) { UseMethod("inv") }
 #' @rdname inv
 #' @export
 inv.lagpol <- function(lp, lag.max = 10, ...) {
+  if (!is.numeric(lag.max) || lag.max < 1 || lag.max != as.integer(lag.max)) {
+    stop("'lag.max' must be a positive integer.")
+  }  
   if (is.lagpol(lp)) p <- lp$Pol
-  else if(is.numeric(lp) & length(lp) > 1) p <- lp
-  else stop("error: lp must be a lag polynomial")
-  
-  lp <- as.numeric( polyratioC(1, p, lag.max) )
-  names(lp) <- paste("[B", 0:(length(lp)-1), "]", sep = "")
-  return(lp)
+  else if(is.numeric(lp) && length(lp) > 1) {
+    p <- lp
+  } else stop("'lp' must be an object of class 'lagpol'.")
+
+  lp1 <- tryCatch({
+    as.numeric(polyratioC(1, p, lag.max))
+  }, error = function(e) {
+    stop("Error in computing the inverse: ", e$message)
+  })  
+    
+  lp1 <- as.numeric( polyratioC(1, p, lag.max) )
+  names(lp1) <- paste0("B^", 0:(length(lp1)-1))
+  return(lp1)
 }
 
-#' Roots of a lag polynomial
+
+#' Roots of lag polynomials
 #'
-#' \code{roots.lagpol} computes the roots of a lag polynomial.
+#' \code{roots} computes the roots of lag polynomials from polynomial objects and 
+#' time series models that contain lag polynomials as components.
 #'
-#' @param x an object of class \code{lagpol}.
-#' @param table logical. If TRUE, it returns a  five columns table showing the
-#'   real and imaginary parts, the modulus, the frequency and the period of each
-#'   root.
-#' @param ... additional arguments.   
-#'
-#' @return A vector or a table.
-#'
+#' @param x A model object containing lag polynomials ("um", "tfm") or 
+#'   a lag polynomial object ("lagpol").
+#' @param ... Additional arguments passed to methods.
+#' 
+#' @return Returns a summary table with the roots of each \code{lagpol}.
+#' 
+#' @export
+roots <- function(x, ...) { UseMethod("roots") }
+
+#' @rdname roots
+#' @export
+roots.default <- function(x, ...) {
+  if (is.lagpol.list(x)) {
+    lapply(x, roots, ...)
+  } else if (is.numeric(x) && length(x) > 1) {
+    roots(as.lagpol(x), ...)
+  } else {
+    warning("x must be a lagpol object")
+  }
+}
+
+#' @rdname roots
+#' @param table Logical. If TRUE returns detailed table, if FALSE complex vector.
+#' @param tol Tolerance for identifying distinct roots.
 #' @examples
 #' roots(c(1, 1.2, -0.8))
-#'
 #' @export
-roots.lagpol <- function(x, table = TRUE, ...) {
-  
+roots.lagpol <- function(x, table = TRUE, tol = 1e-5, ...) {
   m <- 1
   if (is.lagpol(x)) {
     if (x$nlags == 1 && x$pol[x$d+1] == -1) {
@@ -217,7 +236,7 @@ roots.lagpol <- function(x, table = TRUE, ...) {
   }
   
   if (table) { # to compare if two roots are almost equal
-    eq <- function (x, y, tol = 1e-5) { 
+    .eq <- function (x, y, tol) { 
       if (all(abs(x - y) < tol)) return(TRUE)
       else(FALSE)
     }
@@ -230,8 +249,8 @@ roots.lagpol <- function(x, table = TRUE, ...) {
       for (i in 1:nr) {
         if (indx[i] & i < nr) {
           for (j in (i+1):nr) {
-            if ( eq(t[j, 4], t[i, 4]) ) {
-              if( eq(t[j, 1:2], t[i, 1:2]) ) {
+            if ( .eq(t[j, 4], t[i, 4], tol) ) {
+              if( .eq(t[j, 1:2], t[i, 1:2], tol) ) {
                 t[i, 6] <- t[i, 6] + t[j, 6]
                 indx[j] <- FALSE
               }
@@ -256,16 +275,40 @@ roots.lagpol <- function(x, table = TRUE, ...) {
   
 }
 
-#' @rdname roots.lagpol
+
+
+#' Lag polynomial from roots
+#'
+#' \code{roots2lagpol} creates a lag polynomial from its roots.
+#'
+#' @param x a vector of real and/or complex roots.
+#' @param lp logical. If TRUE, a object of class \code{lagpol} is returned;
+#'   otherwise a numeric vector is returned.
+#' @param ... additional arguments.   
+#'
+#' @return A lag polynomial or a numeric vector.
+#'
+#' @examples
+#' roots2lagpol(polyroot(c(1, -1)))
+#' roots2lagpol(polyroot(c(1, -1, 1)))
+#'
 #' @export
-roots.default <- function(x, ...) {
-  if (is.lagpol.list(x)) {
-    lapply(x, roots)
-  } else if (is.numeric(x)) {
-    roots(as.lagpol(x))
-  } else {
-    warning("x must be a lagpol object")
+roots2lagpol <- function(x, lp = TRUE, ...) {
+  if (!is.numeric(x) && !is.complex(x)) {
+    stop("'x' must be a numeric or complex vector of roots.")
   }
+  if (any(x == 0)) {
+    stop("Roots cannot be zero; division by zero is undefined.")
+  }  
+  x <- 1/x
+  pol <- 1
+  for (r in x)
+    pol <- c(pol, 0) - c(0, pol*r)
+  pol <- Re(pol)
+  if (lp)
+    as.lagpol(pol, ...)
+  else
+    pol
 }
 
 #' Unit circle
@@ -287,39 +330,40 @@ unitcircle <- function (lp, ...) { UseMethod("unitcircle") }
 
 #' @rdname unitcircle
 #' @export
-unitcircle.default <- function(x, ...) {
-  if (is.lagpol.list(x)) {
-    unitcircle.lagpol(x, ...)
-  } else if (is.numeric(x)) {
-    unitcircle(as.lagpol(x), ...)
+unitcircle.default <- function(lp, ...) {
+  if (is.lagpol.list(lp)) {
+    unitcircle.lagpol(lp, ...)
+  } else if (is.numeric(lp)) {
+    unitcircle(as.lagpol(lp), ...)
   } else {
-    warning("x must be a lagpol object")
+    warning("lp must be a lagpol object")
   }
 }
 
 #' @rdname unitcircle
 #' @export
 unitcircle.lagpol <- function(lp, s = 12, ...) {
-  t <- seq(0, 2*pi, 1/100)
+  t <- seq(0, 2*pi, length.out = 500)
   y <- sin(t)
   x <- cos(t)
-  plot(x, y, type = "l", ylim = c(-1,1), xlim = c(-1,1))
+  plot(x, y, type = "l", ylim = c(-1, 1), xlim = c(-1, 1), 
+       xlab = "Real", ylab = "Imaginary", ...)
   if (is.lagpol.list(lp)) {
     k <- length(lp)
     for (i in 1:k) {
-      r <- polyroot(rev(lp[[i]]$Pol))
+      r <- polyroot(rev(lp[[i]]$pol))
       x <- Re(r)
       y <- Im(r)
       points(x, y)
     }
   } else {
-    r <- polyroot(rev(lp$Pol))
+    r <- polyroot(rev(lp$pol))
     x <- Re(r)
     y <- Im(r)
     points(x, y)
   }
   if (s == 12 || s == 4) {
-    r <- polyroot(c(-1, rep(0,s-1), 1))
+    r <- polyroot(c(-1, rep(0, s-1), 1))
     x <- Re(r)
     y <- Im(r)
     for (i in 1:s) {
@@ -329,236 +373,6 @@ unitcircle.lagpol <- function(lp, s = 12, ...) {
   return(invisible(NULL))
 }
 
-
-#' Lag polynomial from roots
-#'
-#' \code{roots2lagpol} creates a lag polynomial from its roots.
-#'
-#' @param x an object of class \code{complex}.
-#' @param ... additional arguments.   
-#'
-#' @return A lag polynomial.
-#'
-#' @examples
-#' roots2lagpol(polyroot(c(1,-1)))
-#'
-#' @export
-roots2lagpol <- function(x, ...) {
-  x <- 1/x
-  pol <- 1
-  for (r in x)
-    pol <- c(pol, 0) - c(0, pol*r)
-  pol <- Re(pol)
-  as.lagpol(pol, ...)
-}
-
-
-# Based on as.character.polynomial() function from
-# Bill Venables and Kurt Hornik and Martin Maechler (2019). polynom: A
-# Collection of Functions to Implement a Class for Univariate Polynomial
-# Manipulations. R package version 1.4-0.
-# #' @export
-as.character.lagpol <- function(lp, digits = 2, pol = FALSE, eq = FALSE, 
-                                eps = 5.96e-08, ...) {
-  
-  if (is.lagpol(lp)) {
-    if (pol) p <- lp$pol
-    else p <- lp$Pol
-  } else p <- lp
-  p <- signif(p, digits = digits)
-  d <- length(p) - 1
-  names(p) <- 0:d
-  p <- p[abs(p) > eps]
-  if (length(p) == 0) return("0")
-  
-  signs <- ifelse(p < 0, "- ", "+ ")
-  if (signs[1] == "+ ") signs[1] <- ""
-  
-  np <- names(p)
-  p <- as.character(abs(p))
-  p[p == "1" & np != "0"] <- ""
-  
-  if (eq) pow <- paste("B'^", np, "*'", sep = "")
-  else pow <- paste("B^", np, sep = "")
-  pow[np == "0"] <- ""
-  pow[np == "1"] <- "B"
-  #stars <- rep.int("*", length(p))
-  #stars[p == "" | pow == ""] <- ""
-  #p <- paste(signs, p, stars, pow, sep = "", collapse = " ")
-  paste(signs, p, pow, sep = "", collapse = " ")
-  
-}
-
-#' @export
-print.lagpol <- function(x, digits = 2, ...){
-  if (is.lagpol(x)) {
-    if (x$d == 0) {
-      print(1)
-      return(invisible(x))
-    }
-    if (x$p > 1) {
-      p <- paste("(", as.character.lagpol(x, digits, TRUE), ")^",
-                 x$p, " = ", sep = "")
-      p <- paste(p, as.character.lagpol(x, digits, FALSE), sep = "")
-    } else {
-      p <- as.character.lagpol(x, digits, FALSE)
-    }
-  } else p <- as.character.lagpol(x, digits, FALSE)
-  
-  pc <- nchar(p)
-  ow <- max(35, getOption("width"))
-  m2 <- 0
-  while(m2 < pc) {
-    m1 <- m2 + 1
-    m2 <- min(pc, m2 + ow)
-    if(m2 < pc)
-      while(substring(p, m2, m2) != " " && m2 > m1 + 1)
-        m2 <- m2 - 1
-    cat(substring(p, m1, m2), "\n")
-  }
-  invisible(x)  
-}
-
-#' Print numeric vector as a lagpol object
-#' 
-#' @param pol numeric vectors with the coefficients of a normalized polynomial.
-#' @param digits number of decimals.
-#' 
-#' @export
-printLagpol <- function(pol, digits = 2){
-  if (is.lagpol(pol)) {
-    print(pol)
-  } else {
-    w0 <- pol[1]
-    pol[1] <- 1
-    pol <- as.lagpol(pol)
-    pol$pol[1] <- w0
-    pol$Pol[1] <- w0
-    print.lagpol(pol, digits = digits)
-  }
-}
-
-#' Print a list of lagpol objects
-#' 
-#' @param llp a list of \code{lagpol} objects.
-#' @param digits number of decimals.
-#' 
-#' @export
-printLagpolList <- function(llp, digits = 2){
-  
-  k <- length(llp)
-  for (i in 1:k) {
-    lp <- llp[[i]]
-    if (is.lagpol(lp)) {
-      if (lp$d == 0) {
-        print(1)
-        return(invisible(lp))
-      }
-      if (lp$p > 1) {
-        p <- paste("(", as.character.lagpol(lp, digits, TRUE), ")^",
-                   lp$p, " = ", sep = "")
-        p <- paste(p, as.character.lagpol(lp, digits, FALSE), sep = "")
-      } else {
-        p <- as.character.lagpol(lp, digits, FALSE)
-      }
-    } else p <- as.character.lagpol(lp, digits, FALSE)
-    if (i > 1) txt <- paste(txt, "   [", i, "] ", p, sep = "")
-    else txt <- paste("[1] ", p, sep = "")
-  }
-  
-  pc <- nchar(txt)
-  ow <- max(35, getOption("width"))
-  m2 <- 0
-  while(m2 < pc) {
-    m1 <- m2 + 1
-    m2 <- min(pc, m2 + ow)
-    if(m2 < pc)
-      while(substring(txt, m2, m2) != " " && m2 > m1 + 1)
-        m2 <- m2 - 1
-    cat(substring(txt, m1, m2), "\n")
-  }
-  invisible(llp)  
-}
-
-
-# Non-exported and hidden functions
-
-# Admissible region
-#
-# \code{admreg.lagpol} checks if the parameters of a lag polynomial take
-# admissible values.
-#
-# @param lp an object of class \code{lagpol}.
-# @param ar logical. If TRUE, roots must be outside unit circle; if FALSE, roots
-#   can also be on unit circle.
-#
-# @return \code{TRUE} for admissible values and \code{FALSE} for not admissible
-#   values.
-#
-# @note While roots of AR polynomials must lie inside of unit circle, those of
-#   MA polynomials can lie on the unit circle.
-#
-# @examples
-# p1 <- lagpol(param = c(phi = 1.0))
-# pol <- admreg(p1, out = FALSE)
-# 
-admreg.lagpol <- function(lp, ar = TRUE) {
-  
-  if(!all(is.finite(lp$pol))) return(FALSE)
-  
-  if (ar) {
-    if (lp$k == 1) {
-      if (abs(lp$pol[lp$d+1]) < 1) return(TRUE)
-      else return(FALSE)
-    }
-    phi1 <- -lp$pol[lp$lags[1]+1]
-    if (lp$nlags == 1) { # first order
-      if (abs(phi1) < 1.0) return(TRUE)
-      else return(FALSE)
-    }
-    if (lp$nlags == 2 & lp$lags[2] == lp$lags[1] + lp$s) { # second order
-      phi2 <- -lp$pol[lp$lags[2]+1]
-      if (abs(phi2) < 1 & phi2+phi1 < 1 & phi2-phi1 < 1) return(TRUE)
-      else return(FALSE)
-    }
-  } else {
-    if (lp$k <= 1) {
-      if (abs(lp$pol[lp$d+1]) > 1) return(FALSE)
-      else return(TRUE)
-    }
-    phi1 <- -lp$pol[lp$lags[1]+1]
-    if (lp$nlags == 1) { # first order
-      if (abs(phi1) > 1.0) return(FALSE)
-      else return(TRUE)
-    }
-    if (lp$nlags == 2 & lp$lags[2] == lp$lags[1] + lp$s) { # second order
-      phi2 <- -lp$pol[lp$lags[2]+1]
-      if (abs(phi2) > 1 | phi2 + phi1 > 1 | phi2 - phi1 > 1) return(FALSE)
-      else return(TRUE)
-    }
-  }
-  
-  # general polynomial
-  if (ar) {
-    if( all( Mod(polyroot(lp$pol)) > 1) ) return(TRUE)
-    else return(FALSE)
-  } else {
-    if( all( Mod(polyroot(lp$pol)) >= 1) ) return(TRUE)
-    else return(FALSE)
-  }
-  
-}
-
-is.lagpol <- function(lp) {
-  return(inherits(lp, "lagpol"))
-}
-
-
-is.lagpol.list <- function(lpl) {
-  if(!base::is.list(lpl)) return(FALSE)
-  all( sapply(lpl, is.lagpol) )
-}
-
 #' Lag polynomial factorization
 #'
 #' \code{factors} extracts the simplifying factors of a polynomial in the lag
@@ -566,7 +380,8 @@ is.lagpol.list <- function(lpl) {
 #' unit or real roots.
 #'
 #' @param lp an object of class \code{lagpol}.
-#' @param tol tolerance for real and unit roots.
+#' @param tol numeric tolerance for identifying real and unit roots (default is 
+#' \code{1e-5}).
 #' @param expand logical value to indicate whether the expanded polynomial
 #'   should be returned.
 #' @param ... additional arguments.
@@ -581,29 +396,42 @@ is.lagpol.list <- function(lpl) {
 factors <- function (lp, ...) { UseMethod("factors") }
 
 #' @rdname factors
+#' @param full logical value. If TRUE, the lag polynomial is completely
+#'   factored. Otherwise, it is factored separating positive real roots from the
+#'   others.
+#' @param tol tolerance for nonzero coefficients.
+#' @param expand logical value to indicate whether or not the factored lag
+#'   polynomial must be expanded.
 #' @export
-factors.lagpol <- function(lp, tol = 1e-5, expand = FALSE, ...) {
+factors.lagpol <- function(lp, full = TRUE, tol = 1e-5, expand = FALSE, ...) {
   if (is.numeric(lp)) 
     lp <- as.lagpol(lp)
   if (is.null(lp)) {
     if (expand) return(1)
     else return(NULL)
   }
+  tol <- abs(tol)
   stopifnot(is.lagpol(lp))
-  oldw <- options(warn = -1)
-  on.exit(options(oldw))
-  t <- polyrootsC(lp$pol)
-  f <- -1
+  # Calcular raíces del polinomio
+  t <- tryCatch({
+    polyrootsC(lp$pol)
+  }, error = function(e) {
+    stop("Error in computing polynomial roots: ", e$message)
+  })  
+  
+  if (nrow(t) > 1)
+    t <- t[order(t[, 5], decreasing = TRUE), ]
   k <- 1
-  p <- apply(t, 1, function(x) {
-    if (f != x[4] || f < tol) {
-      f <<- x[4]
+  p <- list()
+  for (i in seq_len(nrow(t))) {
+    x <- t[i, ]
+    if (x[2] > -tol) {
+      f <- x[4]
       param <- x[3]
       if(abs(abs(param)-1) < tol) 
         param <- sign(param)*1
       coef.name <- paste0("c", k)
       names(param) <- coef.name
-      k <<- k + 1
       if (abs(f - 0.5) < tol) {
         coef <- c(paste0("-abs(", coef.name, ")"))
       } else if (f < tol) {
@@ -614,37 +442,203 @@ factors.lagpol <- function(lp, tol = 1e-5, expand = FALSE, ...) {
                   paste0("-abs(", coef.name, ")"))
         param <- param^2
       }
-      return(lagpol(param = param, coef = coef, p = x[6] + lp$p - 1))
-    }
-    else
-      return(NULL)
-  })
+      p[[k]] <- lagpol(param = param, coef = coef, p = x[6] + lp$p - 1)
+      k <- k + 1
+    } 
+  }
   
-  p = p[!sapply(p, is.null)]
   if (expand) return(polyexpand(p))
-  else return(p)
   
+  if (!full && length(p) > 1) {
+    i <- t[, 4] < tol
+    if (any(i) && any(!i)) {
+      p <- c(p[1:sum(i)], list(as.lagpol(polyexpand(p[-(1:sum(i))]))))
+    } else if(all(!i)) {
+      if (nrow(t) == 5 || nrow(t) == 13)
+        p <- c(p[1], list(as.lagpol(polyexpand(p[-1]))))
+      else
+        p <- as.lagpol(polyexpand(p))
+    }
+  }
+  return(p)
 }
 
-#' Common factors of two lag polynomials ' ' 
-#' 
-#' \code{common.factors} finds the common factors of two lag polynomials or 
-#' their greatest common divisor.
-#' 
-#' @param lp1,lp2 lag polynomials. 
-#' @param tol tolerance to check if a value is equal to zero.
-#' @param expand logical value to indicate whether the expanded polynomial
-#'   should be returned.
-#' 
-#' @return A list of common factors or the polynomial product of them. 
-#' 
-#' @examples 
-#' p1 <- as.lagpol(c(1, -1)) 
-#' p2 <- as.lagpol(c(1, 0, 0, 0, -1))
-#' pol <- common.factors(p1, p2)
-#' 
+#' @title Print Method for Lag Polynomial Objects
+#' @description Prints objects of class \code{lagpol}.
+#' @param x An object of class \code{lagpol}.
+#' @param digits Integer. Number of significant digits to display. Default is 2.
+#' @param width Integer. Maximum number of characters per line. Default is the console width.
+#' @param ... Additional arguments (currently unused).
+#' @return Invisibly returns the \code{lagpol} object.
 #' @export
-#' 
+print.lagpol <- function(x, digits = 2, width = getOption("width"), ...) {
+  if (is.lagpol(x)) {
+    if (x$d == 0) {
+      print(1)
+      return(invisible(x))
+    }
+    if (x$p > 1) {
+      p <- paste0("(", as.character.lagpol(x, digits, TRUE), ")^",
+                 x$p, " = ")
+      p <- paste0(p, as.character.lagpol(x, digits, FALSE))
+    } else {
+      p <- as.character.lagpol(x, digits, FALSE)
+    }
+  } else p <- as.character.lagpol(x, digits, FALSE)
+  
+  pc <- nchar(p)
+  m2 <- 0
+  while(m2 < pc) {
+    m1 <- m2 + 1
+    m2 <- min(pc, m2 + width)
+    if(m2 < pc)
+      while(substring(p, m2, m2) != " " && m2 > m1 + 1)
+        m2 <- m2 - 1
+    cat(substring(p, m1, m2), "\n")
+  }
+  invisible(x)  
+}
+
+#' Print non-normalized polynomial as a lag polynomial
+#'
+#' Prints a non-normalized polynomial as a \code{lagpol} object, preserving the 
+#' original coefficients.
+#'
+#' @param pol Numeric vector with the coefficients of a non-normalized polynomial. 
+#'        The first element can be any numeric value, not necessarily 1.
+#' @param digits Integer. Number of significant digits to display. Default is 2.
+#' @param width Integer. Maximum number of characters per line. Default is the console width.
+#' @return Invisibly returns the input vector.
+#' @export
+printLagpol <- function(pol, digits = 2, width = getOption("width")){
+  print.lagpol(pol, digits = digits, width = width)
+  invisible(pol)  
+}
+
+#' Prints a list of \code{lagpol} objects.
+#'
+#' @param llp A list of \code{lagpol} objects.
+#' @param digits Integer. Number of significant digits to display. Default is 2.
+#' @param width Integer. Maximum number of characters per line. Default is the console width.
+#' @return Invisibly returns the list of \code{lagpol} objects.
+#' @export
+printLagpolList <- function(llp, digits = 2, width = getOption("width")){
+  k <- length(llp)
+  for (i in 1:k) {
+    lp <- llp[[i]]
+    if (is.lagpol(lp)) {
+      if (lp$d == 0) {
+         p <- "1"
+      }
+      if (lp$p > 1) {
+        p <- paste0("(", as.character.lagpol(lp, digits, TRUE), ")^",
+                   lp$p, " = ")
+        p <- paste0(p, as.character.lagpol(lp, digits, FALSE))
+      } else {
+        p <- as.character.lagpol(lp, digits, FALSE)
+      }
+    } else p <- as.character.lagpol(lp, digits, FALSE)
+    if (i > 1) txt <- paste0(txt, "   [", i, "] ", p)
+    else txt <- paste0("[1] ", p)
+  }
+  
+  pc <- nchar(txt)
+  m2 <- 0
+  while(m2 < pc) {
+    m1 <- m2 + 1
+    m2 <- min(pc, m2 + width)
+    if(m2 < pc)
+      while(substring(txt, m2, m2) != " " && m2 > m1 + 1)
+        m2 <- m2 - 1
+    cat(substring(txt, m1, m2), "\n")
+  }
+  invisible(llp)  
+}
+
+# Internal functions
+
+#' @title Convert lag polynomial to character
+#' @description Converts a \code{lagpol} object into its character
+#'   representation.
+#' @param x A \code{lagpol} object or a numeric vector representing the lag
+#'   polynomial.
+#' @param digits Integer. Number of significant digits to display. Default is 2.
+#' @param pol Logical. If \code{TRUE}, uses the \code{pol} slot; otherwise, uses
+#'   the \code{Pol} slot.
+#' @param eq Logical. If \code{TRUE}, formats the output for equations. Default
+#'   is \code{FALSE}.
+#' @param eps Numeric. Threshold below which coefficients are considered zero.
+#'   Default is \code{5.96e-08}.
+#' @param ... Additional arguments (currently unused).
+#' @return A character string representing the lag polynomial.
+#' @note
+#' Based on as.character.polynomial() function from Bill Venables and Kurt 
+#' Hornik and Martin Maechler (2019). polynom: A Collection of Functions to 
+#' Implement a Class for Univariate Polynomial Manipulations. 
+#' R package version 1.4-0.
+#' @keywords internal
+#' @noRd
+as.character.lagpol <- function(x, digits = 2, pol = FALSE, eq = FALSE, 
+                                eps = 5.96e-08, ...) {
+  if (!is.lagpol(x) && !is.numeric(x)) {
+    stop("'x' must be either a lagpol object or a numeric vector.")
+  }  
+  if (is.lagpol(x)) {
+    if (pol) p <- x$pol else p <- x$Pol
+  } else p <- x
+  p <- signif(p, digits = digits)
+  d <- length(p) - 1
+  names(p) <- 0:d
+  p <- p[abs(p) > eps]
+  if (length(p) == 0) return("0")
+  
+  signs <- ifelse(p < 0, "- ", "+ ")
+  if (signs[1] == "+ ") signs[1] <- ""
+  
+  np <- names(p)
+  p <- as.character(abs(p))
+  p[p == "1" & np != "0"] <- ""
+  
+  if (eq) pow <- paste0("B'^", np, "*'")
+  else pow <- paste0("B^", np)
+  pow[np == "0"] <- ""
+  pow[np == "1"] <- "B"
+  paste(signs, p, pow, sep = "", collapse = " ")
+}
+
+# Internal function to check if an object is of class 'lagpol'
+is.lagpol <- function(x) {
+  return(inherits(x, "lagpol"))
+}
+
+# Internal function to check if an object is a list of 'lagpol' objects.
+is.lagpol.list <- function(lpl) {
+  if(!base::is.list(lpl)) return(FALSE)
+  all(vapply(lpl, is.lagpol, logical(1)))
+}
+
+#' Common factors of two lag polynomials
+#'
+#' \code{common.factors} finds the common factors or the greatest common divisor
+#' (GCD) of two lag polynomials.
+#'
+#' @param lp1,lp2 Lag polynomials or numeric vectors to be converted into
+#'   \code{lagpol}.
+#' @param tol Numeric tolerance to determine if coefficients are considered
+#'   zero. Default is \code{1e-5}.
+#' @param expand Logical. If \code{TRUE}, returns the expanded product of the
+#'   common factors. Default is \code{FALSE}.
+#'
+#' @return A list of common factors or the expanded polynomial if \code{expand =
+#'   TRUE}.
+#'
+#' @examples
+#' p1 <- as.lagpol(c(1, -1))
+#' p2 <- as.lagpol(c(1, 0, 0, 0, -1))
+#' common.factors(p1, p2)
+#'
+#' @keywords internal
+#' @noRd
 common.factors <- function(lp1, lp2, tol = 1e-5, expand = FALSE) {
   if (!is.lagpol(lp1)) lp1 <- as.lagpol(lp1) 
   if (!is.lagpol(lp2)) lp2 <- as.lagpol(lp2) 
@@ -657,13 +651,13 @@ common.factors <- function(lp1, lp2, tol = 1e-5, expand = FALSE) {
   l1 <- length(f1)
   l2 <- length(f2)
   lst <- list()
-  for (i in 1:l1) {
+  for (i in seq_along(f1)) {
     pol <- f1[[i]]$pol
-    for (j in 1:l2) {
+    for (j in seq_along(f2)) {
       r <- polydivC(f2[[j]]$pol, pol, TRUE, tol)
-      if (all(abs(r) < tol)) {
+      if (all(abs(r) < tol, na.rm = TRUE)) {
         pol <- as.lagpol(pol, min(f2[[j]]$p, f1[[i]]$p))
-        lst <- c(lst, list(pol))
+        lst <- append(lst, list(pol))
         break
       }
     }
@@ -675,57 +669,47 @@ common.factors <- function(lp1, lp2, tol = 1e-5, expand = FALSE) {
     return(lst)
 }
 
-
-# Expand a list of lag polynomials
-# 
-# \code{polyexpand} multiplies two or more lag polynomials. 
-# 
-# @param ... list of lag polynomials.
-#
-# @ return A numeric vector
-#
-# @examples
-# p1 <- as.lagpol(c(1, -0.8))
-# p2 <- as.lagpol(c(1, 0, 0, 0, -0.8))
-# pol <- polyexpand(p1, p2)
-#
-polyexpand <- function(...) {
-  pols <- list(...)
-  n <- length(pols)
-  # check if ... is a list
-  if (n==1) {
-    if (inherits(pols[[1]], "list")) {
-      pols <- pols[[1]]
-      n <- length(pols)
-      if (n == 0) return(1)
-    } else if(is.null(pols[[1]]))
-      return(1)
-  }
-  
-  pol <- pols[[1]]
-  if (is.lagpol(pol)){
-    pol <- pol$Pol
-  }
-  
-  if (n==1) {
-    return(pol)
-  }
-  
-  for(i in 2:n){
-    if(is.lagpol(pols[[i]])){
-      pol <- polymultC(pol, pols[[i]]$Pol)
+#' Check if two lag polynomials have common roots
+#'
+#' This function checks whether two polynomials share at least one common root.
+#'
+#' @param lp1,lp2 Lag polynomials or numeric vectors to be converted into
+#'   \code{lagpol}.
+#' @param all logical. If TRUE, checks if all roots of the firs lag polynomial 
+#' are present in the second one.  If FALSE (default), checks if at least one 
+#' root is shared. 
+#' @param tol Numeric tolerance to determine if the difference is considered
+#'   zero. Default is \code{1e-5}.
+#' @return A logical value
+#'
+#' @examples
+#' x1 <- c(1, -1)
+#' x2 <- c(1, -2, 1)
+#'
+#' hasCommonRoot(x1, x2) # Expected output: TRUE
+#'
+#' @noRd
+#' @keywords internal
+.hasCommonRoot <- function(lp1, lp2, all = FALSE, tol = 1e-5) {
+  if (is.lagpol(lp1))
+    lp1 <- lp1$pol
+  else if (!is.numeric(lp1))
+    stop("'lp1' argument must be a lagpol object")
+  if (is.lagpol(lp2))
+    lp2 <- lp2$pol
+  else if (!is.numeric(lp2))
+    stop("'lp2' argument must be a lagpol object")
+  if (all) {
+    if (length(lp1) <= length(lp2)) {
+      r <- polydivC(lp2, lp1, TRUE, tol)
+      return(all(abs(r) < tol))
     }
-    else{
-      pol <- polymultC(pol, pols[[i]])
-    }
-  }
-  pol <- as.numeric(pol)
-  names(pol) <- paste0("[B", 0:(length(pol)-1), "]")
-  
-  return(pol)
-  
+  } else {
+    r <- polydivC(lp2, lp1, TRUE, tol)
+    return(all(abs(r) < tol))
+  }  
+  return(FALSE) 
 }
-
 
 .parcounter <- function(llp, coef.name) {
   if (is.null(llp)) return(0)
@@ -735,29 +719,136 @@ polyexpand <- function(...) {
   param <- param[!duplicated(names(param))]
   nm <- names(param)
   nm <- nm[startsWith(nm, coef.name)]
-  if (!is.null(nm)) {
+  if (length(nm) > 0) {
     i <- as.numeric(gsub(coef.name, "", nm)) 
     i <- i[is.numeric(i)]
     if (length(i) > 0) return(max(i))
     else return(0)
   } else {
-    0
+    return(0)
   }
 } 
 
+## Internals models used in the estimation of ARIMA and related models
+## admreg.lagpol, .update.lagpol
 
-# Update lag polynomials
-# 
-# \code{.update.lagpol} is a hidden function to update the values
-# of the parameters of a lag polynomial.
-# 
-# @param lp an object of class \code{lagpol}..
-# @param param new vector of parameters.
-#
-# @return an object of class \code{lagpol}.
-#
-# @note This hidden function is called by the \code{fit.um} function to 
-# estimate multiplicative ARIMA(p, d, q) models.
+#' Admissible region for lag polynomial
+#'
+#' \code{admreg.lagpol} checks if the parameters of a lag polynomial take 
+#' admissible values.
+#'
+#' @param lp An object of class \code{lagpol}.
+#' @param ar Logical. If \code{TRUE}, roots must be outside the unit circle 
+#' (AR process);  if \code{FALSE}, roots can also be on the unit circle 
+#' (MA process).
+#'
+#' @return \code{TRUE} if the parameters are admissible, \code{FALSE} otherwise.
+#'
+#' @note For AR polynomials, roots must lie outside the unit circle. For MA 
+#' polynomials, roots can be on or outside the unit circle.
+#'
+#' @examples
+#' p1 <- lagpol(param = c(phi = 1.0))
+#' admreg.lagpol(p1, ar = TRUE)
+#' @keywords internal
+#' @noRd
+admreg.lagpol <- function(lp, ar = TRUE) {
+  
+  if(!all(is.finite(lp$pol))) return(FALSE)
+  
+  if (ar) {
+    if (!abs(lp$pol[lp$d+1]) < 1) return(FALSE)
+    if (lp$k == 1) return(TRUE) # first order
+    if (lp$nlags == 2 && lp$lags[2] == lp$lags[1] + lp$s) { # second order
+      phi1 <- -lp$pol[lp$lags[1]+1]
+      phi2 <- -lp$pol[lp$lags[2]+1]
+      if (abs(phi2) < 1 && phi2+phi1 < 1 && phi2-phi1 < 1) return(TRUE)
+      else return(FALSE)
+    }
+  } else {
+    if (abs(lp$pol[lp$d+1]) > 1) return(FALSE)
+    if (lp$k <= 1) return(TRUE) # first order
+    if (lp$nlags == 2 && lp$lags[2] == lp$lags[1] + lp$s) { # second order
+      phi1 <- -lp$pol[lp$lags[1]+1]
+      phi2 <- -lp$pol[lp$lags[2]+1]
+      if (abs(phi2) > 1 || phi2 + phi1 > 1 || phi2 - phi1 > 1) return(FALSE)
+      else return(TRUE)
+    }
+  }
+  
+  # general polynomial
+  if (ar) {
+    if( all( Mod(polyroot(lp$pol)) > 1) ) return(TRUE)
+    else return(FALSE)
+  } else {
+    if( all( Mod(polyroot(lp$pol)) >= 1) ) return(TRUE)
+    else return(FALSE)
+  }
+}
+
+#' Expand a list of lag polynomials
+#'
+#' \code{polyexpand} multiplies two or more lag polynomials and returns the 
+#' resulting polynomial.
+#'
+#' @param ... Multiple \code{lagpol} objects or a list of \code{lagpol} objects.
+#' @param names Logical. If TRUE, put names to coeficcients.
+#' @return A numeric vector representing the expanded polynomial.
+#'
+#' @examples
+#' p1 <- as.lagpol(c(1, -0.8))
+#' p2 <- as.lagpol(c(1, 0, 0, 0, -0.8))
+#' polyexpand(p1, p2)
+#'
+#' @keywords internal
+#' @noRd
+polyexpand <- function(..., names = TRUE) {
+  pols <- list(...)
+  n <- length(pols)
+  # check if ... is a list
+  if (n == 1 && is.list(pols[[1]])) {
+    pols <- pols[[1]]
+    pols <- pols[!sapply(pols, is.null)]
+    n <- length(pols)
+    if (n == 0) return(1)
+  }
+  
+  if (n == 0 || is.null(pols[[1]])) {
+    return(1)
+  }  
+  
+  pol <- if (is.lagpol(pols[[1]])) pols[[1]]$Pol else pols[[1]]  
+  if (n == 1) {
+    return(pol)
+  }
+  
+  for(i in 2:n){
+    if(is.lagpol(pols[[i]])){
+      pol <- polymultC(pol, pols[[i]]$Pol)
+    } else {
+      pol <- polymultC(pol, pols[[i]])
+    }
+  }
+  pol <- as.numeric(pol)
+  if (names)
+    names(pol) <- paste0("[B", 0:(length(pol)-1), "]")
+  return(pol)
+}
+
+#' Update lag polynomial parameters
+#'
+#' \code{.update.lagpol} updates the parameters of a lag polynomial object.
+#'
+#' @param lp An object of class \code{lagpol}.
+#' @param param A named numeric vector with the new parameter values.
+#'
+#' @return An updated object of class \code{lagpol}.
+#'
+#' @note This hidden function is called by the \code{fit.um} function to 
+#' estimate multiplicative ARIMA(p, d, q) models.
+#'
+#' @keywords internal
+#' @noRd
 .update.lagpol <- function(lp, param) {
   lp$param[] <- param[names(lp$param)]
   cc <- sapply(lp$coef, function(x) eval(x, envir = lp$param))
@@ -773,194 +864,231 @@ polyexpand <- function(...) {
 ## Internal helper functions to create lag polynomials
 # .lagpol0(), .lagpol1(), .lagpol2(), .lagpol3() 
 
-# Main helper function to create lag polynomials
-#
-# \code{.lagpol0} is an internal helper function to simplify the creation of lag
-# polynomials providing for each lagpol:
-# (1) the orders (d, s, p), 
-# (2) the literal equation, e.g., 1 - 0.8B, 
-# (3) the seasonal period s or frequency k/s for special lag polynomials 
-# AR/I/MA(s-1) or AR/I/MA(2) with restricted frequency.
-#
-# @param op info about the lag polynomials, integers or character.
-# @param type the type of operators: "ar", "i" or "ma".
-# @param coef.name prefix name for the parameters.
-# @param counter index for parameters.
-# @param envir environment in which the function arguments are evaluated.
-#    If NULL the calling environment of this function will be used.
-#
-# @return A list of lag polynomials.
-#
-# @note This hidden helper function is called by the um function to create
-#   multiplicative ARIMA(p, d, q) models.
-#
-# @seealso \link{lagpol}
-.lagpol0 <- function(op, type, coef.name, counter = 1, envir=NULL) {
-
-  if (is.null (envir)) envir <- parent.frame ()
-  if (is.character(op)) {
-    op <- gsub(" ", "", op)
-    if (regexpr("B", op)[1] > 1) {
-      if (!startsWith(op, "(")) op <- paste("(", op, ")", sep = "")
-      op <- .lagpol2(op, type, coef.name, counter, envir=envir)
-    }
-    else{
-      op <- .lagpol3(op, type, coef.name, counter, envir=envir)
-    }
-  }
-
+#' Internal helper function to create lag polynomials
+#'
+#' `.lagpol0` is an internal helper function that simplifies the creation of 
+#' \link{code{lagpol}} objects.  
+#' It generates lag polynomials by providing:
+#' - (1) the polynomial orders \eqn{(d, s, p)},  
+#' - (2) the literal equation (e.g., \eqn{1 - 0.8B}),  
+#' - (3) the seasonal period \eqn{s} or frequency \eqn{k/s} for special lag polynomials,  
+#' such as \eqn{AR/I/MA(s-1)} or \eqn{AR/I/MA(2)} with restricted frequency.
+#'
+#' @param op A numeric vector specifying the polynomial orders \eqn{(d, s, p)} 
+#' or a character string with the form of the polynomial (e.g., `"1 - 0.8B"`) or 
+#' with the seasonal period or frequency for special lag polynomial (e.g. "12" 
+#' or "1/12"). Multiple lag polynomial can be created in a single step by 
+#' combining numeric and charecter vectors in a list object. 
+#' @param type A character string indicating the type of operator:  
+#'   - `"ar"`: Autoregressive (AR) polynomial,  
+#'   - `"ma"`: Moving Average (MA) polynomial,  
+#'   - `"i"`: Integration (I) operator.  
+#' @param envir The environment in which function arguments are evaluated.
+#'
+#' @return A list of \code{\link{lagpol}} objects representing the generated 
+#' lag polynomials.  
+#'
+#' @note This internal helper function is primarily used by the `um` function to
+#'  construct multiplicative ARIMA(p, d, q) models.  
+#'
+#' @examples
+#' # Example 1: Create an AR(1) polynomial
+#' .lagpol0(op = 1, type = "ar")
+#'
+#' # Example 2: Create a polynomial from a literal equation
+#' .lagpol0(op = "1 - 0.8B", type = "ar")
+#'
+#' # Example 3: Create multiple polynomials with a list
+#' .lagpol0(op = list(1, "1 - 0.5B"), type = "ma")
+#'
+#' @seealso \code{\link{lagpol}}, \code{\link{.lagpol1}}, \code{\link{.lagpol2}}, \code{\link{.lagpol3}}
+#' @keywords internal
+#' @noRd
+.lagpol0 <- function(op, type, envir = NULL) {
   if (is.lagpol(op)) return(list(op))
   if (is.lagpol.list(op)) return(op)
   
-  if (is.numeric(op) || all(sapply(op, is.numeric))) {
-    op <- .lagpol1(op, type, coef.name, counter)    
-    if (is.null(op)) return(NULL)
-    if (is.lagpol(op)) op <- list(op)
-    return(op)
+  if (!type %in% c("ar", "ma", "i")) 
+    stop("'type' must be 'ar', 'ma' or 'i'.")
+  if (!is.environment(envir)) envir <- parent.frame() 
+  if (!is.list(op)) {
+    if (length(op) == 1) op <- as.list(op)
+    else op <- list(op)
+  } 
+  k <- length(op)
+  nms <- names(op)
+  if (!is.null(nms))
+    nms <- nms[!duplicated(nms) & nms != ""]
+  if (length(nms) < k) {
+    if (k == 1) nms <- type
+    else nms <- paste0(type, 1:k) 
+    names(op) <- nms
   }
-
-  if (is.list(op)) {
-    l <- lapply(op, function(x) {
-      lp <- .lagpol0(x, type, coef.name, counter, envir=envir)
-      if (type != "i") {
-        if (!is.list(lp)) lp <- list(lp)
-        counter <<- .parcounter(lp, coef.name) + 1
-      }
-      lp
-    })
-    
-    if (!is.lagpol(l[[1]])) l <- unlist(l, recursive = FALSE)
-    return(l)
+  llp <- list()
+  for (i in 1:k) {
+    if (is.lagpol(op[[i]]))
+      lp <- op[i]
+    else if (is.numeric(op[[i]]))
+      lp <- .lagpol1(op[i], type, envir)
+    else if(is.character(op[[i]])) {
+      if (grepl("B", op[[i]]))
+        lp <- .lagpol2(op[i], type, envir)
+      else
+        lp <- .lagpol3(op[i], type, envir)
+    } else stop("Invalid 'lagpol' specification")
+    llp <- c(llp, lp)
   }
-  stop("invalid lag operators")
+  names(llp) <- paste0(type, 1:length(llp))
+  return(llp)
 }
 
-
-# Helper function to create lag polynomials
-#
-# \code{.lagpol1} creates a list of lag polynomials from a list of orders c(d,
-# s, p), where (d, s, p) are the orders of a lag polynomial in B^s of degree d
-# raised to the power d, \eqn{(1 - coef_1 B^s - ... - coef_d B^sd)^p}. By
-# default, s and p are equal to 1. The values and names of the parameters are
-# assigned by the own function.
-#
-# @param orders a list containing the orders of one or several polynomials.
-# @inheritParams .lagpol0
-#
-# @return A list of lag polynomials.
-#
-# @seealso \link{.lagpol0}
-#
-# 
-.lagpol1 <- function(orders, type, coef.name = "", counter = 1) {
+#' Helper function to create lag polynomials 
+#'
+#' \code{.lagpol1} generates a list of lag polynomials from a list of orders
+#' specified as c(d, s, p), where:
+#' - **d** is the degree of the polynomial,
+#' - **s** is the lag step or seasonal period (default is 1),
+#' - **p** is the exponent applied to the polynomial (default is 1).
+#'
+#' @param orders A numeric vector or a list specifying the orders of one or
+#'   several lag polynomials, \code{c(d, s, p)}. By default s = p = 1.
+#' @inheritParams .lagpol0
+#'
+#' @return A list of \code{\link{lagpol}} objects.
+#'
+#' @examples
+#' # Create a simple AR(2) lag polynomial
+#' .lagpol1(orders = 2, type = "ar")
+#'
+#' # Create a lag polynomial with custom lag step and exponent
+#' .lagpol1(orders = list(c(3, 2, 2)), type = "ma")
+#'
+#' # Multiple polynomials with custom coefficient names
+#' .lagpol1(orders = list(phi = 2, Phi = c(1, 12)), type = "ar")
+#'
+#' @seealso \code{\link{.lagpol0}} for the base lag polynomial generator.
+#' @keywords internal
+#' @noRd
+.lagpol1 <- function(orders, type, envir = NULL) {
+  if (!type %in% c("ar", "ma", "i")) 
+    stop("'type' must be 'ar', 'ma' or 'i'.")
+  if (!is.environment(envir)) envir <- parent.frame() 
   
   if (is.numeric(orders)) {
     if (orders[1] == 0) return(NULL)
+    nms <- names(orders)
     orders <- list(orders)
+    if (length(nms) == 1)
+      names(orders) <- nms
   }
-  if (coef.name == "") coef.name <- "a"
-  if (counter < 0) counter <- abs(counter)
-  j <- counter
-  llp <- lapply(orders, function(x) {
-    l <- length(x)
-    d <- x[1]
-    if (l == 1) {
-      s <- 1
-      p <- 1
-    } else if (l == 2) {
-      s <- as.integer(x[2])
-      p <- 1
-    } else if (l == 3) {
-      s <- as.integer(x[2])
-      p <- as.integer(x[3])
-    } else stop("wrong orders for lagpol")
-    if (d < 0||s < 1 || p < 1) stop("wrong orders for lagpol")
-    if (d < 1) {
-      if (type == "ar") param <- 0.5
-      else if (type == "ma") param <- 0.6
-      else if (type == "i") param <- 1
-      else stop(paste("invalid ", type, " operator"))
-      coef <- paste("-abs(", coef.name, j, ")", sep = "" )
-      if (d != 0.5) {
-        coef <- c( paste("-2*cos(2*pi*", d, ")*sqrt(abs(", coef.name, j, "))",
-                         sep = "" ), coef )
-      }
-      names(param) <- paste(coef.name, j, sep = "" )
-      j <<- j + 1
-      lagpol(param = param, s = s, p = p, coef = coef)
-    } else {
-      if (type == "ar") param <- as.list(c(rep(0.01, d-1), 0.1))
-      else if (type == "ma") param <- as.list(c(rep(0.02, d-1), 0.2))
-      else if (type == "i") { 
-        param <- as.list(1)
-        p <- p + d - 1
-      } else stop(paste("invalid ", type, " operator"))
-      names(param) <- paste(coef.name, j:(j+length(param)-1), sep = "" )
-      j <<- j + length(param)
-      if (type == "i") lagpol(coef = param, s = s, p = p)
-      else lagpol(param = param, s = s, p = p)
-    }
+  nms <- names(orders)
+  orders <- lapply(orders, function(x) {
+    if (!is.numeric(x)) 
+      stop("Invalid order specification for 'lagpol' object.")
+    x <- c(x, 1, 1)[1:3]
+    x[-1] <- as.integer(x[-1]) 
+    if (any(c(x[1] < 0, x[-1] < 1)))
+      stop("Invalid order specification for 'lagpol' object.")
+    return(x)
   })
-    
+
+  k <- length(orders)
+  if (!is.null(nms))
+    nms <- nms[!duplicated(nms) & nms != ""]
+  if (length(nms) < k) {
+    nms <- paste0(type, 1:k) 
+    names(orders) <- nms
+    if (k > 1) nms <- paste0(nms, ".")
+  }
+
+  k <- 1
+  llp <- lapply(orders, function(x) {
+    if (x[1] < 1) {
+      param <- switch(type, ar = 0.5, ma = 0.6, i  = 1)
+      coef <- paste0("-abs(", nms[k], k, ")")
+      if (x[1] != 0.5) {
+        coef <- c(paste0("-2*cos(2*pi*", x[1], ")*sqrt(abs(", nms[k], k, "))"), 
+                  coef)
+      }
+      names(param) <- paste0(nms[k], 1)
+      lagpol(param = param, s = x[2], p = x[3], coef = coef)
+    } else {
+      if (type == "ar") param <- as.list(c(rep(0.01, x[1] - 1), 0.1))
+      else if (type == "ma") param <- as.list(c(rep(0.02, x[1] - 1), 0.2))
+      else { 
+        param <- as.list(1)
+        x[3] <- x[3] + x[1] - 1
+      }
+      if (grepl("\\d$", nms[k]) && length(param) > 1) 
+        names(param) <- paste0(nms[k], ".", 1:length(param))
+      else if (length(param) > 1) 
+        names(param) <- paste0(nms[k], 1:length(param))
+      else
+        names(param) <- nms[k]
+      if (type == "i") lp <- lagpol(coef = param, s = x[2], p = x[3])
+      else lp <- lagpol(param = param, s = x[2], p = x[3])
+    }
+    k <<- k + 1
+    return(lp)
+  })
   return(llp)
-  
 }
 
-# Helper function to create special lag polynomials
-#
-# \code{.lagpol2} creates a list of lag polynomials from their textual
-# equations.
-#
-# @param str equations of of the lag polynomials, character.
+#' Helper function to create lag polynomials from textual equations
+#'
+#' `.lagpol2` generates a list of lag polynomials based on their textual representations.  
+#' This function parses character strings that define lag polynomial equations 
+#' and converts them into \link{\code{lagpol}} objects.
+#'
+#' @param str A character vector containing the textual equations of the lag polynomials.  
+#'        Each element should represent a valid lag polynomial expression (e.g., `"1 - 0.5*B - 0.3*B^2"`).
 # @inheritParams .lagpol0
-#
-# @return A list of lag polynomials.
-#
-# @seealso \link{.lagpol0}
-#
-.lagpol2 <- function(str, type, coef.name = "", counter = 1, envir=envir) {
-
-  if (is.null (envir)) envir <- parent.frame ()
-  if (!startsWith(str, "1")) {
-    if (coef.name == "") coef.name <- "a"
-    l <- gregexpr("\\(", str)[[1]]
-    r <- gregexpr("\\)", str)[[1]]
-    n <- length(l)
-    stopifnot(length(r) == n)
-    txt <- list()
-    start <- l[1]+1
-    if (n > 1) { 
-      for (i in 2:n) {
-        if (l[i] > r[i-1]) {
-          txt1 <- substr(str, start, l[i]-1)
-          if (endsWith(txt1, ")")) txt1 <- substr(txt1, 1, nchar(txt1)-1)
-          txt <- c(txt, txt1)
-          start <- l[i]+1
-        }
-      }
-    }
-    n <- nchar(str)
-    if (endsWith(str, ")")) n <- n-1
-    txt <- c(txt, substr(str, start = start, stop = n))
-    ll <- lapply(txt, .lagpol2, type=type, coef.name=coef.name, counter=counter, envir=envir)
-    if (counter < 0) counter <- abs(counter)
-    j <- counter
-    ll <- lapply(ll, function(x) {
-      param <- x[[1]]
-      names(param) <- paste(coef.name, j:(j+length(param)-1), sep = "" )
-      j <<- j + length(param)
-      if (type == "i") 
-        lagpol(coef = param, lags = x[[2]], s = x[[3]], p = x[[4]])
-      else 
-        lagpol(param = param, lags = x[[2]], s = x[[3]], p = x[[4]])
-    })
-    return(ll)
+#'
+#' @return A list of \link{\code{lagpol}} objects, each corresponding to one of 
+#' the provided textual equations. 
+#' 
+#' @examples
+#' # Create a simple AR(2) lag polynomial from its equation
+#' .lagpol2(str = "1 - 0.8*B - 0.3*B^2", type = "ar")
+#'
+#' # Create multiple MA polynomials
+#' .lagpol2(str = c("1 + 0.5*B", "1 + 0.4*B + 0.2*B^2"), type = "ma")
+#'
+#' @seealso \code{\link{.lagpol0}} for the base lag polynomial generator.
+#' @keywords internal
+#' @noRd
+.lagpol2 <- function(str, type, envir = NULL) {
+  if (is.list(str)) str <- unlist(str)
+  if (!is.character(str)) 
+    stop("'str' must be a character vector.")
+  if (!type %in% c("ar", "ma", "i")) 
+    stop("'type' must be 'ar', 'ma' or 'i'.")
+  if (!is.environment(envir)) envir <- parent.frame() 
+  nm <- names(str)
+  if (is.null(nm)) nm <- type
+  str <- gsub(" ", "", str)
+  if (grepl("\\)\\(", str)) {
+    str <- gsub("\\)\\(", "\\)|\\(", str)
+    str <- strsplit(str, split = "\\|")[[1]]
+    if (grepl("\\d$", nm) && length(str) > 1) 
+      names(str) <- paste0(nm, ".", 1:length(str))
+    else
+      names(str) <- paste0(nm, 1:length(str))
+    llp <- list()
+    for (i in 1:length(str))
+      llp[i] <- .lagpol2(str[i], type = type, envir = envir)
+    names(llp) <- names(str)
+    return(llp)
   }
   
+  if (startsWith(str, "(") && endsWith(str, ")"))
+    str <- substr(str, start = 2, stop = nchar(str) - 1)
+  else if (startsWith(str, "("))
+    str <- substr(str, start = 2, stop = nchar(str))
   # Check if first term is equal to 1
   i <- regexpr("\\+", str)[1]
   j <- regexpr("\\-", str)[1]
-  if ( (j < 0) | (i < j & i > 0) )
+  if ( (j < 0) || (i < j && i > 0) )
     j <- i
   stopifnot(j > 1)
   txt <- substr(str, start = 1, stop = j-1)
@@ -968,20 +1096,17 @@ polyexpand <- function(...) {
   stopifnot(as.integer(i) == 1)
   str <- substr(str, start = j, stop = nchar(str))
 
-  # Power of the lag polynomial
-  i <- regexpr("\\)[1-9]", str)[1]
+  # Exponent of the lag polynomial
+  p <- 1
+  i <- max(regexpr("\\)[[:alnum:][:punct:]]", str)[1])
   if (i > 1) {
     txt <- substr(str, i+1, nchar(str))
-    p <- eval(parse(text = txt), envir)
-    str <- substr(str, 1, i-1)
-  } else {
-    i <- regexpr("\\)\\^[1-9]", str)[1]
-    if (i > 1) {
-      txt <- substr(str, i+2, nchar(str))
-      p <- eval(parse(text = txt), envir)
+    if (!grepl("B", txt)) {
+      if (startsWith(txt, "^")) txt <- substr(txt, 2, nchar(txt))
+      p <- try(eval(parse(text = txt), envir), silent = TRUE)
+      if (inherits(p, "try-error")) 
+        stop(paste0("Invalid expression in 'str': ", str))
       str <- substr(str, 1, i-1)
-    } else {
-      p <- 1
     }
   }
   
@@ -993,12 +1118,14 @@ polyexpand <- function(...) {
   repeat {
     i <- regexpr("B", str, fixed = TRUE)[1]
     if (i < 1) break
-    if (!(startsWith(str, "+") | startsWith(str, "-")))
-      stop("Invalid lag polynomial")
+    if (!(startsWith(str, "+") || startsWith(str, "-")))
+      stop("Invalid expression for lag polynomial")
     txt <- substr(str, start = 1, stop = i-1)
-    if (nchar(txt)>1)
-      b <- eval(parse(text = txt), envir)
-    else if (txt == "-")
+    if (nchar(txt) > 1) {
+      b <- try(eval(parse(text = txt), envir), silent = TRUE)
+      if (inherits(b, "try-error")) 
+        stop("Invalid expression for lag polynomial")
+    } else if (txt == "-")
       b <- -1
     else
       b <- 1
@@ -1018,8 +1145,7 @@ polyexpand <- function(...) {
       }
       lags <- c(lags, as.integer(txt))
       str <- substr(str, start = j, stop = nchar(str))
-    }
-    else {
+    } else {
       lags <- c(lags, 1)
       break
     }
@@ -1031,35 +1157,66 @@ polyexpand <- function(...) {
   if (s > 1) {
     if (any(lags%%s != 0)) s <- 1
   }
-  
-  return(list(a, lags, s, p))
-  
+  if (grepl("\\d$", nm) && length(a) > 1) 
+    names(a) <- paste0(nm, ".", 1:length(a))
+  else if (grepl("\\d$", nm)) 
+    names(a) <- nm
+  else
+    names(a) <- paste0(nm, 1:length(a))
+  if (type == "i") 
+    lp <- list(lagpol(coef = a, lags = lags, s = s, p = p))
+  else 
+    lp <- list(lagpol(param = a, lags = lags, s = s, p = p))
+  names(lp) <- nm
+  return(lp)
 }
 
-# Helper function to create special lag polynomials
-#
-# \code{.lagpol3} creates a list of special lag polynomials: (1) AR/I/MA(s-1)
-# polynomials or (2) AR/I/MA(2) polynomial with a specific frequency k/s, where
-# s is the seasonal period.
-#
-# @param str seasonal perior or frequency, character.
-# @inheritParams .lagpol0
-#
-# @return A list of lag polynomials.
-#
-# @seealso \link{.lagpol0}
-#
-.lagpol3 <- function(str, type, coef.name = "", counter = 1, envir=NULL) {
-
-  if (is.null (envir)) envir <- parent.frame ()
-  if (type == "ar") param <- 0.3
-  else if (type == "ma") param <- 0.6
-  else if (type == "i") param <- 1
-  else stop(paste("invalid ", type, " operator"))
-
-  if (coef.name == "") coef.name <- "a"
+#' Helper function to create special lag polynomials
+#'
+#' `.lagpol3` generates a list of special lag polynomials for \link{\code{um}} 
+#' objects. It can create:
+#' \itemize{
+#'   \item (1) AR/I/MA polynomials of order \(s - 1\) for a given seasonal 
+#'   period \(s\).
+#'   \item (2) AR/I/MA(2) polynomials with a specific frequency \(k/s\), 
+#'   where \(s\) is the seasonal period. Factors with frequency 0 or 0.5 are 
+#'   also allowed.
+#' }
+#'
+#' @param str a character vector specifying the seasonal period or frequency.  
+#'        Examples: `"12"`, `"(0:6)/12"`, or `"0/12"`.  
+#' @inheritParams .lagpol0
+#'
+#' @return A list of `lagpol` objects.  
+#'
+#' @examples
+#' # AR polynomial with seasonal period 12
+#' .lagpol3(str = "12", type = "ar")
+#'
+#' # MA polynomial with multiple seasonal frequencies (0:6)/12
+#' .lagpol3(str = "(0:6)/12", type = "ma")
+#'
+#' # Integration polynomial with frequency 0/12
+#' .lagpol3(str = "0/12", type = "i")
+#'
+#' @seealso \code{\link{.lagpol0}}, \code{\link{lagpol}}
+#'
+#' @keywords internal
+#' @noRd
+.lagpol3 <- function(str, type, envir = NULL) {
+  if (is.list(str)) str <- unlist(str)
+  if (!is.character(str)) 
+    stop("'str' must be a character vector.")
+  if (!type %in% c("ar", "ma", "i")) 
+    stop("'type' must be 'ar', 'ma' or 'i'.")
+  if (is.null(envir)) envir <- parent.frame()
+  param <- switch(type, ar = 0.3, ma = 0.6, i  = 1)
+  nm <- names(str)
+  if (is.null(nm)) nm <- type
   f <- lapply(str, function(x) {
-    eval(parse(text = x), envir)
+    val <- try(eval(parse(text = x), envir), silent = TRUE)
+    if (inherits(val, "try-error")) stop(paste("Invalid expression in 'str':", x))
+    return(val)    
   })
   f <- unlist(f)
 
@@ -1078,27 +1235,29 @@ polyexpand <- function(...) {
       } else s <- 1
     }
   } else s <- 1
-  
+  counter <- 1
+  if (grepl("\\d$", nm) && length(f) > 1) 
+    nm <- paste0(nm, ".")
   lp <- lapply(f, function(x) {
-    coef <- paste(coef.name, counter, sep = "" )
+    coef <- paste0(nm, counter)
     names(param) <- coef
     counter <<- counter + 1
     if (x > 1) {
       x <- as.integer(x)
       if (x > 1) {
-        coef <- paste("-abs(", coef, "^(", 1:(x-1), "/", x, "))", sep = "")
+        coef <- paste0("-abs(", coef, "^(", 1:(x-1), "/", x, "))")
       } else {
         x <- abs(x)
-        coef <- paste("-abs(", coef, "^(", 1:(x-1), "/", x-1, "))", sep = "")
+        coef <- paste0("-abs(", coef, "^(", 1:(x-1), "/", x-1, "))")
       }
       lagpol(param = param, coef = coef)
     } else if (x > 0 && x < 0.5) {
       if (s > 1) {
-        coef1 <- paste(2*cos(2*pi*x), "*", coef, "^(1/", s, ")", sep = "")
-        coef2 <- paste("-", coef, "^(2/", s, ")",  sep = "")
+        coef1 <- paste0(2*cos(2*pi*x), "*", coef, "^(1/", s, ")")
+        coef2 <- paste0("-", coef, "^(2/", s, ")",  sep = "")
       } else {
-        coef1 <- paste(2*cos(2*pi*x), "*sqrt(", coef, ")", sep = "")
-        coef2 <- paste("-", coef, sep = "")
+        coef1 <- paste0(2*cos(2*pi*x), "*sqrt(", coef, ")")
+        coef2 <- paste0("-", coef)
       }
       lagpol(param = param, coef = c(coef1, coef2))
     } else if (x == 0.5) {
@@ -1115,9 +1274,8 @@ polyexpand <- function(...) {
         coef1 <- paste("abs(", coef, ")", sep = "")
       }
       lagpol(param = param, coef = coef1)
-    } else stop("invalid operator")
+    } else stop(paste("Invalid frequency."))
   })
-  
+  names(lp) <- paste0(nm, 1:length(lp))
   return(lp)
-  
 }

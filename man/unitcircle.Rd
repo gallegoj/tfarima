@@ -8,7 +8,7 @@
 \usage{
 unitcircle(lp, ...)
 
-\method{unitcircle}{default}(x, ...)
+\method{unitcircle}{default}(lp, ...)
 
 \method{unitcircle}{lagpol}(lp, s = 12, ...)
 }

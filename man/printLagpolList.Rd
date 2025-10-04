@@ -2,15 +2,20 @@
 % Please edit documentation in R/lagpol.R
 \name{printLagpolList}
 \alias{printLagpolList}
-\title{Print a list of lagpol objects}
+\title{Prints a list of \code{lagpol} objects.}
 \usage{
-printLagpolList(llp, digits = 2)
+printLagpolList(llp, digits = 2, width = getOption("width"))
 }
 \arguments{
-\item{llp}{a list of \code{lagpol} objects.}
+\item{llp}{A list of \code{lagpol} objects.}
 
-\item{digits}{number of decimals.}
+\item{digits}{Integer. Number of significant digits to display. Default is 2.}
+
+\item{width}{Integer. Maximum number of characters per line. Default is the console width.}
+}
+\value{
+Invisibly returns the list of \code{lagpol} objects.
 }
 \description{
-Print a list of lagpol objects
+Prints a list of \code{lagpol} objects.
 }

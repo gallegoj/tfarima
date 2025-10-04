@@ -2,18 +2,31 @@
 % Please edit documentation in R/tfm.R
 \name{coef.tfm}
 \alias{coef.tfm}
-\title{Coefficients of a transfer function model}
+\title{Coefficients of a Transfer Function Model}
 \usage{
 \method{coef}{tfm}(object, ...)
 }
 \arguments{
-\item{object}{a \code{tfm} object.}
+\item{object}{An object of class \code{tfm}.}
 
-\item{...}{other arguments.}
+\item{...}{Further arguments (currently unused).}
 }
 \value{
-A numeric vector.
+A named numeric vector with the estimated coefficients of the model, 
+including regression coefficients, transfer function parameters, and noise 
+model parameters.
 }
 \description{
-\code{coef} extracts the "coefficients" from a TF model.
+Extracts the estimated coefficients from a fitted transfer function model 
+of class \code{tfm}. This is a method for the generic \code{\link{coef}} 
+function.
+}
+\examples{
+\dontrun{
+mdl <- tfm(y, xreg = X, noise = um())
+coef(mdl)
+}
+}
+\seealso{
+\code{\link{tfm}}
 }
