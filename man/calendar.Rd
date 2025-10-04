@@ -52,7 +52,7 @@ calendar(mdl, ...)
   easter.mon = FALSE,
   n.ahead = 0,
   p.value = 1,
-  envir = NULL,
+  envir = parent.frame(),
   ...
 )
 }

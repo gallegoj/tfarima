@@ -6,7 +6,7 @@
 \usage{
 CalendarVar(
   x,
-  form = c("dif", "td", "td7", "td6", "wd", "wd2", "null"),
+  form = c("dif", "td", "td7", "td6", "wd", "null"),
   ref = 0,
   lom = TRUE,
   lpyear = TRUE,
@@ -17,42 +17,42 @@ CalendarVar(
 )
 }
 \arguments{
-\item{x}{an object of class \code{ts} used to determine the sample period and
-frequency.}
+\item{x}{A `ts` object used to determine start, length and frequency.}
 
-\item{form}{a character indicated the set of calendar variables: td, td7,
-td6, wd.}
+\item{form}{Character selecting the set of calendar variables: `"dif"`
+(differences wrt reference day), `"td"` (6 dummies + lom; omits reference),
+`"td7"` (7 dummies), `"td6"` (6 dummies; omits reference), `"wd"` (weekdays
+vs weekend), or `"null"` (no trading-day regressors).}
 
-\item{ref}{a non-negative integer indicating the reference day.}
+\item{ref}{Non-negative integer (0–6) indicating the reference day (0 =
+Sunday, 1 = Monday, …, 6 = Saturday). Ignored unless `form` needs it.}
 
-\item{lom}{logical. If TRUE length of the month effect is also estimated.}
+\item{lom}{Logical. If `TRUE` include a length-of-month regressor.}
 
-\item{lpyear}{logical. If TRUE a leap year effect is also estimated.}
+\item{lpyear}{Logical. If `TRUE` include a leap-year regressor.}
 
-\item{easter}{logical. If TRUE an additional deterministic variable is
-generated to capture Easter effects.}
+\item{easter}{Logical. If `TRUE` include an Easter regressor.}
 
-\item{len}{duration of the Easter, integer.}
+\item{len}{Integer duration for Easter effect (days). Typical values: 4–8.}
 
-\item{easter.mon}{logical. It is TRUE if Holy Monday is a public holiday.}
+\item{easter.mon}{Logical. `TRUE` if Holy Monday is a public holiday.}
 
-\item{n.ahead}{number of additional observations to extend the sample period.}
+\item{n.ahead}{Integer. Extra observations to extend the sample (forecast
+horizon).}
 }
 \value{
-An object of class \code{mts} or \code{ts}.
+An object of class `ts` or `mts` with the requested regressors.
 }
 \description{
-\code{CalendarVar} creates a set of deterministic variables to capture
-calendar effects.
+`CalendarVar()` creates a set of deterministic regressors to capture calendar
+effects (trading/working days, length-of-month, leap-year and Easter).
 }
 \examples{
-
-Y <- rsales
-X <- CalendarVar(Y, easter = TRUE)
+X <- CalendarVar(AirPassengers, form = "wd", easter = TRUE, len = 5)
 
 }
 \references{
-Bell, W.R. and Hillmer, S.C. (1983) “Modeling time series with calendar
-variation”, Journal of the American Statistical Society, Vol. 78, pp.
-526–534.
+Bell, W.R. and Hillmer, S.C. (1983) “Modeling time series with
+  calendar variation”, *Journal of the American Statistical Association*, 78,
+  526–534.
 }

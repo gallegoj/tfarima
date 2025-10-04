@@ -451,6 +451,9 @@ pccf <- function(x, y, um.x = NULL, um.y = NULL, lag.max = NULL, plot = TRUE,
   }
 }
 
+# --- helpers ------------------
+
+#' @noRd
 tslabel <- function(ylab, bc, d, D, s, S, i) {
   # Initial adjustments
   if (S && s < 2) S <- FALSE

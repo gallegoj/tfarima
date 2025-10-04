@@ -7,31 +7,32 @@
 InterventionVar(Y, date, type = c("P", "S", "R"), n.ahead = 0)
 }
 \arguments{
-\item{Y}{an object of class \code{ts} used to determine the sample period and
-frequency.}
+\item{Y}{A `ts` object used to determine start, length and frequency.}
 
-\item{date}{the date of the event, c(year, month).}
+\item{date}{Either a single positive index within the sample, or a vector
+`c(year, month)` for monthly series. For non-seasonal series, `c(year)` is
+also accepted.}
 
-\item{type}{a character indicating the type of intervention variables: (P)
-pulse, (S) step, (R).}
+\item{type}{One of `"P"` (pulse), `"S"` (step), or `"R"` (ramp = cumulative
+step).}
 
-\item{n.ahead}{number of additional observations to extend the sample period.}
+\item{n.ahead}{Integer. Extra observations to extend the sample.}
 }
 \value{
-An intervention variable, a 'ts' object.
+A `ts` intervention variable.
 }
 \description{
-\code{InterventionVar} creates an intervention variable to capture the effect
-of an external event.
+`InterventionVar()` creates pulse, step, or ramp variables at a given date.
 }
 \examples{
-
-Y <- seriesJ$Y
-P58 <- InterventionVar(Y, date = 58, type = "P")
+# Pulse at March 1958:
+P <- InterventionVar(AirPassengers, date = c(1958, 3), type = "P")
+# Or by index within the extended sample (here no extension):
+P2 <- InterventionVar(AirPassengers, date = 123, type = "P")
 
 }
 \references{
-G. E. P. Box, G. C. Tiao, “Intervention Analysis with Applications to
-Economic and Environmental Problems”, Journal of the American Statistical
-Association, Vol. 70, No. 349. (Mar., 1975), pp. 70-79.
+Box, G.E.P. and Tiao, G.C. (1975) “Intervention analysis with
+  applications to economic and environmental problems”, *JASA*, 70(349),
+  70–79.
 }

@@ -7,24 +7,21 @@
 sdummies(Y, ref = 1, constant = FALSE, n.ahead = 0)
 }
 \arguments{
-\item{Y}{an object of class \code{ts} used to determine the sample period and
-frequency.}
+\item{Y}{A seasonal `ts` object.}
 
-\item{ref}{the reference season, positive integer}
+\item{ref}{Reference season (1..frequency).}
 
-\item{constant}{logical indicator to include a column of ones.}
+\item{constant}{Logical. If `TRUE`, include an intercept column.}
 
-\item{n.ahead}{number of additional observations to extend the sample period.}
+\item{n.ahead}{Integer. Extra observations to extend the sample.}
 }
 \value{
-A matrix of trigonometric variables.
+A `ts` matrix with seasonal dummies (and intercept if requested).
 }
 \description{
-\code{sdummies} creates an full set of seasonal dummies.
+`sdummies()` creates a full set of seasonal dummies (reference-coded).
 }
 \examples{
-
-Y <- AirPassengers
-P58 <- sincos(Y)
+D <- sdummies(AirPassengers, ref = 1, constant = TRUE, n.ahead = 24)
 
 }

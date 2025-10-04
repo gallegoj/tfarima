@@ -7,22 +7,20 @@
 sincos(Y, n.ahead = 0, constant = FALSE)
 }
 \arguments{
-\item{Y}{an object of class \code{ts} used to determine the sample period and
-frequency.}
+\item{Y}{A seasonal `ts` object.}
 
-\item{n.ahead}{number of additional observations to extend the sample period.}
+\item{n.ahead}{Integer. Extra observations to extend the sample.}
 
-\item{constant}{logical indicator to include a column of ones.}
+\item{constant}{Logical. If `TRUE`, include an intercept column.}
 }
 \value{
-A matrix of trigonometric variables.
+A `ts` matrix with trigonometric variables (and intercept if requested).
 }
 \description{
-\code{sincos} creates an full set of trigonometric variables.
+`sincos()` creates a full set of seasonal trigonometric regressors
+(cos/sin harmonics) for a seasonal frequency.
 }
 \examples{
-
-Y <- AirPassengers
-P58 <- sincos(Y)
+X <- sincos(AirPassengers, constant = TRUE)
 
 }

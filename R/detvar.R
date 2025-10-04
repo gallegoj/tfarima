@@ -3,52 +3,59 @@
 
 #' Calendar variables
 #'
-#' \code{CalendarVar} creates a set of deterministic variables to capture
-#' calendar effects.
+#' `CalendarVar()` creates a set of deterministic regressors to capture calendar
+#' effects (trading/working days, length-of-month, leap-year and Easter).
 #'
-#' @param x an object of class \code{ts} used to determine the sample period and
-#'   frequency.
-#' @param form a character indicated the set of calendar variables: td, td7,
-#'   td6, wd.
-#' @param ref a non-negative integer indicating the reference day.
-#' @param lom logical. If TRUE length of the month effect is also estimated.
-#' @param lpyear logical. If TRUE a leap year effect is also estimated.
-#' @param easter logical. If TRUE an additional deterministic variable is
-#'   generated to capture Easter effects.
-#' @param len duration of the Easter, integer.
-#' @param easter.mon logical. It is TRUE if Holy Monday is a public holiday.
-#' @param n.ahead number of additional observations to extend the sample period.
+#' @param x A `ts` object used to determine start, length and frequency.
+#' @param form Character selecting the set of calendar variables: `"dif"`
+#'   (differences wrt reference day), `"td"` (6 dummies + lom; omits reference),
+#'   `"td7"` (7 dummies), `"td6"` (6 dummies; omits reference), `"wd"` (weekdays
+#'   vs weekend), or `"null"` (no trading-day regressors).
+#' @param ref Non-negative integer (0–6) indicating the reference day (0 =
+#'   Sunday, 1 = Monday, …, 6 = Saturday). Ignored unless `form` needs it.
+#' @param lom Logical. If `TRUE` include a length-of-month regressor.
+#' @param lpyear Logical. If `TRUE` include a leap-year regressor.
+#' @param easter Logical. If `TRUE` include an Easter regressor.
+#' @param len Integer duration for Easter effect (days). Typical values: 4–8.
+#' @param easter.mon Logical. `TRUE` if Holy Monday is a public holiday.
+#' @param n.ahead Integer. Extra observations to extend the sample (forecast
+#'   horizon).
 #'
-#' @return An object of class \code{mts} or \code{ts}.
-#' @references
+#' @return An object of class `ts` or `mts` with the requested regressors.
 #'
-#' Bell, W.R. and Hillmer, S.C. (1983) “Modeling time series with calendar
-#' variation”, Journal of the American Statistical Society, Vol. 78, pp.
-#' 526–534.
+#' @references Bell, W.R. and Hillmer, S.C. (1983) “Modeling time series with
+#'   calendar variation”, *Journal of the American Statistical Association*, 78,
+#'   526–534.
 #'
 #' @examples
-#'
-#' Y <- rsales
-#' X <- CalendarVar(Y, easter = TRUE)
+#' X <- CalendarVar(AirPassengers, form = "wd", easter = TRUE, len = 5)
 #'
 #' @export
-CalendarVar <- 
-function(x, form = c("dif", "td", "td7", "td6", "wd",  "wd2", "null"), ref = 0,
-         lom = TRUE, lpyear = TRUE, easter = FALSE, len = 4, easter.mon = FALSE,
-         n.ahead = 0) 
-{
-
-  form <- tolower(form)[1]
-  names <- c()
+CalendarVar <- function(
+    x,
+    form = c("dif", "td", "td7", "td6", "wd", "null"),
+    ref = 0,
+    lom = TRUE,
+    lpyear = TRUE,
+    easter = FALSE,
+    len = 4,
+    easter.mon = FALSE,
+    n.ahead = 0
+) {
+  stopifnot(is.ts(x))
+  stopifnot(frequency(x) == 12)
+  form <- match.arg(form[1], c("dif", "td", "td7", "td6", "wd", "null"))
+  nms <- c()
+  xreg <- NULL
   if (form != "null") {  
     xreg <- extra.days(x, -1, n.ahead)
-    names <- colnames(xreg)
+    nms <- colnames(xreg)
     if (ref < 0 || ref > 6) ref <- 0
     ref <- ref + 1
     if (form == "dif"||form == "td") {
       xreg <- sapply((1:7)[-ref], function(k) xreg[, k] - xreg[, ref])
-      names <- sapply((1:7)[-ref], function(k) {
-        paste0(names[k], "_", names[ref])
+      nms <- sapply((1:7)[-ref], function(k) {
+        paste0(nms[k], "_", nms[ref])
       })
       if (lom && lpyear) {
         if (form == "td") lom <- FALSE
@@ -59,75 +66,79 @@ function(x, form = c("dif", "td", "td7", "td6", "wd",  "wd2", "null"), ref = 0,
       lpyear <- FALSE
     } else if (form == "td6") {
       xreg <- xreg[, -ref]
-      names <- names[-ref]
+      nms <- nms[-ref]
     } else if (form == "wd") {
       xreg <- matrix(rowSums(xreg[,2:6])-5*rowSums(xreg[,c(1, 7)])/2, ncol = 1)
-      names <- "wkdays_wknd"
+      nms <- "wkdays_wknd"
       if (lpyear) lom <- FALSE
-    } else {
-      stop("invalid option for tranding days")
-    }
-  } else xreg <- NULL
+    } 
+  }
 
   if (lom) {
     Lom <- month.length(x, n.ahead) - 28
     xreg <- cbind(xreg, Lom)
-    names <- c(names, "lom")    
+    nms <- c(nms, "lom")    
   }
 
   if (lpyear) {
-    ly <- lpyear(x, TRUE, n.ahead = n.ahead)
+    ly <- leapyear(x, wd = TRUE, n.ahead = n.ahead)
     xreg <- cbind(xreg, ly)
-    names <- c(names, "lpyear")    
+    nms <- c(nms, "leapyear")    
   }
   
   if (easter) {
     Easter <- EasterVar(x, len, easter.mon, n.ahead = n.ahead)
     xreg <- cbind(xreg, Easter)
-    names <- c(names, paste0("Easter", len, ifelse(easter.mon, "M", "")))    
+    nms <- c(nms, paste0("Easter", len, ifelse(easter.mon, "M", "")))    
   }
+  if (is.null(xreg))
+    return(NULL)
 
-  if (ncol(xreg) > 1)
-    xreg <- ts(xreg, start = start(x), frequency = frequency(x))
-  colnames(xreg) <- names
-  xreg
+  xreg <- as.matrix(xreg)
+  colnames(xreg) <- nms
+  ts(xreg, start = start(x), frequency = frequency(x))
 }
-
 
 #' Intervention variables
 #'
-#' \code{InterventionVar} creates an intervention variable to capture the effect
-#' of an external event.
+#' `InterventionVar()` creates pulse, step, or ramp variables at a given date.
 #'
-#' @param Y an object of class \code{ts} used to determine the sample period and
-#'   frequency.
-#' @param type a character indicating the type of intervention variables: (P)
-#'   pulse, (S) step, (R).
-#' @param date the date of the event, c(year, month).   
-#' @param n.ahead number of additional observations to extend the sample period.
+#' @param Y A `ts` object used to determine start, length and frequency.
+#' @param date Either a single positive index within the sample, or a vector
+#'   `c(year, month)` for monthly series. For non-seasonal series, `c(year)` is
+#'   also accepted.
+#' @param type One of `"P"` (pulse), `"S"` (step), or `"R"` (ramp = cumulative
+#'   step).
+#' @param n.ahead Integer. Extra observations to extend the sample.
 #'
-#' @return An intervention variable, a 'ts' object.
+#' @return A `ts` intervention variable.
 #'
-#' @references
-#'
-#' G. E. P. Box, G. C. Tiao, “Intervention Analysis with Applications to
-#' Economic and Environmental Problems”, Journal of the American Statistical
-#' Association, Vol. 70, No. 349. (Mar., 1975), pp. 70-79.
+#' @references Box, G.E.P. and Tiao, G.C. (1975) “Intervention analysis with
+#'   applications to economic and environmental problems”, *JASA*, 70(349),
+#'   70–79.
 #'
 #' @examples
-#' 
-#' Y <- seriesJ$Y
-#' P58 <- InterventionVar(Y, date = 58, type = "P")
+#' # Pulse at March 1958:
+#' P <- InterventionVar(AirPassengers, date = c(1958, 3), type = "P")
+#' # Or by index within the extended sample (here no extension):
+#' P2 <- InterventionVar(AirPassengers, date = 123, type = "P")
 #'
 #' @export
 InterventionVar <- function(Y, date, type = c("P", "S", "R"), n.ahead = 0) {
+  stopifnot(is.ts(Y))
   type <- match.arg(type)
   start <- start(Y)
   s <- frequency(Y)
   nY <- length(Y) + n.ahead
   x <- ts(integer(nY), start = start, frequency = s)
-  if (s > 1) n <- (date[1] - start[1] + 1)*s - (start[2] - 1) - (s - date[2])
-  else n <- (date[1] - start[1] + 1)*s
+  if (length(date) == 1 && s > 1) {
+    n <- as.integer(date)
+  } else if (s > 1L) {
+    n <- (date[1] - start[1] + 1)*s - (start[2] - 1) - (s - date[2])
+  } else {
+    if (date[1] < start[1]) n <- as.integer(date[1])
+    else n <- (date[1] - start[1] + 1)
+  }
   stopifnot(n > 0 && n <= nY)
   x[n] <- 1
   if (type != "P") {
@@ -140,25 +151,24 @@ InterventionVar <- function(Y, date, type = c("P", "S", "R"), n.ahead = 0) {
 
 #' Trigonometric variables
 #'
-#' \code{sincos} creates an full set of trigonometric variables.
+#' `sincos()` creates a full set of seasonal trigonometric regressors
+#' (cos/sin harmonics) for a seasonal frequency.
 #'
-#' @param Y an object of class \code{ts} used to determine the sample period and
-#'   frequency.
-#' @param constant logical indicator to include a column of ones.
-#' @param n.ahead number of additional observations to extend the sample period.
+#' @param Y A seasonal `ts` object.
+#' @param n.ahead Integer. Extra observations to extend the sample.
+#' @param constant Logical. If `TRUE`, include an intercept column.
 #'
-#' @return A matrix of trigonometric variables.
+#' @return A `ts` matrix with trigonometric variables (and intercept if requested).
 #'
 #' @examples
-#'
-#' Y <- AirPassengers
-#' P58 <- sincos(Y)
+#' X <- sincos(AirPassengers, constant = TRUE)
 #'
 #' @export
 sincos <- function(Y, n.ahead = 0, constant = FALSE) {
+  stopifnot(is.ts(Y))
   start <- start(Y)
   s <- frequency(Y)
-  stopifnot(s>1)
+  stopifnot(s > 1)
   n <- length(Y) + n.ahead
   t <- 2*pi*(start[2]:(start[2] + n - 1))/s
   k = floor((s-1)/2)
@@ -179,48 +189,49 @@ sincos <- function(Y, n.ahead = 0, constant = FALSE) {
     X <- cbind(X, cos(s*t/2))
     names <- c(names, paste0("c", s/2))
   }
+  X <- as.matrix(X)
   colnames(X) <- names
   X <- ts(X, start = start, frequency = s)
 }
 
 #' Seasonal dummies
 #'
-#' \code{sdummies} creates an full set of seasonal dummies.
+#' `sdummies()` creates a full set of seasonal dummies (reference-coded).
 #'
-#' @param Y an object of class \code{ts} used to determine the sample period and
-#'   frequency.
-#' @param ref the reference season, positive integer
-#' @param constant logical indicator to include a column of ones.
-#' @param n.ahead number of additional observations to extend the sample period.
+#' @param Y A seasonal `ts` object.
+#' @param ref Reference season (1..frequency).
+#' @param constant Logical. If `TRUE`, include an intercept column.
+#' @param n.ahead Integer. Extra observations to extend the sample.
 #'
-#' @return A matrix of trigonometric variables.
+#' @return A `ts` matrix with seasonal dummies (and intercept if requested).
 #'
 #' @examples
-#'
-#' Y <- AirPassengers
-#' P58 <- sincos(Y)
+#' D <- sdummies(AirPassengers, ref = 1, constant = TRUE, n.ahead = 24)
 #'
 #' @export
 sdummies <- function(Y, ref = 1, constant = FALSE, n.ahead = 0) {
+  stopifnot(is.ts(Y))
   start <- start(Y)
   s <- frequency(Y)
-  stopifnot(s>1)
-  stopifnot(ref >=1 && ref <= s)
+  stopifnot(s > 1)
+  stopifnot(ref >= 1 && ref <= s)
   n <- length(Y) + n.ahead
-  m <- cycle(Y)
+  m0 <- start[2]
+  m <- ((m0 - 1):(m0 - 1 + n - 1)) %% s + 1
   d <- (m == ref)*1L
   i <- (1:s)[-ref]
   D <- sapply(i, function(k) (m==k) - d)
   names <- paste0("D", i, paste0("_D", ref))
   if (constant) {
-    D <- cbind(rep(1, n), D)
+    D <- cbind(rep(1L, n), D)
     names <- c("constant", names)
   }
   colnames(D) <- names
   D <- ts(D, start = start, frequency = s)
 }
 
-
+# --- helpers ------------------
+#' @noRd
 easterDate <- function(year, easter.mon = FALSE) {
   a <- year %% 19
   b <- year %% 4
@@ -237,7 +248,9 @@ easterDate <- function(year, easter.mon = FALSE) {
   c(month, day)
 }
 
+#' @noRd
 EasterVar <- function(x, len = 4, easter.mon = FALSE, n.ahead = 0) {
+  stopifnot(is.ts(x))
   if (frequency(x) != 12) stop("function only implemented for monthly ts")
   start <- start(x)
   len <- abs(len)
@@ -256,7 +269,8 @@ EasterVar <- function(x, len = 4, easter.mon = FALSE, n.ahead = 0) {
       if (n > 1) x[n-1] <- 1 - x[n]
     }
   }
-
+  
+  # middle years
   for (y in (start[1]+1):(end[1]-1)) {
     e <- easterDate(y, easter.mon)
     n <- (y - start[1] + 1)*12 - (start[2] - 1) - (12 - e[1])
@@ -284,12 +298,12 @@ EasterVar <- function(x, len = 4, easter.mon = FALSE, n.ahead = 0) {
       x[n] <- 1- e[2]/len
     }
   }
-
   x  
-
 }
 
+#' @noRd
 month.length <- function(Y, n.ahead = 0) {
+  stopifnot(is.ts(Y))
   if (frequency(Y) != 12) stop("function only implemented for monthly ts")
   start <- start(Y)
   n <- length(Y) + n.ahead
@@ -309,12 +323,12 @@ month.length <- function(Y, n.ahead = 0) {
       y <- y +1
     }
   }
-  
   x
-
 }
 
-lpyear <- function(Y, wd = FALSE, n.ahead = 0) {
+#' @noRd
+leapyear <- function(Y, wd = FALSE, n.ahead = 0) {
+  stopifnot(is.ts(Y))
   if (frequency(Y) != 12) stop("function only implemented for monthly ts")
   start <- start(Y)
   n <- length(Y) + n.ahead
@@ -339,7 +353,9 @@ lpyear <- function(Y, wd = FALSE, n.ahead = 0) {
   x
 }
 
+#' @noRd
 extra.days <- function(x, day, n.ahead = 0) {
+  stopifnot(is.ts(x))
   if (day < 0 || day > 6) {
     X <- sapply(0:6, function(k) {
       extra.days(x, k, n.ahead)

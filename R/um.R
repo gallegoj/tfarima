@@ -386,9 +386,9 @@ calendar <- function (mdl, ...) { UseMethod("calendar") }
 calendar.um <-
 function(mdl, y = NULL, form = c("dif", "td", "td7", "td6", "wd"),
          ref = 0, lom = TRUE, lpyear = TRUE, easter = FALSE, len = 4, 
-         easter.mon = FALSE, n.ahead = 0, p.value = 1, envir = NULL, ...)
+         easter.mon = FALSE, n.ahead = 0, p.value = 1, 
+         envir = parent.frame (), ...)
 {
-  if (is.null (envir)) envir <- parent.frame ()
   if (is.null(y)) y <- z.um(mdl, envir = envir)
   else mdl$z <- deparse(substitute(y))
   if (frequency(y) != 12) stop("function only implemented for monthly ts")
