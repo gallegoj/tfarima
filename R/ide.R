@@ -1,3 +1,5 @@
+## tfarima/R/ide.R
+## Jose L Gallego (UC)
 
 #' Identification plots
 #'

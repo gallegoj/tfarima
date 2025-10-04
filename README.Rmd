@@ -1,58 +1,59 @@
+---
+output: github_document
+---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
 
 # tfarima
 
 <!-- badges: start -->
-
-[![CRAN
-status](https://www.r-pkg.org/badges/version/tfarima)](https://CRAN.R-project.org/package=tfarima)
+[![CRAN status](https://www.r-pkg.org/badges/version/tfarima)](https://CRAN.R-project.org/package=tfarima)
 [![Downloads](https://cranlogs.r-pkg.org/badges/grand-total/tfarima)](https://cran.r-project.org/package=tfarima)
-[![Downloads per
-month](https://cranlogs.r-pkg.org/badges/last-month/tfarima)](https://cran.r-project.org/package=tfarima)
+[![Downloads per month](https://cranlogs.r-pkg.org/badges/last-month/tfarima)](https://cran.r-project.org/package=tfarima)
 <!-- badges: end -->
 
 ## Overview
 
-**tfarima** provides a comprehensive framework for building customized
-**Transfer Function and ARIMA models** with multiple operators and
-parameter restrictions. The package implements exact maximum likelihood
-estimation and offers a wide range of tools for time series analysis.
+**tfarima** provides a comprehensive framework for building customized **Transfer Function and ARIMA models** with multiple operators and parameter restrictions. The package implements exact maximum likelihood estimation and offers a wide range of tools for time series analysis.
 
 ### Key Features
 
-- **Flexible model specification**: Build ARIMA and transfer function
-  models with multiple lag polynomials and parameter restrictions
-- **Model identification**: Tools for identifying appropriate model
-  structures
-- **Estimation methods**: Exact or conditional maximum likelihood
-  estimation
+- **Flexible model specification**: Build ARIMA and transfer function models with multiple lag polynomials and parameter restrictions
+- **Model identification**: Tools for identifying appropriate model structures
+- **Estimation methods**: Exact or conditional maximum likelihood estimation
 - **Diagnostic checking**: Comprehensive model validation tools
-- **Automatic outlier detection**: Identify and handle outliers in time
-  series
+- **Automatic outlier detection**: Identify and handle outliers in time series
 - **Calendar effects**: Model trading day, Easter, and leap year effects
 - **Forecasting**: Generate predictions with confidence intervals
-- **Seasonal adjustment**: Decompose time series into trend, seasonal,
-  and irregular components
+- **Seasonal adjustment**: Decompose time series into trend, seasonal, and irregular components
 
 ## Installation
 
 Install the stable version from CRAN:
 
-``` r
+```{r, eval = FALSE}
 install.packages("tfarima")
 ```
 
 Or install the development version from GitHub:
 
-``` r
+```{r, eval = FALSE}
 # install.packages("devtools")
 devtools::install_github("gallegoj/tfarima")
 ```
 
 ## Quick Start
 
-``` r
+```{r example, eval = FALSE}
 library(tfarima)
 
 # Load example data
@@ -106,7 +107,7 @@ tsdiag(fitted_model)
 
 ## Example: Seasonal Adjustment
 
-``` r
+```{r seasonal, eval = FALSE}
 # Load retail sales data
 data(rsales)
 
@@ -129,7 +130,7 @@ plot(sa)
 
 ## Example: Transfer Function Model
 
-``` r
+```{r transfer, eval = FALSE}
 # Load gas furnace data
 data(seriesJ)
 
@@ -152,30 +153,23 @@ For more detailed information and examples, see:
 
 - Package vignette: `vignette("tfarima")`
 - Function documentation: `help(package = "tfarima")`
-- CRAN page: <https://CRAN.R-project.org/package=tfarima>
+- CRAN page: https://CRAN.R-project.org/package=tfarima
 
 ## References
 
 The package implements methods from:
 
-- Box, G.E.P., Jenkins, G.M., Reinsel, G.C. and Ljung, G.M. (2015).
-  *Time Series Analysis: Forecasting and Control*. John Wiley & Sons.
+- Box, G.E.P., Jenkins, G.M., Reinsel, G.C. and Ljung, G.M. (2015). *Time Series Analysis: Forecasting and Control*. John Wiley & Sons.
 
-- Box, G.E.P., Pierce, D.A. and Newbold, D.A. (1987). Estimating Trend
-  and Growth Rates in Seasonal Time Series. *Journal of the American
-  Statistical Association*, 82(397), 276-282.
+- Box, G.E.P., Pierce, D.A. and Newbold, D.A. (1987). Estimating Trend and Growth Rates in Seasonal Time Series. *Journal of the American Statistical Association*, 82(397), 276-282.
 
-- Bell, W.R. and Hillmer, S.C. (1983). Modeling Time Series with
-  Calendar Variation. *Journal of the American Statistical Association*,
-  78(383), 526-534.
+- Bell, W.R. and Hillmer, S.C. (1983). Modeling Time Series with Calendar Variation. *Journal of the American Statistical Association*, 78(383), 526-534.
 
-- Chen, C. and Liu, L.M. (1993). Joint Estimation of Model Parameters
-  and Outlier Effects in Time Series. *Journal of the American
-  Statistical Association*, 88(421), 284-297.
+- Chen, C. and Liu, L.M. (1993). Joint Estimation of Model Parameters and Outlier Effects in Time Series. *Journal of the American Statistical Association*, 88(421), 284-297.
 
 ## License
 
-GPL (\>= 2)
+GPL (>= 2)
 
 ## Author
 
@@ -184,4 +178,4 @@ José L. Gallego
 ## Issues and Contributions
 
 To report bugs or request features, please visit:
-<https://github.com/gallegoj/tfarima/issues>
+https://github.com/gallegoj/tfarima/issues
