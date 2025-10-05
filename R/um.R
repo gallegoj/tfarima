@@ -47,7 +47,7 @@ um <- function(z = NULL, ar = NULL, i = NULL, ma = NULL, mu = NULL, sig2 = 1.0,
   }
 
   if (!is.null(ar)) {
-    ar <- .lagpol0(ar, "ar", envir = envir)
+    ar <- lagpol0(ar, "ar", envir = envir)
     phi <- polyexpand(ar)
   } else {
     phi <- 1.0
@@ -55,14 +55,14 @@ um <- function(z = NULL, ar = NULL, i = NULL, ma = NULL, mu = NULL, sig2 = 1.0,
   names(phi) <- paste0("[phi", 0:(length(phi)-1), "]")
 
   if (!is.null(i)) {
-    i <- .lagpol0(i, "i", envir)
+    i <- lagpol0(i, "i", envir)
     nabla <- polyexpand(i)
   } else {
     nabla <- 1.0
   }
 
   if (!is.null(ma)) {
-    ma <- .lagpol0(ma, "ma", envir = envir)
+    ma <- lagpol0(ma, "ma", envir = envir)
     theta <- polyexpand(ma)
   } else {
     theta <- 1.0
@@ -1144,7 +1144,7 @@ predict.um <- function(object, z = NULL, ori = NULL, n.ahead = 1, level = 0.95,
   else mu <- object$mu
   
   if (!is.null(i)) {
-    i <- .lagpol0(i, "i", envir=envir)
+    i <- lagpol0(i, "i", envir=envir)
     nabla <- polyexpand(i)
     nabla <- polydivC(object$nabla, nabla, FALSE, 1e-5)
     object$nabla <- nabla

@@ -839,7 +839,7 @@ predict.tfm <- function(object, newdata=NULL, y = NULL, ori = NULL, n.ahead = NU
   if (is.null (envir)) envir <- parent.frame ()
   y <- .output_tfm(object, y, envir=envir)
   if (!is.null(i)) {
-    i <- .lagpol0(i, "i", envir=envir)
+    i <- lagpol0(i, "i", envir=envir)
     nabla <- polyexpand(i)
     object <- .diff_tfm(object, nabla)
     end <- end(y)
@@ -1677,10 +1677,3 @@ decomp.tfm <- function(mdl, y = NULL,
   return(uc)
 
 }
-
-
-
-
-
-
-

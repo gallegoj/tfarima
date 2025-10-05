@@ -91,7 +91,7 @@ tf <- function(x = NULL, delay = 0,  w0 = 0.01, ar = NULL, ma = NULL, um = NULL,
   if (is.numeric(ar)) {if (any(ar == 0)) ar <- NULL}
   if (!is.null(ar)) {
     if (is.null(names(ar))) names(ar) <- paste0(par.prefix, ".d")
-    ar <- .lagpol0(ar, "ar", envir=envir)
+    ar <- lagpol0(ar, "ar", envir=envir)
     phi <- polyexpand(ar)
   } else {
     phi <- 1.0
@@ -101,7 +101,7 @@ tf <- function(x = NULL, delay = 0,  w0 = 0.01, ar = NULL, ma = NULL, um = NULL,
   if (is.numeric(ma)) {if (any(ma == 0)) ma <- NULL}
   if (!is.null(ma)) {
     if (is.null(names(ma))) names(ma) <- paste0(par.prefix, ".w")
-    ma <- .lagpol0(ma, "ma", envir=envir)
+    ma <- lagpol0(ma, "ma", envir=envir)
     theta <- polyexpand(ma)
   } else {
     theta <- 1.0
@@ -445,6 +445,3 @@ sim.tf <- function(mdl, N=100, x0=NULL, envir=NULL, ...) {
   }
   output.tf(mdl)
 }
-
-
-

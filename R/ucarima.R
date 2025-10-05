@@ -104,7 +104,7 @@ ucarima <- function(z = NULL, bc = FALSE, ucm = NULL, ar = NULL,
   param <- lapply(ucm, function(x) unlist(x$param))
   param <- unname(param)
   if (!is.null(ar)) {
-    ar <- .lagpol0(ar, "ar")
+    ar <- lagpol0(ar, "ar")
     param1 <- lapply(ar, function(x) unlist(x$param))
     param1 <- unname(param1)
     param <- c(param1, param)

@@ -861,71 +861,68 @@ polyexpand <- function(..., names = TRUE) {
   
 }
 
-## Internal helper functions to create lag polynomials
-# .lagpol0(), .lagpol1(), .lagpol2(), .lagpol3() 
+## Helper function to create lag polynomials
 
-#' Internal helper function to create lag polynomials
+#' Create lag polynomial objects
 #'
-#' `.lagpol0` is an internal helper function that simplifies the creation of 
-#' \link{code{lagpol}} objects.  
-#' It generates lag polynomials by providing:
-#' - (1) the polynomial orders \eqn{(d, s, p)},  
-#' - (2) the literal equation (e.g., \eqn{1 - 0.8B}),  
-#' - (3) the seasonal period \eqn{s} or frequency \eqn{k/s} for special lag polynomials,  
-#' such as \eqn{AR/I/MA(s-1)} or \eqn{AR/I/MA(2)} with restricted frequency.
+#' `lagpol0` is a flexible constructor for \code{\link{lagpol}} objects.
+#' It accepts multiple input formats: polynomial orders \eqn{(d, s, p)}, 
+#' literal equations (e.g., \eqn{1 - 0.8B}), or seasonal specifications for 
+#' special lag polynomials like \eqn{AR/I/MA(s-1)}.
 #'
-#' @param op A numeric vector specifying the polynomial orders \eqn{(d, s, p)} 
-#' or a character string with the form of the polynomial (e.g., `"1 - 0.8B"`) or 
-#' with the seasonal period or frequency for special lag polynomial (e.g. "12" 
-#' or "1/12"). Multiple lag polynomial can be created in a single step by 
-#' combining numeric and charecter vectors in a list object. 
-#' @param type A character string indicating the type of operator:  
-#'   - `"ar"`: Autoregressive (AR) polynomial,  
-#'   - `"ma"`: Moving Average (MA) polynomial,  
-#'   - `"i"`: Integration (I) operator.  
-#' @param envir The environment in which function arguments are evaluated.
+#' @param op Polynomial specification in one of these formats:
+#'   \itemize{
+#'     \item Numeric vector \eqn{c(d, s, p)} specifying polynomial degree, 
+#'           lag step (default 1), and exponent (default 1)
+#'     \item Character equation (e.g., \code{"1 - 0.8B"})
+#'     \item Seasonal period or frequency (e.g., \code{"12"} or \code{"1/12"})
+#'     \item List combining multiple specifications
+#'   }
+#' @param type Operator type: \code{"ar"} (autoregressive), \code{"ma"} (moving
+#'   average), or \code{"i"} (integration).
+#' @param envir Environment for argument evaluation. Defaults to parent frame.
 #'
-#' @return A list of \code{\link{lagpol}} objects representing the generated 
-#' lag polynomials.  
-#'
-#' @note This internal helper function is primarily used by the `um` function to
-#'  construct multiplicative ARIMA(p, d, q) models.  
+#' @return List of \code{\link{lagpol}} objects.
 #'
 #' @examples
-#' # Example 1: Create an AR(1) polynomial
-#' .lagpol0(op = 1, type = "ar")
+#' # AR(1) polynomial
+#' lagpol_create(op = 1, type = "ar")
 #'
-#' # Example 2: Create a polynomial from a literal equation
-#' .lagpol0(op = "1 - 0.8B", type = "ar")
+#' # From literal equation
+#' lagpol_create(op = "1 - 0.8B", type = "ar")
 #'
-#' # Example 3: Create multiple polynomials with a list
-#' .lagpol0(op = list(1, "1 - 0.5B"), type = "ma")
+#' # Multiple polynomials at once
+#' lagpol_create(op = list(1, "1 - 0.5B"), type = "ma")
+#' 
+#' # Seasonal polynomial
+#' lagpol_create(op = "12", type = "ar")
+#' 
+#' # Custom orders with seasonal component
+#' lagpol_create(op = c(2, 12, 1), type = "ar")
 #'
-#' @seealso \code{\link{lagpol}}, \code{\link{.lagpol1}}, \code{\link{.lagpol2}}, \code{\link{.lagpol3}}
-#' @keywords internal
-#' @noRd
-.lagpol0 <- function(op, type, envir = NULL) {
+#' @seealso \code{\link{lagpol}}
+#' @export
+lagpol0 <- function(op, type, envir = parent.frame()) {
   if (is.lagpol(op)) return(list(op))
   if (is.lagpol.list(op)) return(op)
+  if (!is.environment(envir)) envir <- parent.frame() 
   
   if (!type %in% c("ar", "ma", "i")) 
     stop("'type' must be 'ar', 'ma' or 'i'.")
   if (!is.environment(envir)) envir <- parent.frame() 
   if (!is.list(op)) {
-    if (length(op) == 1) op <- as.list(op)
-    else op <- list(op)
+    if (length(op) == 1 || is.character(op)) op <- as.list(op)
+    else op <- list(op) # c(1, 12)
   } 
   k <- length(op)
   nms <- names(op)
-  if (!is.null(nms))
-    nms <- nms[!duplicated(nms) & nms != ""]
   if (length(nms) < k) {
     if (k == 1) nms <- type
     else nms <- paste0(type, 1:k) 
     names(op) <- nms
   }
   llp <- list()
-  for (i in 1:k) {
+  for (i in seq_len(k)) {
     if (is.lagpol(op[[i]]))
       lp <- op[i]
     else if (is.numeric(op[[i]]))
@@ -938,9 +935,13 @@ polyexpand <- function(..., names = TRUE) {
     } else stop("Invalid 'lagpol' specification")
     llp <- c(llp, lp)
   }
-  names(llp) <- paste0(type, 1:length(llp))
+  names(llp) <- paste0(type, seq_along(llp))
   return(llp)
 }
+
+## Internal helper functions to create lag polynomials
+# .lagpol1(), .lagpol2(), .lagpol3() 
+
 
 #' Helper function to create lag polynomials 
 #'
@@ -952,7 +953,7 @@ polyexpand <- function(..., names = TRUE) {
 #'
 #' @param orders A numeric vector or a list specifying the orders of one or
 #'   several lag polynomials, \code{c(d, s, p)}. By default s = p = 1.
-#' @inheritParams .lagpol0
+#' @inheritParams lagpol0
 #'
 #' @return A list of \code{\link{lagpol}} objects.
 #'
@@ -966,7 +967,7 @@ polyexpand <- function(..., names = TRUE) {
 #' # Multiple polynomials with custom coefficient names
 #' .lagpol1(orders = list(phi = 2, Phi = c(1, 12)), type = "ar")
 #'
-#' @seealso \code{\link{.lagpol0}} for the base lag polynomial generator.
+#' @seealso \code{\link{lagpol0}} for the base lag polynomial generator.
 #' @keywords internal
 #' @noRd
 .lagpol1 <- function(orders, type, envir = NULL) {
@@ -1042,7 +1043,7 @@ polyexpand <- function(..., names = TRUE) {
 #'
 #' @param str A character vector containing the textual equations of the lag polynomials.  
 #'        Each element should represent a valid lag polynomial expression (e.g., `"1 - 0.5*B - 0.3*B^2"`).
-# @inheritParams .lagpol0
+# @inheritParams lagpol0
 #'
 #' @return A list of \link{\code{lagpol}} objects, each corresponding to one of 
 #' the provided textual equations. 
@@ -1054,26 +1055,29 @@ polyexpand <- function(..., names = TRUE) {
 #' # Create multiple MA polynomials
 #' .lagpol2(str = c("1 + 0.5*B", "1 + 0.4*B + 0.2*B^2"), type = "ma")
 #'
-#' @seealso \code{\link{.lagpol0}} for the base lag polynomial generator.
+#' @seealso \code{\link{lagpol0}} for the base lag polynomial generator.
 #' @keywords internal
 #' @noRd
-.lagpol2 <- function(str, type, envir = NULL) {
+.lagpol2 <- function(str, type, envir = parent.frame()) {
   if (is.list(str)) str <- unlist(str)
   if (!is.character(str)) 
     stop("'str' must be a character vector.")
   if (!type %in% c("ar", "ma", "i")) 
     stop("'type' must be 'ar', 'ma' or 'i'.")
-  if (!is.environment(envir)) envir <- parent.frame() 
   nm <- names(str)
   if (is.null(nm)) nm <- type
+  else nm <- nm[!duplicated(nm)]
   str <- gsub(" ", "", str)
   if (grepl("\\)\\(", str)) {
     str <- gsub("\\)\\(", "\\)|\\(", str)
     str <- strsplit(str, split = "\\|")[[1]]
     if (grepl("\\d$", nm) && length(str) > 1) 
       names(str) <- paste0(nm, ".", 1:length(str))
-    else
+    else if (length(str) > 1)
       names(str) <- paste0(nm, 1:length(str))
+    else
+      names(str) <- nm
+    
     llp <- list()
     for (i in 1:length(str))
       llp[i] <- .lagpol2(str[i], type = type, envir = envir)
@@ -1159,10 +1163,10 @@ polyexpand <- function(..., names = TRUE) {
   }
   if (grepl("\\d$", nm) && length(a) > 1) 
     names(a) <- paste0(nm, ".", 1:length(a))
-  else if (grepl("\\d$", nm)) 
-    names(a) <- nm
-  else
+  else if (length(a) > 1)
     names(a) <- paste0(nm, 1:length(a))
+  else
+    names(a) <- nm
   if (type == "i") 
     lp <- list(lagpol(coef = a, lags = lags, s = s, p = p))
   else 
@@ -1185,7 +1189,7 @@ polyexpand <- function(..., names = TRUE) {
 #'
 #' @param str a character vector specifying the seasonal period or frequency.  
 #'        Examples: `"12"`, `"(0:6)/12"`, or `"0/12"`.  
-#' @inheritParams .lagpol0
+#' @inheritParams lagpol0
 #'
 #' @return A list of `lagpol` objects.  
 #'
@@ -1199,7 +1203,7 @@ polyexpand <- function(..., names = TRUE) {
 #' # Integration polynomial with frequency 0/12
 #' .lagpol3(str = "0/12", type = "i")
 #'
-#' @seealso \code{\link{.lagpol0}}, \code{\link{lagpol}}
+#' @seealso \code{\link{lagpol0}}, \code{\link{lagpol}}
 #'
 #' @keywords internal
 #' @noRd
