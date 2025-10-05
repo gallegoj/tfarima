@@ -886,19 +886,19 @@ polyexpand <- function(..., names = TRUE) {
 #'
 #' @examples
 #' # AR(1) polynomial
-#' lagpol_create(op = 1, type = "ar")
+#' lagpol0(op = 1, type = "ar")
 #'
 #' # From literal equation
-#' lagpol_create(op = "1 - 0.8B", type = "ar")
+#' lagpol0(op = "1 - 0.8B", type = "ar")
 #'
 #' # Multiple polynomials at once
-#' lagpol_create(op = list(1, "1 - 0.5B"), type = "ma")
+#' lagpol0(op = list(1, "1 - 0.5B"), type = "ma")
 #' 
 #' # Seasonal polynomial
-#' lagpol_create(op = "12", type = "ar")
+#' lagpol0(op = "12", type = "ar")
 #' 
 #' # Custom orders with seasonal component
-#' lagpol_create(op = c(2, 12, 1), type = "ar")
+#' lagpol0(op = c(2, 12, 1), type = "ar")
 #'
 #' @seealso \code{\link{lagpol}}
 #' @export
@@ -916,6 +916,8 @@ lagpol0 <- function(op, type, envir = parent.frame()) {
   } 
   k <- length(op)
   nms <- names(op)
+  if (!is.null(nms))
+    nms <- nms[nms != ""]
   if (length(nms) < k) {
     if (k == 1) nms <- type
     else nms <- paste0(type, 1:k) 
@@ -943,34 +945,26 @@ lagpol0 <- function(op, type, envir = parent.frame()) {
 # .lagpol1(), .lagpol2(), .lagpol3() 
 
 
-#' Helper function to create lag polynomials 
+#' Create lag polynomials from order specifications
 #'
-#' \code{.lagpol1} generates a list of lag polynomials from a list of orders
-#' specified as c(d, s, p), where:
-#' - **d** is the degree of the polynomial,
-#' - **s** is the lag step or seasonal period (default is 1),
-#' - **p** is the exponent applied to the polynomial (default is 1).
+#' Generates lag polynomials from orders \code{c(d, s, p)} where \code{d} is
+#' polynomial degree, \code{s} is lag step (default 1), and \code{p} is
+#' exponent (default 1).
 #'
-#' @param orders A numeric vector or a list specifying the orders of one or
-#'   several lag polynomials, \code{c(d, s, p)}. By default s = p = 1.
-#' @inheritParams lagpol0
+#' @param orders Numeric vector or list of \code{c(d, s, p)} specifications.
+#' @inheritParams .lagpol0
 #'
-#' @return A list of \code{\link{lagpol}} objects.
+#' @return List of \code{\link{lagpol}} objects.
 #'
 #' @examples
-#' # Create a simple AR(2) lag polynomial
 #' .lagpol1(orders = 2, type = "ar")
-#'
-#' # Create a lag polynomial with custom lag step and exponent
-#' .lagpol1(orders = list(c(3, 2, 2)), type = "ma")
-#'
-#' # Multiple polynomials with custom coefficient names
+#' .lagpol1(orders = c(3, 2, 2), type = "ma")
 #' .lagpol1(orders = list(phi = 2, Phi = c(1, 12)), type = "ar")
 #'
-#' @seealso \code{\link{lagpol0}} for the base lag polynomial generator.
+#' @seealso \code{\link{.lagpol0}}
 #' @keywords internal
 #' @noRd
-.lagpol1 <- function(orders, type, envir = NULL) {
+.lagpol1 <- function(orders, type, envir = parent.frame()) {
   if (!type %in% c("ar", "ma", "i")) 
     stop("'type' must be 'ar', 'ma' or 'i'.")
   if (!is.environment(envir)) envir <- parent.frame() 
@@ -979,8 +973,7 @@ lagpol0 <- function(op, type, envir = parent.frame()) {
     if (orders[1] == 0) return(NULL)
     nms <- names(orders)
     orders <- list(orders)
-    if (length(nms) == 1)
-      names(orders) <- nms
+    if (length(nms) == 1) names(orders) <- nms
   }
   nms <- names(orders)
   orders <- lapply(orders, function(x) {
@@ -990,35 +983,37 @@ lagpol0 <- function(op, type, envir = parent.frame()) {
     x[-1] <- as.integer(x[-1]) 
     if (any(c(x[1] < 0, x[-1] < 1)))
       stop("Invalid order specification for 'lagpol' object.")
-    return(x)
+    x
   })
 
   k <- length(orders)
   if (!is.null(nms))
-    nms <- nms[!duplicated(nms) & nms != ""]
+    nms <- nms[nms != ""]
   if (length(nms) < k) {
     nms <- paste0(type, 1:k) 
     names(orders) <- nms
-    if (k > 1) nms <- paste0(nms, ".")
   }
 
   k <- 1
   llp <- lapply(orders, function(x) {
-    if (x[1] < 1) {
+    d <- x[1]; s <- x[2]; p <- x[3]
+    if (d < 1) {
+      # Restricted frequency polynomial      
       param <- switch(type, ar = 0.5, ma = 0.6, i  = 1)
       coef <- paste0("-abs(", nms[k], k, ")")
-      if (x[1] != 0.5) {
-        coef <- c(paste0("-2*cos(2*pi*", x[1], ")*sqrt(abs(", nms[k], k, "))"), 
+      if (d != 0.5) {
+        coef <- c(paste0("-2*cos(2*pi*", d, ")*sqrt(abs(", nms[k], k, "))"), 
                   coef)
       }
       names(param) <- paste0(nms[k], 1)
-      lagpol(param = param, s = x[2], p = x[3], coef = coef)
+      lagpol(param = param, s = s, p = p, coef = coef)
     } else {
-      if (type == "ar") param <- as.list(c(rep(0.01, x[1] - 1), 0.1))
-      else if (type == "ma") param <- as.list(c(rep(0.02, x[1] - 1), 0.2))
+      # Standard polynomial      
+      if (type == "ar") param <- as.list(c(rep(0.01, d - 1), 0.1))
+      else if (type == "ma") param <- as.list(c(rep(0.02, d - 1), 0.2))
       else { 
         param <- as.list(1)
-        x[3] <- x[3] + x[1] - 1
+        p <- p + d - 1
       }
       if (grepl("\\d$", nms[k]) && length(param) > 1) 
         names(param) <- paste0(nms[k], ".", 1:length(param))
@@ -1026,39 +1021,34 @@ lagpol0 <- function(op, type, envir = parent.frame()) {
         names(param) <- paste0(nms[k], 1:length(param))
       else
         names(param) <- nms[k]
-      if (type == "i") lp <- lagpol(coef = param, s = x[2], p = x[3])
-      else lp <- lagpol(param = param, s = x[2], p = x[3])
+      if (type == "i") lp <- lagpol(coef = param, s = s, p = p)
+      else lp <- lagpol(param = param, s = s, p = p)
     }
     k <<- k + 1
-    return(lp)
+    lp
   })
-  return(llp)
+  llp
 }
 
-#' Helper function to create lag polynomials from textual equations
+#' Create lag polynomials from textual equations
 #'
-#' `.lagpol2` generates a list of lag polynomials based on their textual representations.  
-#' This function parses character strings that define lag polynomial equations 
-#' and converts them into \link{\code{lagpol}} objects.
+#' Parses character strings defining lag polynomial equations (e.g.,
+#' \code{"1 - 0.5*B - 0.3*B^2"}) into \code{\link{lagpol}} objects.
 #'
-#' @param str A character vector containing the textual equations of the lag polynomials.  
-#'        Each element should represent a valid lag polynomial expression (e.g., `"1 - 0.5*B - 0.3*B^2"`).
-# @inheritParams lagpol0
+#' @param str Character vector of lag polynomial equations.
+#' @inheritParams .lagpol0
 #'
-#' @return A list of \link{\code{lagpol}} objects, each corresponding to one of 
-#' the provided textual equations. 
+#' @return List of \code{\link{lagpol}} objects.
 #' 
 #' @examples
-#' # Create a simple AR(2) lag polynomial from its equation
 #' .lagpol2(str = "1 - 0.8*B - 0.3*B^2", type = "ar")
-#'
-#' # Create multiple MA polynomials
 #' .lagpol2(str = c("1 + 0.5*B", "1 + 0.4*B + 0.2*B^2"), type = "ma")
 #'
-#' @seealso \code{\link{lagpol0}} for the base lag polynomial generator.
+#' @seealso \code{\link{.lagpol0}}
 #' @keywords internal
 #' @noRd
 .lagpol2 <- function(str, type, envir = parent.frame()) {
+  if (!is.environment(envir)) envir <- parent.frame() 
   if (is.list(str)) str <- unlist(str)
   if (!is.character(str)) 
     stop("'str' must be a character vector.")
@@ -1066,8 +1056,8 @@ lagpol0 <- function(op, type, envir = parent.frame()) {
     stop("'type' must be 'ar', 'ma' or 'i'.")
   nm <- names(str)
   if (is.null(nm)) nm <- type
-  else nm <- nm[!duplicated(nm)]
   str <- gsub(" ", "", str)
+  # Handle multiple polynomials: (...)(...) format  
   if (grepl("\\)\\(", str)) {
     str <- gsub("\\)\\(", "\\)|\\(", str)
     str <- strsplit(str, split = "\\|")[[1]]
@@ -1085,6 +1075,7 @@ lagpol0 <- function(op, type, envir = parent.frame()) {
     return(llp)
   }
   
+  # Remove outer parentheses  
   if (startsWith(str, "(") && endsWith(str, ")"))
     str <- substr(str, start = 2, stop = nchar(str) - 1)
   else if (startsWith(str, "("))
@@ -1175,55 +1166,45 @@ lagpol0 <- function(op, type, envir = parent.frame()) {
   return(lp)
 }
 
-#' Helper function to create special lag polynomials
+#' Create special seasonal lag polynomials
 #'
-#' `.lagpol3` generates a list of special lag polynomials for \link{\code{um}} 
-#' objects. It can create:
-#' \itemize{
-#'   \item (1) AR/I/MA polynomials of order \(s - 1\) for a given seasonal 
-#'   period \(s\).
-#'   \item (2) AR/I/MA(2) polynomials with a specific frequency \(k/s\), 
-#'   where \(s\) is the seasonal period. Factors with frequency 0 or 0.5 are 
-#'   also allowed.
-#' }
+#' Generates special lag polynomials: (1) AR/I/MA of order \eqn{s-1} for seasonal
+#' period \eqn{s}, or (2) AR/I/MA(2) with specific frequency \eqn{k/s}.
+#' Frequencies 0 and 0.5 are also supported.
 #'
-#' @param str a character vector specifying the seasonal period or frequency.  
-#'        Examples: `"12"`, `"(0:6)/12"`, or `"0/12"`.  
-#' @inheritParams lagpol0
+#' @param str Character vector specifying seasonal period or frequency
+#'   (e.g., \code{"12"}, \code{"(0:6)/12"}, \code{"0/12"}).
+#' @inheritParams .lagpol0
 #'
-#' @return A list of `lagpol` objects.  
+#' @return List of \code{\link{lagpol}} objects.
 #'
 #' @examples
-#' # AR polynomial with seasonal period 12
 #' .lagpol3(str = "12", type = "ar")
-#'
-#' # MA polynomial with multiple seasonal frequencies (0:6)/12
 #' .lagpol3(str = "(0:6)/12", type = "ma")
-#'
-#' # Integration polynomial with frequency 0/12
 #' .lagpol3(str = "0/12", type = "i")
 #'
-#' @seealso \code{\link{lagpol0}}, \code{\link{lagpol}}
-#'
+#' @seealso \code{\link{.lagpol0}}, \code{\link{lagpol}}
 #' @keywords internal
 #' @noRd
-.lagpol3 <- function(str, type, envir = NULL) {
+.lagpol3 <- function(str, type, envir = parent.frame()) {
   if (is.list(str)) str <- unlist(str)
   if (!is.character(str)) 
     stop("'str' must be a character vector.")
   if (!type %in% c("ar", "ma", "i")) 
     stop("'type' must be 'ar', 'ma' or 'i'.")
-  if (is.null(envir)) envir <- parent.frame()
+  if (!is.environment(envir)) envir <- parent.frame() 
   param <- switch(type, ar = 0.3, ma = 0.6, i  = 1)
   nm <- names(str)
   if (is.null(nm)) nm <- type
   f <- lapply(str, function(x) {
     val <- try(eval(parse(text = x), envir), silent = TRUE)
-    if (inherits(val, "try-error")) stop(paste("Invalid expression in 'str':", x))
+    if (inherits(val, "try-error")) 
+      stop(paste("Invalid expression in 'str':", x))
     return(val)    
   })
   f <- unlist(f)
 
+  # Determine seasonal period  
   if (length(str) == 1) {
     k <- gregexpr("\\)\\/", str)[[1]] # several frequencies, (0:6)/12
     if (length(k) == 1 && k[1] > 0) {

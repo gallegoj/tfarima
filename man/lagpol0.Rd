@@ -32,19 +32,19 @@ special lag polynomials like \eqn{AR/I/MA(s-1)}.
 }
 \examples{
 # AR(1) polynomial
-lagpol_create(op = 1, type = "ar")
+lagpol0(op = 1, type = "ar")
 
 # From literal equation
-lagpol_create(op = "1 - 0.8B", type = "ar")
+lagpol0(op = "1 - 0.8B", type = "ar")
 
 # Multiple polynomials at once
-lagpol_create(op = list(1, "1 - 0.5B"), type = "ma")
+lagpol0(op = list(1, "1 - 0.5B"), type = "ma")
 
 # Seasonal polynomial
-lagpol_create(op = "12", type = "ar")
+lagpol0(op = "12", type = "ar")
 
 # Custom orders with seasonal component
-lagpol_create(op = c(2, 12, 1), type = "ar")
+lagpol0(op = c(2, 12, 1), type = "ar")
 
 }
 \seealso{

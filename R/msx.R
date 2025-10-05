@@ -47,7 +47,7 @@ msx.um <- function(mdl, ar = NULL, i = NULL, single = FALSE, canonical = FALSE,
   # ARI lag polynomial for signal
   if (!is.null(mdl$ar)) {
     if (!is.null(ar)) {
-      ar <- .lagpol0(ar, "ar", envir = envir)
+      ar <- lagpol0(ar, "ar", envir = envir)
       stopifnot(is.lagpol.list(ar))
       phi1 <- polyexpand(ar)
     } else phi1 <- NULL
@@ -76,7 +76,7 @@ msx.um <- function(mdl, ar = NULL, i = NULL, single = FALSE, canonical = FALSE,
 
   if (!is.null(mdl$i)) {
     if (!is.null(i)) {
-      i <- .lagpol0(i, "i", envir = envir)
+      i <- lagpol0(i, "i", envir = envir)
       stopifnot(is.lagpol.list(i))
       nabla1 <- polyexpand(i)
     } else nabla1 <- NULL
