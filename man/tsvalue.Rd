@@ -2,18 +2,19 @@
 % Please edit documentation in R/utils.R
 \name{tsvalue}
 \alias{tsvalue}
-\title{Value of a time series at a date}
+\title{Extract time series value by date}
 \usage{
 tsvalue(x, date)
 }
 \arguments{
-\item{x}{an \code{ts} object.}
+\item{x}{A \code{ts} object.}
 
-\item{date}{the time of the specific observation, c(year, month/quarter).}
+\item{date}{Numeric vector: c(year) for annual data or
+c(year, period) for seasonal data.}
 }
 \value{
-The value of the observation, double.
+Numeric value at the specified date.
 }
 \description{
-\code{tsvalue} select a value from a time series by date.
+Retrieves the value of a time series at a specific date.
 }

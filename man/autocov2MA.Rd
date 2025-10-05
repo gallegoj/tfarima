@@ -2,29 +2,34 @@
 % Please edit documentation in R/utils.R
 \name{autocov2MA}
 \alias{autocov2MA}
-\title{MA process compatible with a vector of autocovariances}
+\title{Convert autocovariances to MA parameters}
 \usage{
 autocov2MA(x, method = c("roots", "acov"), tol = 1e-05)
 }
 \arguments{
-\item{x}{a numeric vector with q autocovariances.}
+\item{x}{Numeric vector of autocovariances (length q).}
 
-\item{method}{character. Two methods are provided to compute the MA
-parameters: roots, based on the roots of the autocovariance generating
-function; acov, based on the non-linear system of equations relating
-autocovariances and MA parameters.}
+\item{method}{Estimation method: "roots" (Godolphin 1976) or "acov" (Wilson
+1969). Default is "roots".}
 
-\item{tol}{tolerance to check if an autocovariance is null.}
+\item{tol}{Tolerance for zero autocovariance. Default 1e-5.}
 }
 \value{
-A vector of the form c(s2, 1, -theta1, ..., -thetaq).
+Named vector: c(s2, ma0=1, ma1=-theta1, ..., maq=-thetaq).
 }
 \description{
-\code{autocov2MA} computes the error variance and the MA polynomial from a
-vector of autocovriances.
+Computes MA polynomial coefficients and error variance from autocovariances.
 }
 \examples{
 ma1 <- um(ma = "1 - 0.8B", sig2 = 0.5)
 autocov2MA(autocov(ma1, 1))
-autocov2MA(autocov(ma1, 1), "acov")
+autocov2MA(autocov(ma1, 1), method = "acov")
+}
+\references{
+Godolphin, E. J. (1976). On the Cramér-Wold factorization.
+\emph{Biometrika}, \strong{63}(2), 367-372. \doi{10.2307/2335982}
+
+Tunnicliffe Wilson, G. (1969). Factorization of the covariance generating
+function of a pure moving average process. \emph{SIAM Journal on Numerical
+Analysis}, \strong{6}(1), 1-7. \doi{10.1137/0706001}
 }

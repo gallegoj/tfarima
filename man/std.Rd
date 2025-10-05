@@ -7,11 +7,11 @@
 std(x)
 }
 \arguments{
-\item{x}{a \code{ts} object.}
+\item{x}{A \code{ts} object or numeric vector.}
 }
 \value{
-The standardized time series.
+Standardized time series with same class as input.
 }
 \description{
-\code{std} standardizes a time series.
+Centers and scales a time series to zero mean and unit variance.
 }

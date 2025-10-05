@@ -2,19 +2,19 @@
 % Please edit documentation in R/utils.R
 \name{S}
 \alias{S}
-\title{Annual sum}
+\title{Annual (rolling) sum}
 \usage{
 S(x, extend = TRUE)
 }
 \arguments{
-\item{x}{an \code{ts} object.}
+\item{x}{A \code{ts} object.}
 
-\item{extend}{logical. If TRUE, the transformed series is extended with NA's
-to have the same length as the origianl series.}
+\item{extend}{If TRUE, pads result with NAs to match original length.
+Default is TRUE.}
 }
 \value{
-The transformed time series, a \code{ts} object.
+Time series of annual sums with same frequency as input.
 }
 \description{
-\code{S} generates the annual sum of a monthly or quarterly time series.
+Computes rolling sum over one year for monthly/quarterly data.
 }
