@@ -1568,10 +1568,19 @@ tsdiag.tfm <- function(object, gof.lag = 10, ...)
 }
 
 #' @rdname sim
+#' @param n Number of observations to simulate.
+#' @param z0 Initial conditions for nonstationary series. Default is \code{NULL} (zero initial conditions).
+#' @param n0 Number of initial observations to discard as burn-in. Default is \code{0}.
+#' @param a Optional vector of innovations with length \code{n + n0}. If \code{NULL}, 
+#'   innovations are drawn from \eqn{N(0, \sigma^2)}.
+#' @param seed Random seed for reproducibility.
+#' @param envir Environment for argument evaluation. Default is \code{parent.frame()}.
 #' @export
-sim.tfm <- function(mdl, envir = parent.frame(), ...) {
+sim.tfm <- function(mdl, n = 100, z0 = NULL, n0 = 0, a = NULL, seed = NULL, 
+                    envir = parent.frame(), ...) {
   stopifnot(is.tfm(mdl))
-  N <- sim(mdl$noise, envir = envir, ...)
+  N <- sim.um(mdl$noise, n = n, z0 = z0, n0 = 0, a = a, seed = seed, 
+           envir = envir,  ...)
   S <- signal.tfm(mdl, diff = FALSE, envir = envir)
   end <- end(N)
   freq <- frequency(N)

@@ -6,7 +6,7 @@
 \alias{print.ucarima}
 \alias{print.predict.um}
 \alias{print.um}
-\title{Print method for transfer function objects}
+\title{Print ARIMA and UCARIMA models}
 \usage{
 \method{print}{msx}(x, ...)
 
@@ -28,6 +28,8 @@
 \item{arima}{logical. If TRUE, lag ARIMA polynomials are printed.}
 }
 \description{
+Print ARIMA and UCARIMA models
+
 Print method for transfer function objects
 
 Print ucarima models

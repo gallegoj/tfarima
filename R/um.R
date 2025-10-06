@@ -212,15 +212,13 @@ as.um <- function(arima, ...) {
   else i <- NULL
   
   if (any(names(arima$coef) == "intercept")) {
-    mu <- -unname(arima$coef["intercept"])
-    if (p+P > 1) mu <- mu/(1 - sum(arima$model$phi))
+    mu <- unname(arima$coef["intercept"])
   } else mu <- NULL
 
   um <- um(ar = ar, i = i, ma = ma, mu = mu, sig2 = arima$sigma2)
   um$z <- arima$series
   um
 }
-
 
 #' Theoretical autocovariances of an ARMA model
 #'
@@ -607,7 +605,6 @@ equation <- function (x, ...) UseMethod("equation")
 equation.um <- function(x, unscramble = FALSE, digits = 4, 
                         z = "z", a = "a", width = NULL, ...) {
   
-  # Construir la ecuación (tu código original)
   txt <- ""
   if (unscramble) {
     if (x$p > 0) 
@@ -646,17 +643,14 @@ equation.um <- function(x, unscramble = FALSE, digits = 4,
   
   equation_txt <- paste0(txt, a, "_t, s2", a, " = ", signif(x$sig2, digits = digits))
   
-  # Dividir la ecuación usando strwrap()
   if (is.null(width)) {
     width <- getOption("width", 80)
   }
   
   lines <- strwrap(equation_txt, width = width)
   
-  # Usar cat() para mostrar con saltos de línea reales
   cat(paste(lines, collapse = "\n"), "\n")
   
-  # Retornar invisiblemente el texto para uso programático
   invisible(equation_txt)
 }
 
@@ -1408,25 +1402,37 @@ roots.um <- function(x, opr = c("arma", "ar", "ma", "i", "arima"), ...) {
 }
 
 
-#' Time series simulation form an ARIMA or TF model
+#' Simulate Time Series from ARIMA or Transfer Function Models
 #' 
-#' \code{sim} generates a random time series from an object of class \code{um} or \code{tfm}.   
+#' Generates random time series from ARIMA (\code{um}) or transfer function (\code{tfm}) models.
 #' 
-#' @param mdl an object of class \code{um} or \code{tfm}.
-#' @param n number of observations.
-#' @param seed an integer.
-#' @param ... other arguments.
-#' @return 
-#' An object of class \code{ts}.
+#' @param mdl An object of class \code{\link{um}} or \code{\link{tfm}}.
+#' @param ... Additional arguments.
+#' 
+#' @return A \code{ts} object with the simulated time series.
+#' 
+#' @seealso \code{\link{sim.um}}, \code{\link{sim.tfm}}
 #' @export
 sim <- function (mdl, ...) { UseMethod("sim") }
 
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
 #' @rdname sim
-#' @param z0 initial conditions for the nonstationary series.
-#' @param n0 remove the n0 first observation, integer.
-#' @param a vector of innovations, optional.
+#' @param n Number of observations to simulate.
+#' @param z0 Initial conditions for nonstationary series. Default is \code{NULL} (zero initial conditions).
+#' @param n0 Number of initial observations to discard as burn-in. Default is \code{0}.
+#' @param a Optional vector of innovations with length \code{n + n0}. If \code{NULL}, 
+#'   innovations are drawn from \eqn{N(0, \sigma^2)}.
+#' @param seed Random seed for reproducibility.
+#' @param envir Environment for argument evaluation. Default is \code{parent.frame()}.
+#'
+#' @examples
+#' # AR(1) model
+#' mdl1 <- um(ar = "1 - 0.8B", sig2 = 1)
+#' z1 <- sim(mdl1, n = 100, seed = 123)
+#' 
+#' # ARIMA(0,1,1) with burn-in
+#' mdl2 <- um(i = 1, ma = "1 - 0.5B", sig2 = 1)
+#' z2 <- sim(mdl2, n = 100, n0 = 50, seed = 456)
+#'
 #' @export
 sim.um <- function(mdl, n = 100, z0 = NULL, n0 = 0, a = NULL, seed = NULL, 
                    envir = parent.frame(), ...) {
@@ -2435,7 +2441,7 @@ plot.uc.um <- function(x, main = NULL, ...) {
 }
 
 # Non-exported functions
-
+#' @noRd
 backcast.um <- function(um, z = NULL, n.back = NULL, envir=NULL) {
 
   if (is.null (envir)) envir <- parent.frame ()
@@ -2458,6 +2464,7 @@ backcast.um <- function(um, z = NULL, n.back = NULL, envir=NULL) {
   ts(as.numeric(p), end = end, frequency = s)
 }
 
+#' @noRd
 eq.um <-function(um, digits = 2, arima = TRUE) {
   stopifnot(is.um(um))
   
@@ -2489,7 +2496,7 @@ eq.um <-function(um, digits = 2, arima = TRUE) {
   eq
 }
 
-
+#' @noRd
 hessian.um <- function(um, z = NULL, method = c("exact", "cond"), envir=NULL) {
   stopifnot(inherits(um, "um"))
   if (is.null (envir)) envir <- parent.frame ()
@@ -2524,26 +2531,27 @@ hessian.um <- function(um, z = NULL, method = c("exact", "cond"), envir=NULL) {
   H
 }
 
-
+#' @noRd
 is.um <- function(um) {
   return(inherits(um, "um"))
 }
 
+#' @noRd
 is.stationary.um <- function(um) {
   if (um$kar > 0) all(sapply(um$ar, admreg.lagpol))
   else return(TRUE)
 }
 
+#' @noRd
 is.invertible.um <- function(um) {
   if (um$kma > 0) all(sapply(um$ma, admreg.lagpol))
   else return(TRUE)
 }
 
-
+#' @noRd
 param.um <- function(um) {
   unlist(um$param, use.names = TRUE)
 }
-
 
 #' @export
 plot.logLik.um <- function(x, z = NULL, par.name, support, 
@@ -2605,7 +2613,6 @@ plot.logLik.um <- function(x, z = NULL, par.name, support,
   
 }
 
-
 #' Stationary time series for the ARIMA model
 #'
 #' \code{w} is the stationary time series for the ARIMA model.
@@ -2661,4 +2668,3 @@ z.um <- function(um, z = NULL, envir=NULL) {
   }
   return(z)
 }
-

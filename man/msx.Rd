@@ -3,7 +3,7 @@
 \name{msx}
 \alias{msx}
 \alias{msx.um}
-\title{Minimum signal extraction}
+\title{Extract Unobservable Component Models}
 \usage{
 msx(mdl, ...)
 
@@ -13,7 +13,7 @@ msx(mdl, ...)
   i = NULL,
   single = FALSE,
   canonical = FALSE,
-  cwfact = c("roots", "wilson", "best"),
+  cwfact = c("roots", "iter", "best"),
   pfrac = c("gcd", "solve"),
   tol = 1e-05,
   envir = parent.frame(),
@@ -21,32 +21,55 @@ msx(mdl, ...)
 )
 }
 \arguments{
-\item{mdl}{an object of class \code{\link{um}} or \code{\link{tfm}}.}
+\item{mdl}{An object of class \code{\link{um}} or \code{\link{tfm}}.}
 
-\item{...}{additional arguments.}
+\item{...}{Additional arguments.}
 
-\item{ar}{autoregressive lag polynomial for the signal.}
+\item{ar}{Autoregressive lag polynomial for the signal component.}
 
-\item{i}{integrated lag polynomial for the signal.}
+\item{i}{Integration lag polynomial for the signal component.}
 
-\item{single}{logical. \code{TRUE} for single signal and \code{FALSE} for
-multiple signals.}
+\item{single}{Logical. If \code{TRUE}, extracts a single component; if
+\code{FALSE}, extracts multiple components.}
 
-\item{canonical}{logical value to set or not the canonical requirement.}
+\item{canonical}{Logical. If \code{TRUE}, applies the canonical decomposition
+constraint.}
 
-\item{cwfact}{method to compute the Cramer-Wold factorization: roots of the
-AGCF, Laurie/Wilson algorithms.}
+\item{cwfact}{Method for Cramer-Wold factorization: \code{"roots"} polynomial
+(Godolphin 1976), \code{"wilson"} iterative algorithm (Wilson 1969), or the
+\code{"best"} of both methods.}
 
-\item{pfrac}{method to compute the partial fraction decomposition of the
-spectrum: extended Euclidean algorithm (gcd) or solving linear system (solve).}
+\item{pfrac}{Method for partial fraction decomposition: \code{"gcd"}
+(extended Euclidean algorithm) or \code{"solve"} (linear system solver).}
 
-\item{tol}{tolerance for null or unit values.}
+\item{tol}{Numerical tolerance for zero and unit values. Default is
+\code{1e-5}.}
 
-\item{envir}{the environment.}
+\item{envir}{Environment for evaluation.}
 }
 \value{
-An object of class \code{msx}.
+An object of class \code{msx} containing the ARIMA models for 
+  each unobservable component.
 }
 \description{
-\code{msx} extracts a signal from a time series.
+Decomposes an ARIMA model into its unobservable component models (signals) 
+using the minimum signal extraction method.
+}
+\references{
+Burman, J. P. (1980). Seasonal adjustment by signal extraction.
+\emph{Journal of the Royal Statistical Society Series A}, 143(3), 321–337.
+
+Hillmer, S. C., & Tiao, G. C. (1982). An ARIMA-model-based approach to
+seasonal adjustment. \emph{Journal of the American Statistical 
+Association}, 77(377), 63–70.
+  
+ Godolphin, E. J. (1976). On the Cramér-Wold factorization. 
+ \emph{Biometrika}, \strong{63}(2), 367-372. \doi{10.2307/2335982}
+
+Tunnicliffe Wilson, G. (1969). Factorization of the covariance generating
+function of a pure moving average process. \emph{SIAM Journal on Numerical
+Analysis}, \strong{6}(1), 1-7. \doi{10.1137/0706001}
+}
+\seealso{
+\code{\link{add_msx}}, \code{\link{wkfilter.msx}}
 }

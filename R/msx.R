@@ -1,34 +1,55 @@
 ## tfarima/R/msx.R
 ## Jose L Gallego (UC)
 
-#' Minimum signal extraction
+#' Extract Unobservable Component Models
 #'
-#' \code{msx} extracts a signal from a time series.
+#' Decomposes an ARIMA model into its unobservable component models (signals) 
+#' using the minimum signal extraction method.
 #'
-#' @param mdl an object of class \code{\link{um}} or \code{\link{tfm}}.
-#' @param ... additional arguments.
+#' @param mdl An object of class \code{\link{um}} or \code{\link{tfm}}.
+#' @param ... Additional arguments.
 #'
-#' @return An object of class \code{msx}.
+#' @return An object of class \code{msx} containing the ARIMA models for 
+#'   each unobservable component.
 #'
 #' @export
 msx <- function (mdl, ...) { UseMethod("msx") }
 
 #' @rdname msx
-#' @param ar autoregressive lag polynomial for the signal.
-#' @param i integrated lag polynomial for the signal.
-#' @param single logical. \code{TRUE} for single signal and \code{FALSE} for
-#'   multiple signals.
-#' @param canonical logical value to set or not the canonical requirement.
-#' @param cwfact  method to compute the Cramer-Wold factorization: roots of the
-#'   AGCF, Laurie/Wilson algorithms.
-#' @param pfrac  method to compute the partial fraction decomposition of the
-#'   spectrum: extended Euclidean algorithm (gcd) or solving linear system (solve).
-#' @param tol tolerance for null or unit values.
-#' @param envir the environment.
+#' @param ar Autoregressive lag polynomial for the signal component.
+#' @param i Integration lag polynomial for the signal component.
+#' @param single Logical. If \code{TRUE}, extracts a single component; if
+#'   \code{FALSE}, extracts multiple components.
+#' @param canonical Logical. If \code{TRUE}, applies the canonical decomposition
+#'   constraint.
+#' @param cwfact Method for Cramer-Wold factorization: \code{"roots"} polynomial
+#'   (Godolphin 1976), \code{"wilson"} iterative algorithm (Wilson 1969), or the
+#'   \code{"best"} of both methods.
+#' @param pfrac Method for partial fraction decomposition: \code{"gcd"}
+#'   (extended Euclidean algorithm) or \code{"solve"} (linear system solver).
+#' @param tol Numerical tolerance for zero and unit values. Default is
+#'   \code{1e-5}.
+#' @param envir Environment for evaluation.
 #'
+#' @references 
+#' Burman, J. P. (1980). Seasonal adjustment by signal extraction.
+#' \emph{Journal of the Royal Statistical Society Series A}, 143(3), 321–337.
+#'
+#' Hillmer, S. C., & Tiao, G. C. (1982). An ARIMA-model-based approach to
+#' seasonal adjustment. \emph{Journal of the American Statistical 
+#' Association}, 77(377), 63–70.
+#'   
+#'  Godolphin, E. J. (1976). On the Cramér-Wold factorization. 
+#'  \emph{Biometrika}, \strong{63}(2), 367-372. \doi{10.2307/2335982}
+#'
+#' Tunnicliffe Wilson, G. (1969). Factorization of the covariance generating
+#' function of a pure moving average process. \emph{SIAM Journal on Numerical
+#' Analysis}, \strong{6}(1), 1-7. \doi{10.1137/0706001}   
+#'
+#' @seealso \code{\link{add_msx}}, \code{\link{wkfilter.msx}}
 #' @export
 msx.um <- function(mdl, ar = NULL, i = NULL, single = FALSE, canonical = FALSE, 
-                   cwfact = c("roots", "wilson", "best"), 
+                   cwfact = c("roots", "iter", "best"), 
                    pfrac = c("gcd", "solve"),
                    tol = 1e-5, envir = parent.frame(), ...) {
   
@@ -257,8 +278,10 @@ add_msx <- function(msx) {
   return(um1)
 }
 
-
+#' Print ARIMA and UCARIMA models
 #' @rdname print
+#' @param x An object of class msx.
+#' @param ... Additional arguments.
 #' @export
 print.msx <- function(x, ...) {
   k <- length(x) - 2
@@ -279,6 +302,11 @@ print.msx <- function(x, ...) {
 }
 
 #' @rdname wkfilter
+#' @param z an optional \code{ts} object. 
+#' @param tol numeric tolerance used in polynomial divisions. Default is
+#'   \code{1e-5}.
+#' @param envir Environment for evaluation.
+#' @param ... Additional arguments.
 #' @export
 wkfilter.msx <- function(object, z = NULL, tol = 1e-5, envir = parent.frame(), ...) {
   k <- length(object) - 2
@@ -293,9 +321,6 @@ wkfilter.msx <- function(object, z = NULL, tol = 1e-5, envir = parent.frame(), .
   colnames(X) <- c("Series", paste0("Signal", 1:(k-2)), "Noise")
   return(X)
 }
-
-
-
 
 #' Extended Euclidean algorithm for polynomials
 #'
@@ -506,7 +531,6 @@ wkfilter.msx <- function(object, z = NULL, tol = 1e-5, envir = parent.frame(), .
 #'
 #' @examples
 #' wold.pol(c(6, -4, 1))
-
 #' @export
 wold.pol <- function(x, type = c("wold", "palindromic", "cramer-wold"), 
                      tol = 1e-5) {
@@ -890,53 +914,5 @@ cwfact <- function(g, th = NULL, method = c("roots", "wilson", "best"),
 .cwfact_check <- function(g, th) {
   g0 <- tacovC(1, th[-1], th[1], length(g)-1)
   max(abs(g - g0))
-}
-
-#' Refine roots using Newton-Raphson
-#'
-#'   \code{.refine_roots} improves the accuracy of the roots (real or complex)
-#'   computed with the \code{polyroot} by using the Newton-Raphson method.
-#'
-#' @param roots Inexact roots (real or complex number).
-#' @param coeffs Numeric vector of polynomial coefficients.
-#' @param tol Convergence tolerance. Default is 1e-15.
-#' @param max_iter Maximum number of iterations. Default is 50.
-#'
-#' @return The refined roots.
-#'
-#' @keywords internal
-.refine_roots <- function(roots, coeffs, tol = 1e-15, max_iter = 50) {
-  nr <- length(roots)
-  n <- length(coeffs) - 1
-  refined <- rep(FALSE, nr)
-  px <- double(nr)
-  for (i in 1:nr) {
-    z <- roots[i]
-    p <- coeffs[n+1]
-    for(j in n:1)
-      p <- p * z + coeffs[j]
-    px[i] <- p 
-    if (is.finite(p) && abs(p) > tol) {
-      for(k in 1:max_iter) {
-        p <- coeffs[n+1]
-        dp <- 0
-        for(j in n:1) {
-          dp <- dp * z + p
-          p <- p * z + coeffs[j]
-        }
-        if (!is.finite(p) || !is.finite(dp)) break
-        if(abs(p) < tol || abs(dp) < tol) break
-        z_new <- z - p / dp
-        if (!is.finite(z_new)) break
-        if(abs(z_new - z) < tol) break
-        z <- z_new
-      }
-      if (is.finite(p) && abs(p) < abs(px[i])) {
-        roots[i] <- z
-        refined[i] <- TRUE
-      } 
-    }
-  }    
-  return(list(x = roots, px = px, refined = refined))
 }
 

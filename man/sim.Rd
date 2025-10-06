@@ -4,9 +4,18 @@
 \alias{sim.tfm}
 \alias{sim}
 \alias{sim.um}
-\title{Time series simulation form an ARIMA or TF model}
+\title{Simulate Time Series from ARIMA or Transfer Function Models}
 \usage{
-\method{sim}{tfm}(mdl, envir = parent.frame(), ...)
+\method{sim}{tfm}(
+  mdl,
+  n = 100,
+  z0 = NULL,
+  n0 = 0,
+  a = NULL,
+  seed = NULL,
+  envir = parent.frame(),
+  ...
+)
 
 sim(mdl, ...)
 
@@ -22,26 +31,39 @@ sim(mdl, ...)
 )
 }
 \arguments{
-\item{mdl}{an object of class \code{um} or \code{tfm}.}
+\item{mdl}{An object of class \code{\link{um}} or \code{\link{tfm}}.}
 
-\item{envir}{environment in which the function arguments are evaluated.
-If NULL the calling environment of this function will be used.}
+\item{n}{Number of observations to simulate.}
 
-\item{...}{other arguments.}
+\item{z0}{Initial conditions for nonstationary series. Default is \code{NULL} (zero initial conditions).}
 
-\item{n}{number of observations.}
+\item{n0}{Number of initial observations to discard as burn-in. Default is \code{0}.}
 
-\item{z0}{initial conditions for the nonstationary series.}
+\item{a}{Optional vector of innovations with length \code{n + n0}. If \code{NULL}, 
+innovations are drawn from \eqn{N(0, \sigma^2)}.}
 
-\item{n0}{remove the n0 first observation, integer.}
+\item{seed}{Random seed for reproducibility.}
 
-\item{a}{vector of innovations, optional.}
+\item{envir}{Environment for argument evaluation. Default is \code{parent.frame()}.}
 
-\item{seed}{an integer.}
+\item{...}{Additional arguments.}
 }
 \value{
-An object of class \code{ts}.
+A \code{ts} object with the simulated time series.
 }
 \description{
-\code{sim} generates a random time series from an object of class \code{um} or \code{tfm}.
+Generates random time series from ARIMA (\code{um}) or transfer function (\code{tfm}) models.
+}
+\examples{
+# AR(1) model
+mdl1 <- um(ar = "1 - 0.8B", sig2 = 1)
+z1 <- sim(mdl1, n = 100, seed = 123)
+
+# ARIMA(0,1,1) with burn-in
+mdl2 <- um(i = 1, ma = "1 - 0.5B", sig2 = 1)
+z2 <- sim(mdl2, n = 100, n0 = 50, seed = 456)
+
+}
+\seealso{
+\code{\link{sim.um}}, \code{\link{sim.tfm}}
 }
