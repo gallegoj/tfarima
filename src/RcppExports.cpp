@@ -238,18 +238,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// polyevalC
-double polyevalC(const arma::colvec& pol, double z);
-RcppExport SEXP _tfarima_polyevalC(SEXP polSEXP, SEXP zSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::colvec& >::type pol(polSEXP);
-    Rcpp::traits::input_parameter< double >::type z(zSEXP);
-    rcpp_result_gen = Rcpp::wrap(polyevalC(pol, z));
-    return rcpp_result_gen;
-END_RCPP
-}
 // polyrootsC
 arma::mat polyrootsC(const arma::colvec& pol);
 RcppExport SEXP _tfarima_polyrootsC(SEXP polSEXP) {
@@ -269,17 +257,6 @@ BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::cx_colvec& >::type r(rSEXP);
     rcpp_result_gen = Rcpp::wrap(sortrootsC(r));
-    return rcpp_result_gen;
-END_RCPP
-}
-// combinerootsC
-arma::mat combinerootsC(arma::mat T);
-RcppExport SEXP _tfarima_combinerootsC(SEXP TSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type T(TSEXP);
-    rcpp_result_gen = Rcpp::wrap(combinerootsC(T));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -673,10 +650,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_tfarima_ssrC", (DL_FUNC) &_tfarima_ssrC, 3},
     {"_tfarima_cllarmaC", (DL_FUNC) &_tfarima_cllarmaC, 3},
     {"_tfarima_outliersC", (DL_FUNC) &_tfarima_outliersC, 10},
-    {"_tfarima_polyevalC", (DL_FUNC) &_tfarima_polyevalC, 2},
     {"_tfarima_polyrootsC", (DL_FUNC) &_tfarima_polyrootsC, 1},
     {"_tfarima_sortrootsC", (DL_FUNC) &_tfarima_sortrootsC, 1},
-    {"_tfarima_combinerootsC", (DL_FUNC) &_tfarima_combinerootsC, 1},
     {"_tfarima_roots2polC", (DL_FUNC) &_tfarima_roots2polC, 2},
     {"_tfarima_admregC", (DL_FUNC) &_tfarima_admregC, 2},
     {"_tfarima_polymultC", (DL_FUNC) &_tfarima_polymultC, 2},

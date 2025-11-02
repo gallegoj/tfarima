@@ -1,0 +1,208 @@
+---
+title: "Quick Introduction to the tfarima Package"
+author: "J.L. Gallego"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{tfarima}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 5,
+  fig.height = 3.5,
+  fig.align = "center",
+  dpi = 120
+)
+library(tfarima)
+options(prompt = "R> ", continue = "+  ", width = 70, useFancyQuotes = FALSE)
+```
+
+# Introduction
+
+The **tfarima** package provides a comprehensive framework for specifying, estimating, and analyzing **Transfer Function and ARIMA models** in a unified and transparent way.\
+It introduces several S3 classes such as `lagpol`, `um`, `tfm`, and `ucarima` that allow users to work directly with **lag polynomials**, **univariate models**, **transfer function models**, and **UCARIMA decompositions**, respectively.
+
+This vignette offers a quick overview of the main features of the package, demonstrating how to define models, simulate data, estimate parameters, and perform diagnostic and forecasting analyses.
+
+------------------------------------------------------------------------
+
+# First-Order Autoregressive (Markov) Process
+
+We begin with a simple AR(1) model to illustrate basic functionality.
+
+```{r}
+# Creating an AR(1) process with mean 0.5 and innovation variance 1.5
+ar1p <- um(ar = "1 - 0.8B", mu = 0.5, sig2 = 1.5)
+
+# Displaying model properties
+phi(ar1p)
+roots(ar1p)
+psi.weights(ar1p, 10)
+autocorr(ar1p, 10)
+spec(ar1p)[1:5, ]
+display(ar1p)
+```
+
+Now we can simulate a realization and fit the same model back to the data.
+
+```{r}
+set.seed(1234)
+z <- sim(ar1p, n = 100)
+ide(z)
+ar1p.fit <- fit(ar1p, z)
+diagchk(ar1p.fit)
+p <- predict(ar1p.fit, n.ahead = 5)
+plot(p, n.back = 20)
+```
+
+------------------------------------------------------------------------
+
+# Lag Polynomial Objects (`lagpol` Class)
+
+The `lagpol` class provides a convenient symbolic representation of lag polynomials, including seasonal and multiplicative structures.
+
+```{r}
+lp1 <- lagpol(param = c(theta = 0.5), p = 2)
+lp2 <- lagpol(param = c(Theta1 = 1.2, Theta2 = -0.9), s = 12)
+lp3 <- lagpol(param = c(theta = 0.8, Theta = 0.9),
+              coef = c("theta", "Theta", "-theta*Theta"),
+              lags = c(1, 12, 13))
+lp3
+```
+
+It also supports compact symbolic specifications through `lagpol0()`:
+
+```{r}
+i  <- lagpol0(list(1, c(1, 3), c(1, 12)), "i")
+ma <- lagpol0("(1 - 0.8B)(1 - 0.7B3)(1 - 0.6B12)", "ma")
+printLagpolList(i)
+printLagpolList(ma)
+```
+
+------------------------------------------------------------------------
+
+# Univariate Models (`um` Class)
+
+The `um` class represents univariate ARIMA-type models, combining lag polynomials and parameters in a structured way.
+
+```{r}
+ar1p <- um(ar = "(1 - 0.9B)")
+ar1n <- um(ar = "(1 + 0.9B)")
+ma1p <- um(ma = "(1 - 0.9B)")
+ma1n <- um(ma = "(1 + 0.9B)")
+ar2c <- um(ar = "(1 - 1.52B + 0.8B^2)")
+
+display(list(ar1p, ar1n, ma1p, ma1n, ar2c),
+        lag.max = 20, graphs = c("acf", "pacf", "spec"))
+```
+
+------------------------------------------------------------------------
+
+# Example: Building Material Series
+
+Here we identify and estimate a seasonal ARIMA model for the `BuildingMat` dataset.
+
+```{r}
+Z <- BuildingMat
+ide(Z, transf = list(
+  list(bc = TRUE),
+  list(bc = TRUE, S = 1),
+  list(bc = TRUE, d = 1, D = 1), 
+  list(bc = TRUE, d = 1, D = 1, i = lagpol(s = 3, coef = "1"))
+))
+
+um1 <- um(Z, bc = TRUE,
+          i  = list(1, c(1, 3), c(1, 12)),
+          ma = list(theta = 1, Theta = c(1, 3), THETA = c(1, 12)))
+diagchk(um1)
+
+p <- predict(um1, n.ahead = 12, i = c(1, 12))
+plot(p, n.back = 72)
+```
+
+A UCARIMA decomposition can be obtained for the fitted model:
+
+```{r}
+uca1 <- as.ucarima(um1, i = 3)
+uc1 <- wkfilter(uca1)
+plot(uc1, main = "")
+```
+
+------------------------------------------------------------------------
+
+# Transfer Function Models (`tfm` Class)
+
+Transfer function models allow us to model dynamic relationships between input and output time series.
+
+```{r}
+Y <- seriesJ$Y - mean(seriesJ$Y)
+X <- seriesJ$X - mean(seriesJ$X)
+
+umx <- um(X, ar = 3)
+umy <- fit(umx, Y)
+pccf(X, Y, um.x = umx, lag.max = 16)
+
+tfx  <- tfest(Y, X, delay = 3, p = 2, q = 2, um.x = umx, um.y = umy)
+tfmy <- tfm(Y, inputs = tfx, noise = um(ar = 2))
+tfmy
+```
+
+Another example with *BJsales* data:
+
+```{r}
+Y <- window(BJsales, end = 140)
+X <- window(BJsales.lead, end = 140)
+umy <- um(Y, i = 1, ma = "1-0.620B", mu = 0.033, fit = FALSE)
+umx <- um(X, i = 1, ma = "1 - 0.4483B", fit = FALSE)
+tfx <- tf(X, delay = 3, w0 = 4.716, ar = "1-0.725B", um = umx)
+tfmy <- tfm(output = Y, inputs = tfx, noise = umy, fit = FALSE)
+plot(predict(tfmy, n.ahead = 10, ori = 89), n.back = 15, ylab = expression(Y[t]))
+```
+
+------------------------------------------------------------------------
+
+# Outliers and Calendar Effects
+
+The `outliers()` function can automatically detect additive outliers, level shifts, and calendar-related effects.
+
+```{r}
+tfm1 <- outliers(um1, calendar = TRUE, easter = TRUE,
+                 form = "wd", c = 4, p.value = 0.05, n.ahead = 24)
+tfm1
+```
+
+------------------------------------------------------------------------
+
+# UCARIMA Decompositions
+
+Finally, the `ucarima` class provides a unified structure for unobserved components models.
+
+```{r}
+trend <- um(i = 2, ma = c(theta = 1), sig2 = c(s2t = 0.1))
+seas  <- um(i = "12", 
+             ma = lagpol(coef = c("0.7944","0.6185","0.4699",
+                                  "0.3465","0.2458","0.1658",
+                                  "0.1041","0.0587","0.0275","0.0086")),
+             sig2 = c(s2s = 0.01))
+irreg <- um(sig2 = c(s2i = 1))
+
+uca1 <- ucarima(Z, bc = TRUE,
+                ucm = list(trend = trend, seas = seas, irreg = irreg))
+rf1  <- as.um(uca1)
+uca3 <- as.ucarima(rf1, i = 2, canonical = FALSE)
+uca3
+```
+
+------------------------------------------------------------------------
+
+# Summary
+
+This vignette has illustrated how **tfarima** supports the entire workflow for ARIMA and transfer function modeling:\
+from model specification (`lagpol`, `um`) and simulation, to estimation (`fit`), diagnostics (`diagchk`), forecasting (`predict`), and structural decomposition (`ucarima`).
+
+For more formal details, theoretical background, and advanced examples, see the accompanying article and package documentation.

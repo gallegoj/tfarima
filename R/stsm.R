@@ -501,6 +501,9 @@ ssm <- function(z, b, C, S, xreg = NULL, bc = FALSE, cform = TRUE, tol = 1e-5) {
   stopifnot("C matrix must be square" = nrow(C) == ncol(C))
   stopifnot("S argument must be a matrix" = is.matrix(S))
   stopifnot("S matrix must be square" = nrow(S) == ncol(S))
+  if (nrow(S) == nrow(C)) {
+    S <- rbind(rep(0, ncol(C)+1), cbind(rep(0, nrow(C)), S))
+  }
   
   if (is.matrix(b)) b <- as.vector(b)
   stopifnot(length(b) == nrow(C) || (length(b)+1) == nrow(S))

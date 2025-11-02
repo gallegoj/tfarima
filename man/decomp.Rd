@@ -25,7 +25,7 @@ decomp(mdl, ...)
 \method{decomp}{um}(
   mdl,
   z = NULL,
-  method = c("msx", "msx0", "mixed", "forecast", "backcast"),
+  method = c("ucarima", "ucarima0", "mixed", "forecast", "backcast"),
   envir = parent.frame(),
   ...
 )

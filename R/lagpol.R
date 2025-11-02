@@ -1264,3 +1264,42 @@ lagpol0 <- function(op, type, envir = parent.frame()) {
   names(lp) <- paste0(nm, 1:length(lp))
   return(lp)
 }
+
+
+# Utilities for Lag Polynomials
+
+#' Evaluate the k-th derivative of a polynomial at point z
+#'
+#' @param pol Numeric vector of polynomial coefficients in ascending order
+#'   (pol[1] = constant term, pol[2] = coefficient of z, etc.)
+#' @param z Numeric value where the polynomial (or its derivative) is evaluated.
+#' @param k Integer. Derivative order (0 = original polynomial).
+#'
+#' @return Numeric value of the k-th derivative of P(z).
+#' @examples
+#' pol <- c(1, 2, 3, 4)  # P(z) = 1 + 2z + 3z² + 4z³
+#' polyderivEvalR(pol, 2, 0)  # 49
+#' polyderivEvalR(pol, 2, 1)  # 62
+#' @export
+polyderivEvalR <- function(pol, z, k = 0) {
+  if (is.lagpol(pol))
+      pol <- pol$Pol
+  if (k == 0L) {
+    d <- 0
+    for (i in seq_along(pol))
+      d <- d * z + pol[length(pol) - i + 1L]
+    return(d)
+  }
+  
+  deriv <- pol
+  for (r in seq_len(k)) {
+    if (length(deriv) <= 1L) return(0)
+    deriv <- deriv[-1L] * seq_along(deriv[-1L])
+  }
+  
+  d <- 0
+  for (i in seq_along(deriv))
+    d <- d * z + deriv[length(deriv) - i + 1L]
+  d
+}
+

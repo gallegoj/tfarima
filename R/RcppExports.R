@@ -61,20 +61,12 @@ outliersC <- function(z, bc, mu, phi, nabla, theta, types, timing, eres, c) {
     .Call(`_tfarima_outliersC`, z, bc, mu, phi, nabla, theta, types, timing, eres, c)
 }
 
-polyevalC <- function(pol, z) {
-    .Call(`_tfarima_polyevalC`, pol, z)
-}
-
 polyrootsC <- function(pol) {
     .Call(`_tfarima_polyrootsC`, pol)
 }
 
 sortrootsC <- function(r) {
     .Call(`_tfarima_sortrootsC`, r)
-}
-
-combinerootsC <- function(T) {
-    .Call(`_tfarima_combinerootsC`, T)
 }
 
 roots2polC <- function(A, check) {

@@ -2,15 +2,6 @@
 #include "pol.h"
 using namespace arma;
 
-// [[Rcpp::export]]
-double polyevalC(const arma::colvec &pol, double z) {
-  int i, p;
-  double d = 0;
-  p = pol.n_elem-1;
-  for (i=0; i<p; i++) d = d*z + pol(i);
-  return d;
-}
-
 // Polynomial roots
 //
 // \code{polyrootsC} C function to compute the roots of a lag polynomial.
@@ -27,10 +18,8 @@ double polyevalC(const arma::colvec &pol, double z) {
 // 
 // [[Rcpp::export]]
 arma::mat polyrootsC(const arma::colvec &pol) {
-  
   cx_vec r = roots(pol);
   return sortrootsC(r);
-  
 }
 
 bool simeqC(double x, double y, double tol) {
@@ -39,9 +28,8 @@ bool simeqC(double x, double y, double tol) {
 }
 
 bool ltC(double x, double y, double tol) {
-  if (fabs(x - y) < tol) return false;
-  else if (x < y) return true;
-  else return false;
+  if (std::fabs(x - y) < tol) return false; 
+  return (x < y);
 }
 
 // [[Rcpp::export]]
@@ -59,20 +47,22 @@ arma::mat sortrootsC(const arma::cx_colvec &r) {
     cx = r(j);
     T(j, 0) = cx.real();  T(j, 1) = cx.imag();
     T(j, 2) = abs(cx);
-    T(j, 3) = acos( T(j, 0)/T(j, 2) )/(2.0*datum::pi);
+    if (simeqC(T(j, 2), 0.0)) T(j, 3) = 0.0;
+    else T(j, 3) = acos(T(j, 0)/T(j, 2)) / (2.0 * datum::pi);    
     if ( simeqC(pow(T(j, 1), 2), 0) ) {
       T(j, 1) = 0;
       if (T(j, 0) > 0) T(j, 3) = 0;
       else T(j, 3) = 0.5;
-    } 
-    T(j, 4) = 1.0/T(j, 3);
+    }
+    T(j, 4) = (simeqC(T(j, 3), 1e-6)) ? datum::inf : 1.0/T(j, 3);    
     T(j, 5) = 1;
   }
   
   // Sort by frequency and modulus
   for (i = 0; i <  p; i++) {
     for (j = i + 1; j <  p; j++) {
-      if ( ltC(T(j, 2), T(i, 2)) || ( T(j, 3) < T(i, 3) && simeqC(T(j, 2), T(i, 2)) ) ) {
+      if ( ltC(T(j, 2), T(i, 2)) || 
+           ( T(j, 3) < T(i, 3) && simeqC(T(j, 2), T(i, 2)) ) ) {
         for (h = 0; h < 6; h++) {
           d = T(i, h);
           T(i, h) = T(j, h);
@@ -86,8 +76,9 @@ arma::mat sortrootsC(const arma::cx_colvec &r) {
   for (i = 0; i <  p; i++) {
     if (indx(i)) {
       for (j = i + 1; j <  p; j++) {
-        if ( simeqC(T(j, 3),  T(i, 3))  )  {
-          if ( simeqC(T(j, 0), T(i, 0))  && simeqC(T(j, 1), T(i, 1)) ) {
+        if ( simeqC(T(j, 3),  T(i, 3)), 1e-6)  {
+          if ( simeqC(T(j, 0), T(i, 0), 1e-6)  &&
+               simeqC(T(j, 1), T(i, 1), 1e-6) ) {
               T(i, 5) += 1;
               indx(j) = 0;
           }
@@ -98,68 +89,19 @@ arma::mat sortrootsC(const arma::cx_colvec &r) {
     }
   }
   
-  for (i = p-1; i >  -1; i--) {
-    if (indx(i) == 0) T.shed_row(i);
-  }
-  
-  return T;
-  
-}
-
-// [[Rcpp::export]]
-arma::mat combinerootsC(arma::mat T) {
-  int h, i, j, p;
-  double d;
-
-  p = T.n_rows; 
-  Col<int> indx(p);
-  indx.fill(1);
-
-  // Sort by frequency and modulus
-  for (i = 0; i <  p; i++) {
-    for (j = i + 1; j <  p; j++) {
-      if ( ltC(T(j, 2), T(i, 2)) || (ltC(T(j, 3), T(i, 3)) && simeqC(T(j, 2), T(i, 2)) ) ) {
-        for (h = 0; h < 6; h++) {
-          d = T(i, h);
-          T(i, h) = T(j, h);
-          T(j, h) = d;
-        }
-      }
-    }
-  }
-
-  // Greatest Multiplicity
-  for (i = 0; i <  p; i++) {
-    if (indx(i)) {
-      for (j = i + 1; j <  p; j++) {
-        if ( simeqC(T(j, 3),  T(i, 3))  )  {
-          if ( simeqC(T(j, 0), T(i, 0))  && simeqC(T(j, 1), T(i, 1)) ) {
-            if (T(i, 5) < T(j, 5) ) indx(i) = 0;
-            else indx(j) = 0;
-          }
-        } else {
-          break;
-        }
-      }
-    }
-  }
-  
-  for (i = p-1; i >  -1; i--) {
-    if (indx(i) == 0) T.shed_row(i);
-  }
-  
+  T = T.rows(find(indx > 0));  
   return T;
   
 }
 
 // [[Rcpp::export]]
 arma::mat roots2polC(arma::mat A, bool check) {
-  int h, i, j, r;
-  r = A.n_rows;
-  vec pol(1), pol1(2), pol2(3);
+  int m, i, j, r;
+  arma::vec pol(1, arma::fill::ones);
+  arma::vec pol1(2, arma::fill::zeros);
+  arma::vec pol2(3, arma::fill::zeros);
   pol(0) = pol1(0) = pol2(0) = 1;
-  h = 0;
-  r--;
+  r = A.n_rows - 1;
   for (i = 0; i <  r; i++) {
     if (check) {
       if(A(i, 2) < 1) {
@@ -170,15 +112,16 @@ arma::mat roots2polC(arma::mat A, bool check) {
     if ( simeqC(A(i, 2), A(i+1, 2)) && simeqC(A(i, 1), -A(i+1, 1)) ) {
       pol2(1) = -2*cos(2*datum::pi*A(i, 3))/A(i, 2);
       pol2(2) = pow(1/A(i, 2), 2);
-      for (j = 0; j < int(A(i, 5)); j++)
+      m = int(A(i, 5)); 
+      for (j = 0; j < m; j++)
         pol = polymultC(pol, pol2);
-      i++;
+      ++i;
     } else {
       pol1(1) = -1/A(i, 0);
-      for (j = 0; j < int(A(i, 5)); j++)
+      m = int(A(i, 5)); 
+      for (j = 0; j < m; j++)
         pol = polymultC(pol, pol1);
     } 
-    h++;
   }
   
   if (i == r) {
@@ -211,8 +154,8 @@ arma::mat roots2polC(arma::mat A, bool check) {
 // [[Rcpp::export]]
 bool admregC(const arma::colvec &pol, bool ar) {
   
-  int j, p;
-  p = pol.n_elem-1;
+  int j;
+  int p = pol.n_elem-1;
   
   mat A(p, p, fill::zeros);
   cx_vec eigval;
@@ -255,20 +198,15 @@ bool admregC(const arma::colvec &pol, bool ar) {
 // 
 // [[Rcpp::export]]
 arma::colvec polymultC(const arma::colvec &pol1, const arma::colvec &pol2) {
+  int r = pol1.n_elem;
+  int s = pol2.n_elem;
+  arma::colvec pol(r+s-1, fill::zeros);
   
-  int i, j, r, s;
-
-  r = pol1.n_elem - 1;
-  s = pol2.n_elem - 1;
-  
-  vec pol(r+s+1, fill::zeros);
-
-  for (i = 0; i <= r; i++) {
-    for (j = 0; j <= s; j++) {
+  for (int i = 0; i < r; i++) {
+    for (int j = 0; j < s; j++) {
       pol(i+j)  += pol1(i)*pol2(j);
     }
   }
-  
   return pol;
 }
 

@@ -476,16 +476,14 @@ outliers.ucarima <- function(mdl, types = c("AO", "LS", "TC"), dates = NULL, c =
 }
 
 
-
-
-#' @rdname sform
+#' @rdname as.ssm
 #' @export
-sform.ucarima <- function(mdl, ...) {
+as.ssm.ucarima <- function(object, ...) {
   b <- c()
   s2 <- 0
-  for (i in 1:mdl$k) {
-    if (mdl$ucm[[i]]$p + mdl$ucm[[i]]$d + mdl$ucm[[i]]$q >  0) {
-      sf <- sform(mdl$ucm[[i]])
+  for (i in 1:object$k) {
+    if (object$ucm[[i]]$p + object$ucm[[i]]$d + object$ucm[[i]]$q >  0) {
+      sf <- as.ssm(object$ucm[[i]])
       if (is.null(b)) {
         b <- sf$b
         C <- sf$C
@@ -500,14 +498,14 @@ sform.ucarima <- function(mdl, ...) {
                    cbind(matrix(0, nrow = nrow(A), ncol = ncol(S)), A))      
       }
       s2 <- sf$S[1, 1]
-    } else s2 <- s2 + mdl$ucm[[i]]$sig2    
+    } else s2 <- s2 + object$ucm[[i]]$sig2    
   }
   S <- rbind(matrix(0, nrow = 1, ncol = ncol(S) + 1),
              cbind(matrix(0, nrow = nrow(S), ncol = 1), S))
   S[1, 1] <- s2
   sf <- ssm(b = b, C = C, S = S)
-  sf$y <- mdl$z
-  sf$y.name <- mdl$z.name
+  sf$y <- object$z
+  sf$y.name <- object$z.name
   return(sf)
 }  
 
@@ -558,8 +556,10 @@ print.ucarima <- function(x, ...) {
   if (is.null(x$optim)) {
     nms <- names(x$ucm)
     for (i in 1:x$k) {
-      if (is.um(x$ucm[[i]]))
-        cat(nms[i], "\n", equation(x$ucm[[i]], FALSE), "\n")
+      if (is.um(x$ucm[[i]])) {
+        cat(nms[i], "\n") 
+        equation(x$ucm[[i]], FALSE)
+      }
     }
   } else {
     print(x$aux$par)

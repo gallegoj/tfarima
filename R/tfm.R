@@ -873,7 +873,7 @@ predict.tfm <- function(object, newdata=NULL, y = NULL, ori = NULL, n.ahead = NU
     newdata <- as.matrix(newdata)
     stopifnot(nrow(newdata) >= n.ahead)
   }
-  
+
   if (object$kx > 0) {
     Xf <- NULL
     if (!is.null(newdata)) {
@@ -897,7 +897,7 @@ predict.tfm <- function(object, newdata=NULL, y = NULL, ori = NULL, n.ahead = NU
     
     z[t] <- z[t] +  Xf %*% unlist(object$param[1:object$kx])
   }
-  
+
   if (object$k > 0) {
     for (i in 1:object$k) {
       start1 <- start(object$inputs[[i]]$x)
@@ -926,13 +926,13 @@ predict.tfm <- function(object, newdata=NULL, y = NULL, ori = NULL, n.ahead = NU
       }
     }
   }
-  
+
   dates <- time(zoo::as.zoo(z))
   if (any(level <= 0 || level >= 1)) level[level <= 0 || level >= 1] <- 0.95
   level <- unique(level)
   cv <- qnorm((1-level)/2, lower.tail = F)
   se <- sqrt(X[t, 4])
-  z[1:ori] <- y
+  z[1:ori] <- y[1:ori]
   if (object$noise$bc) {
     z[t] <- exp(z[t])
     low <- sapply(cv, function(x) z[t]*exp(-x*se)) 
@@ -941,7 +941,6 @@ predict.tfm <- function(object, newdata=NULL, y = NULL, ori = NULL, n.ahead = NU
     low <- sapply(cv, function(x) z[t] - x*se) 
     upp <- sapply(cv, function(x) z[t] + x*se)
   }
-  
   out <- list(z = z, rmse = se, low = low, upp = upp, level = level,
               dates = dates, ori = ori, n.ahead = n.ahead, ori.date = dates[ori])
   class(out) <- c("predict.tfm", "predict.um") 

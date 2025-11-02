@@ -1140,21 +1140,17 @@ predict.um <- function(object, z = NULL, ori = NULL, n.ahead = 1, level = 0.95,
   if (!is.null(i)) {
     i <- lagpol0(i, "i", envir=envir)
     nabla <- polyexpand(i)
+    z <- ts(diffC(z, nabla, object$bc), end = end(z), frequency = frequency(z))
+    z.name <- tslabel(object$z, object$bc, 0, 0, 1, 0, i)
+    object$bc <- FALSE
     nabla <- polydivC(object$nabla, nabla, FALSE, 1e-5)
     object$nabla <- nabla
     object$i <- list(as.lagpol(nabla))
     mu <- mu*sum(nabla)
-    z <- ts(diffC(z, nabla, object$bc), end = end(z), frequency = frequency(z))
-    if (object$bc){
-      z <- z*100
-      object$sig2 <- object$sig2*100^2
-    }
-    object$bc <- FALSE
-  }
+  } else z.name <- object$z
   
   if (is.null(ori)) ori <- length(z)
   if (n.ahead < 1) n.ahead <- 1
-  
   X <-  forecastC(z, object$bc, mu, object$phi, object$nabla,
                   object$theta, object$sig2, ori, n.ahead)
   t <- (ori+1):(ori+n.ahead)
@@ -1174,8 +1170,8 @@ predict.um <- function(object, z = NULL, ori = NULL, n.ahead = 1, level = 0.95,
     upp <- sapply(cv, function(x) f + x*se)
   }
   
-  out <- list(z = z, rmse = se, low = low, upp = upp, level = level,
-              dates = dates, ori = ori, n.ahead = n.ahead, 
+  out <- list(z = z, z.name = z.name, rmse = se, low = low, upp = upp,
+              level = level, dates = dates, ori = ori, n.ahead = n.ahead, 
               ori.date = dates[ori])
   class(out) <- "predict.um"
   out  
@@ -1210,9 +1206,10 @@ print.predict.um <- function(x, rows = NULL, ...) {
 }
 
 #' @export
-plot.predict.um <- function(x, n.back = 0, xlab = "Time", ylab = "z", main = "",
+plot.predict.um <- function(x, n.back = 0, xlab = "Time", ylab = "", main = "",
                             symbol= TRUE, pch = 16, col = c("black", "blue", "red"), ...) {
   n.back <- as.integer(n.back)
+  if (ylab == "") ylab <- x$z.name
   n2 <- length(x$z)
   if (n.back > 0)  {
     if (n.back > x$ori) n.back <- x$ori
@@ -1815,10 +1812,10 @@ wkfilter <- function (object, ...) { UseMethod("wkfilter") }
 #' @param envir environment to get \code{z} when not provided.
 #'
 #' @examples
-#' um1 <- um(AirPassengers, bc = TRUE, i = list(1, c(1,12)), ma = list(1, c(1,12)))
-#' msx1 <- msx(um1, i = "(1-B)2")
-#' trend <- wkfilter(um1, msx1$signal1)
-#' seas <- wkfilter(um1, msx1$signal2)
+#' um1 <- airline(AirPassengers, bc = TRUE)
+#' uca1 <- as.ucarima(um1, i = "(1-B)2")
+#' trend <- wkfilter(um1, uca1$ucm$signal1)
+#' seas <- wkfilter(um1, uca1$ucm$signal2)
 #' @export
 wkfilter.um <- function(object, um.uc, z = NULL, output = c("series", "filter"), 
                         tol = 1e-5, envir = parent.frame(), ...) {
@@ -2031,17 +2028,17 @@ Ops.um <- function(e1, e2) {
 
 #' Structural form for an ARIMA model
 #'
-#' \code{sform} finds the structural form for an ARIMA model from its the
+#' \code{as.ssm} finds the structural form for an ARIMA model from its the
 #' eventual forecast function.
 #'
-#' @param mdl an object of class \code{um}.
+#' @param object an object of class \code{um}.
 #'
-#' @return An object of class \code{ucm}
+#' @return An object of class \code{ssm}
 #'
 #' @export
-sform <- function (mdl, ...) { UseMethod("sform") }
+as.ssm <- function (object, ...) { UseMethod("as.ssm") }
 
-#' @rdname sform
+#' @rdname as.ssm
 #' @param z an optional time series.
 #' @param msoe logical, TRUE for multiple source of errors and FALSE for single
 #'   source of error.
@@ -2057,29 +2054,30 @@ sform <- function (mdl, ...) { UseMethod("sform") }
 #' @examples
 #'
 #' airl <- um(i = list(1, c(1, 12)), ma = "(1 - 0.8B)(1 - 0.8B12)")
-#' sf <- sform(airl, index = c(1, 0, rep(2, 11)))
-#' sf
+#' ssm1 <- as.ssm(airl, index = c(1, 0, rep(2, 11)))
+#' ssm1
 #'
 #' @export
 #' 
-sform.um <- function(mdl, z = NULL, msoe = TRUE, H = NULL, cform = TRUE, 
+as.ssm.um <- function(object, z = NULL, msoe = TRUE, H = NULL, cform = TRUE, 
                      tol = 1.490116e-08, nonadm = c("quadprog", "nnls", "none"), 
                      envir = NULL, ...) {
-  if (mdl$p + mdl$d + mdl$q == 0)
+  if (object$p + object$d + object$q == 0)
     stop("white noise process")
   nonadm <- match.arg(nonadm)
+  is.adm <- TRUE
   if (is.null (envir)) envir <- parent.frame ()
   if (!is.null(z)) {
-    mdl$z <- deparse(substitute(z))
+    object$z <- deparse(substitute(z))
     z <- eval(parse(text = z), envir)
-  } else if (!is.null(mdl$z)) z <- eval(parse(text = mdl$z), envir)
+  } else if (!is.null(object$z)) z <- eval(parse(text = object$z), envir)
 
-  if (is.null(mdl$mu)) mu <- 0
-  else mu <- mdl$mu
-  ariroots <- unlist( lapply( c(mdl$ar, mdl$i), function(x) roots(x, FALSE)) )
+  if (is.null(object$mu)) mu <- 0
+  else mu <- object$mu
+  ariroots <- unlist( lapply( c(object$ar, object$i), function(x) roots(x, FALSE)) )
   R <- sortrootsC(1/ariroots)
   C <- decompFC(R, mu)
-  psi <- psi.weights(mdl, lag.max = ncol(C), var.psi = TRUE)[-1]
+  psi <- psi.weights(object, lag.max = ncol(C), var.psi = TRUE)[-1]
   C1 <- C[-nrow(C), ]
   C2 <- C[-1, ]
   c1 <- C[1, ]
@@ -2100,7 +2098,7 @@ sform.um <- function(mdl, z = NULL, msoe = TRUE, H = NULL, cform = TRUE,
   if (msoe) {
     lf <- .LeverrierFaddeev(b, C)
     k <- length(b)
-    g <- as.numeric( tacovC(1, mdl$theta, mdl$sig2, k) )
+    g <- as.numeric( tacovC(1, object$theta, object$sig2, k) )
     g.i <- tacovC(1, lf$p, 1, k)
     A <- apply(lf$A, 2, function(x) {
       tacovC(1, x, 1, k)
@@ -2124,11 +2122,12 @@ sform.um <- function(mdl, z = NULL, msoe = TRUE, H = NULL, cform = TRUE,
       S <- diag(s2)
     }
     if (any(s2 < 0)) {
+      # s2c <- sapply(s2, function(x) {
+      #   if (x < 0 && abs(x)/max(s2) < tol) 0
+      #   else x
+      # })
+      is.adm <- FALSE
       warning("Nonadmissible structural form.")
-      s2 <- sapply(s2, function(x) {
-        if (x < 0 && abs(x)/max(s2) < tol) 0
-        else x
-      })
       if (nonadm == "nnls") {
         if (!is.null(H)) {
           x <- nnls::nnls(A %*% H, g)
@@ -2162,14 +2161,15 @@ sform.um <- function(mdl, z = NULL, msoe = TRUE, H = NULL, cform = TRUE,
     }
   } else {
     g <- c(kappa, f)
-    S <- (g %*% t(g))*mdl$sig2
-    aux <- list(C1 = C1, C2 = C2, g = g, psi = psi, sig2 = mdl$sig2)
+    S <- (g %*% t(g))*object$sig2
+    aux <- list(C1 = C1, C2 = C2, g = g, psi = psi, sig2 = object$sig2)
   }
   S <- (S + t(S))/2
   S[abs(S) < .Machine$double.eps] <- 0
-  mdl1 <- ssm(z, b, C, S, NULL, bc = mdl$bc, cform = cform)
-  mdl1$z.name <- mdl$z
+  mdl1 <- ssm(z, b, C, S, NULL, bc = object$bc, cform = cform)
+  mdl1$z.name <- object$z
   mdl1$aux <- aux
+  mdl1$is.adm <- is.adm
   return(mdl1)
 }
 
@@ -2274,16 +2274,16 @@ decomp <- function (mdl, ...) { UseMethod("decomp") }
 #'    If NULL the calling environment of this function will be used.
 #' @export
 decomp.um <- function(mdl, z = NULL, 
-                     method = c("msx", "msx0", "mixed", "forecast", "backcast"),
+                     method = c("ucarima", "ucarima0", "mixed", "forecast", "backcast"),
                      envir = parent.frame(), ...) {
   
   stopifnot(mdl$p+mdl$d > 1)
   method <- match.arg(method)
 
-  if (method == "msx")
-    return(.uc_msx(mdl, z, TRUE, envir))
-  else if (method == "msx0")
-    return(.uc_msx(mdl, z, FALSE, envir))
+  if (method == "ucarima")
+    return(.uc_ucarima(mdl, z, TRUE, envir))
+  else if (method == "ucarima0")
+    return(.uc_ucarima(mdl, z, FALSE, envir))
 
   z <- z.um(mdl, z, envir)
 
@@ -2344,14 +2344,14 @@ decomp.um <- function(mdl, z = NULL,
     
   }
 
-.uc_msx <- function(mdl, z = NULL, canonical = FALSE, envir = NULL) {
+.uc_ucarima <- function(mdl, z = NULL, canonical = FALSE, envir = NULL) {
   stopifnot(is.um(mdl))
   z <- z.um(mdl, z, envir)
   if (mdl$bc) X <- cbind(series = log(z))
   else X <- cbind(series = z)
   if (mdl$p > 1) {
-    msx1 <- msx(mdl, ar = mdl$phi, canonical = canonical)
-    trans <- wkfilter(mdl, msx1$signal, z)
+    uca1 <- as.ucarima(mdl, ar = mdl$phi, canonical = canonical)
+    trans <- wkfilter(mdl, uca1$signal, z)
     X <- cbind(X, trans = trans)
   } 
   
@@ -2359,8 +2359,8 @@ decomp.um <- function(mdl, z = NULL,
     i <- factors(as.lagpol(mdl$nabla), full = FALSE)
     hasTrend <- abs(sum(i[[1]]$pol)) < 1e-5
     if (hasTrend) {
-      msx2 <- msx(mdl, i = i[[1]], canonical = canonical)
-      trend <- wkfilter(mdl, msx2$signal, z)
+      uca2 <- as.ucarima(mdl, i = i[[1]], canonical = canonical)
+      trend <- wkfilter(mdl, uca2$signal, z)
       X <- cbind(X, trend = trend)
       hasSeas <- length(i) > 1
     } else {
@@ -2371,11 +2371,11 @@ decomp.um <- function(mdl, z = NULL,
   
   if (hasSeas) {
     if (hasTrend) {
-      msx3 <- msx(mdl, i = i[-1], canonical = canonical)
+      uca3 <- as.ucarima(mdl, i = i[-1], canonical = canonical)
     } else {
-      msx3 <- msx(mdl, i = i, canonical = canonical)
+      uca3 <- as.ucarima(mdl, i = i, canonical = canonical)
     }
-    seas <- wkfilter(mdl, msx3$signal, z)
+    seas <- wkfilter(mdl, uca3$signal, z)
     X <- cbind(X, seas = seas)
   }
   irreg <- X[ ,1]
