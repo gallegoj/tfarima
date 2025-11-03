@@ -1,4 +1,3 @@
-## tfarima/R/um.R
 ## Jose L Gallego (UC)
 
 #' Univariate (ARIMA) model
@@ -372,8 +371,8 @@ setinputs.um <- function(mdl, xreg = NULL, inputs = NULL, y = NULL,
 #'  526-534, DOI: 10.1080/01621459.1983.10478005
 #'
 #' @examples
-#' Y <- tfarima::rsales
-#' um1 <- um(Y, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
+#' data(rsales)
+#' um1 <- um(rsales, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 #' tfm1 <- calendar(um1)
 #'
 #'@export
@@ -673,8 +672,8 @@ equation.um <- function(x, unscramble = FALSE, digits = 4,
 #' @return An object of class "\code{\link{tfm}}".
 #' 
 #' @examples
-#' Y <- rsales
-#' um1 <- um(Y, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
+#' data(rsales)
+#' um1 <- um(rsales, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 #' tfm1 <- easter(um1)
 #' @export
 easter <- function (um, ...) { UseMethod("easter") }
@@ -1019,8 +1018,8 @@ outliers <- function (mdl, ...) { UseMethod("outliers") }
 
 #' @rdname outliers
 #' @examples
-#' Y <- rsales
-#' um1 <- um(Y, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
+#' data(rsales)
+#' um1 <- um(rsales, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 #' outliers(um1)
 #' @export
 outliers.um <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"), 
@@ -1757,32 +1756,23 @@ seasadj <- function (mdl, ...) { UseMethod("seasadj") }
 #' Y <- seasadj(um1)
 #' ide(Y)
 #' @export
-seasadj.um <-
-function(mdl, z = NULL, method = c("mixed", "forecast", "backcast"), envir=NULL, ...)
+seasadj.um <- function(mdl, z = NULL, 
+         method = c("ucarima", "ucarima0",
+                    "ssm", "ssm0",
+                    "mixed", "forecast", "backcast"),
+         envir = parent.frame(), ...)
 {
   stopifnot(mdl$p+mdl$d > 1)
-  if (is.null (envir)) envir <- parent.frame ()
+  df <- decomp.um(mdl, z, method, envir, ...)
+  if ("seasonal" %in% colnames(df))
+    z <- df[, 1] - df[, "seasonal"]
+  else if ("seas" %in% colnames(df))
+    z <- df$z - df$seas
+  else if (is.data.frame(z))
+    z <- df[,1]
+  else
+    z <- df$z
 
-  if (is.null(z)) {
-    if (is.null(mdl$z)) stop("argument z required")
-    else {
-      z <- eval(parse(text = mdl$z), envir)
-    }
-  }
-  method <- match.arg(method)
-  if (is.null(mdl$mu)) mu <- 0
-  else mu <- mdl$mu
-  
-  ariroots <- unlist( lapply( c(mdl$ar, mdl$i), function(x) roots(x, FALSE)) )
-  if (method == "forecast") type = 1
-  else if(method == "backcast") type = 2
-  else type = 3
-  end <- end(z)
-  s <- frequency(z)
-  z <- seasadjC(z, mdl$bc, mu, mdl$phi, mdl$nabla, mdl$theta, mdl$sig2,
-                ariroots, type)
-  z <- ts(z, end = end, frequency = s )
-  
   return(z)
   
 }
@@ -2248,24 +2238,60 @@ tsdiag.um <- function(object, gof.lag = 10, ...)
   abline(h = 0.05, lty = 2, col = "blue")
 }
 
-#' Unobserved components
+#' Unobserved components decomposition
 #'
-#' \code{decomp} estimates the unobserved components of a time series (trend,
-#' seasonal, cycle, stationary and irregular) from the eventual forecast
-#' function.
+#' Estimates the unobserved components of a time series (trend, seasonal,
+#' cycle, stationary, and irregular) based on the structure of an underlying
+#' model. The estimation can be carried out through the UCARIMA
+#' representation, the state-space model (SSM) form, or via forward/backward
+#' forecasts.
 #'
-#' @param mdl an object of class \code{\link{um}} or \code{\link{tfm}}.
-#' @param method forward/backward forecasts or a mixture of the two.
-#' @param ... additional arguments.
+#' @param mdl An object of class \code{\link{um}} or \code{\link{tfm}},
+#'   representing a univariate ARIMA or transfer function model.
+#' @param method Character string specifying the decomposition method.
+#'   Options are:
+#'   \itemize{
+#'     \item \code{"ucarima"}, \code{"ucarima0"} – using the UCARIMA
+#'       representation, without or with the canonical requirement.
+#'     \item \code{"ssm"}, \code{"ssm0"} – using the state-space model
+#'       representation, with multiple sources of error (MSOE) or a single
+#'       source of error (SSOE), respectively.
+#'     \item \code{"mixed"} – combining forward and backward forecasts.
+#'     \item \code{"forecast"}, \code{"backcast"} – using the forward or
+#'     backward eventual forecast function. The last three options are 
+#'     deprecated and will be removed in a future release.
+#'   }
+#' @param z Optional object of class \code{\link{ts}} containing the observed
+#'   time series to decompose. If \code{NULL}, the series stored in
+#'   \code{mdl} is used (if available).
+#' @param envir Environment in which function arguments are evaluated.
+#'   If \code{NULL}, the calling environment is used.
+#' @param ... Additional arguments passed to internal methods.
 #'
-#' @return A matrix with the unobserved components.
+#' @return A data.frame with the estimated unobserved components.
+#'
+#' @details
+#' The function applies the corresponding internal routines to estimate
+#' the components depending on the chosen \code{method}. For UCARIMA-based
+#' methods, the Wiener–Kolmogorov filter is used. For state-space approaches,
+#' a Kalman smoother is applied.
 #'
 #' @examples
 #' Z <- AirPassengers
 #' um1 <- um(Z, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
-#' #uc1 <- decomp(um1)
-#' @export
+#' uc1 <- decomp(um1, method = "ucarima")
 #'
+#' @export
+decomp <- function (mdl, ...) { UseMethod("decomp") }
+
+#' @rdname decomp
+#' @export
+decomp.um <- function(mdl, z = NULL, 
+                      method = c("ucarima", "ucarima0",
+                                 "ssm", "ssm0",
+                                 "mixed", "forecast", "backcast"),
+                      envir = parent.frame(), ...)
+  
 decomp <- function (mdl, ...) { UseMethod("decomp") }
 
 #' @rdname decomp
@@ -2274,7 +2300,9 @@ decomp <- function (mdl, ...) { UseMethod("decomp") }
 #'    If NULL the calling environment of this function will be used.
 #' @export
 decomp.um <- function(mdl, z = NULL, 
-                     method = c("ucarima", "ucarima0", "mixed", "forecast", "backcast"),
+                     method = c("ucarima", "ucarima0",
+                                "ssm", "ssm0",
+                                "mixed", "forecast", "backcast"),
                      envir = parent.frame(), ...) {
   
   stopifnot(mdl$p+mdl$d > 1)
@@ -2284,7 +2312,11 @@ decomp.um <- function(mdl, z = NULL,
     return(.uc_ucarima(mdl, z, TRUE, envir))
   else if (method == "ucarima0")
     return(.uc_ucarima(mdl, z, FALSE, envir))
-
+  else if (method == "ssm")
+    return(.uc_ssm(mdl, z, TRUE, envir, ...))
+  else if (method == "ssm0")
+    return(.uc_ssm(mdl, z, FALSE, envir, ...))
+  
   z <- z.um(mdl, z, envir)
 
   if (mdl$bc) z <- log(z)
@@ -2342,17 +2374,35 @@ decomp.um <- function(mdl, z = NULL,
     
     return(uc)
     
-  }
+}
 
+#' Estimate unobserved components from an ARIMA model
+#'
+#' Internal function that estimates the unobserved components of a time series
+#' described by an ARIMA model. The estimation is based on the corresponding
+#' UCARIMA (Unobserved Components ARIMA) representation and the
+#' Wiener–Kolmogorov (WK) filter.
+#'
+#' @param mdl An object of class um.
+#' @param z Optional observed time series.
+#' @param canonical Logical. If \code{TRUE}, the canonical UCARIMA form is used.
+#' @param envir Optional environment for evaluating or storing intermediate results.
+#'
+#' @return A data.frame containing the estimated unobserved components.
+#'
+#' @keywords internal
+#' @noRd
 .uc_ucarima <- function(mdl, z = NULL, canonical = FALSE, envir = NULL) {
   stopifnot(is.um(mdl))
   z <- z.um(mdl, z, envir)
-  if (mdl$bc) X <- cbind(series = log(z))
-  else X <- cbind(series = z)
+  if (mdl$bc) df <- data.frame(log_series = log(z))
+  else df <- data.frame(series = z)
   if (mdl$p > 1) {
     uca1 <- as.ucarima(mdl, ar = mdl$phi, canonical = canonical)
-    trans <- wkfilter(mdl, uca1$signal, z)
-    X <- cbind(X, trans = trans)
+    if (uca1$ucm[[1]]$sig2 > 0) {
+      trans <- wkfilter(mdl, uca1$ucm[[1]], z)
+      df <- data.frame(df, ar = trans)
+    } else warning("inadmissible model for AR component")
   } 
   
   if (mdl$d > 1) {
@@ -2360,8 +2410,10 @@ decomp.um <- function(mdl, z = NULL,
     hasTrend <- abs(sum(i[[1]]$pol)) < 1e-5
     if (hasTrend) {
       uca2 <- as.ucarima(mdl, i = i[[1]], canonical = canonical)
-      trend <- wkfilter(mdl, uca2$signal, z)
-      X <- cbind(X, trend = trend)
+      if (uca2$ucm[[1]]$sig2 > 0) {
+        trend <- wkfilter(mdl, uca2$ucm[[1]], z)
+        df <- data.frame(df, trend = trend)
+      } else warning("inadmissible model for trend component")
       hasSeas <- length(i) > 1
     } else {
       trend <- NULL 
@@ -2375,16 +2427,80 @@ decomp.um <- function(mdl, z = NULL,
     } else {
       uca3 <- as.ucarima(mdl, i = i, canonical = canonical)
     }
-    seas <- wkfilter(mdl, uca3$signal, z)
-    X <- cbind(X, seas = seas)
+    if (uca2$ucm[[1]]$sig2 > 0) {
+      seas <- wkfilter(mdl, uca3$ucm[[1]], z)
+      df <- data.frame(df, seasonal = seas)
+    } else warning("inadmissible model for seasonal component")
   }
-  irreg <- X[ ,1]
-  for (i in 2:ncol(X))
-    irreg <- irreg - X[, i]
-  X <- cbind(X, irreg = irreg)
-  
-  return(X)
+  irreg <- df[ ,1]
+  for (i in 2:ncol(df))
+    irreg <- irreg - df[, i]
+  df <- data.frame(df, irregular = irreg)
+  return(df)
 }
+
+#' Estimate unobserved components via state-space smoothing
+#'
+#' Internal function that estimates the unobserved components of a time series
+#' by obtaining the structural (state-space) form of an ARIMA model and applying
+#' a smoothing algorithm.
+#'
+#' @param mdl An ARIMA model object.
+#' @param z Optional observed time series used in the estimation.
+#' @param msoe Logical. If \code{TRUE}, the model is treated as having
+#' multiple sources of error (MSOE); if \code{FALSE}, a single source
+#' of error (SSOE) formulation is assumed.
+#' @param envir Optional environment.
+#' @param ... Additional arguments.
+#'
+#' @return A data.frame containing the estimated unobserved components.
+#' @keywords internal
+#' @noRd
+.uc_ssm <- function(mdl, z = NULL, msoe = TRUE, envir = NULL, ...) {
+  stopifnot(is.um(mdl))
+  ssm1 <- as.ssm(mdl, z = z, msoe = msoe, envir = envir, ...)
+  ks1 <- ks(ssm1)
+  if (mdl$bc) df <- data.frame(log_series = ks1$ztilde)
+  else df <- data.frame(series = ks1$ztilde)
+  freq <- frequency(ks1$ztilde)
+  endz <- end(ks1$ztilde)
+  if (mdl$p > 1) {
+    ar <- ks1$X[, 1:mdl$p, drop = FALSE] %*% ssm1$b[1:mdl$p]
+    ar <- ts(as.numeric(ar), end = endz, frequency = freq)
+    df <- data.frame(df, ar = ar)
+    j <- mdl$p + 1
+  } else j <- 1
+  
+  if (mdl$d > 1) {
+    i <- factors(as.lagpol(mdl$nabla), full = FALSE)
+    hasTrend <- abs(sum(i[[1]]$pol)) < 1e-5
+    if (hasTrend) {
+      d <- length(i[[1]]$Pol) - 1
+      trend <- ks1$X[, j:(j+d-1), drop = FALSE] %*% ssm1$b[j:(j+d-1)]
+      trend <- ts(as.numeric(trend), end = endz, frequency = freq)
+      df <- data.frame(df, trend = trend)
+      hasSeas <- length(i) > 1
+      j <- j + d
+    } else {
+      trend <- NULL 
+      hasSeas <- TRUE
+    }
+  } 
+  
+  if (hasSeas) {
+    if (hasTrend) d <- length(i[[2]]$Pol) - 1
+    else d <- length(i[[1]]$Pol) - 1
+    seas <- ks1$X[, j:(j+d-1), drop = FALSE] %*% ssm1$b[j:(j+d-1)]
+    seas <- ts(as.numeric(seas), end = endz, frequency = freq)
+    df <- data.frame(df, seasonal = seas)
+  }
+  irreg <- ks1$ztilde - ks1$X %*% ssm1$b
+  irreg <- ts(as.numeric(irreg), end = endz, frequency = freq)
+  df <- data.frame(df, irregular = irreg)
+  return(df)
+}
+
+
 
 #' @export
 plot.uc.um <- function(x, main = NULL, ...) {

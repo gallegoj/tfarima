@@ -12,8 +12,8 @@
 #'
 #' @return Named vector: c(s2, ma0=1, ma1=-theta1, ..., maq=-thetaq).
 #'
-#' @references Godolphin, E. J. (1976). On the Cramér-Wold factorization.
-#' \emph{Biometrika}, \strong{63}(2), 367-372. \doi{10.2307/2335982}
+#' @references Godolphin, E. J. (1976). On the Cramer-Wold factorization.
+#' \emph{Biometrika}, \strong{63}(2), 367-372. \doi{10.1093/biomet/63.2.367}
 #'
 #' Tunnicliffe Wilson, G. (1969). Factorization of the covariance generating
 #' function of a pure moving average process. \emph{SIAM Journal on Numerical

@@ -8,6 +8,7 @@
 #' Association, Vol. 88, No. 421, pp. 284-297
 #'
 "rsales"
+rsales <- NULL
 
 #' Series C Chemical Process Temperature Readings: Every Minute.
 #'
@@ -18,6 +19,7 @@
 #' Analysis: Forecasting and Control. John Wiley & Sons, Hoboken.
 #' 
 "seriesC"
+seriesC <- NULL
 
 #' Gas furnace data
 #' 
@@ -34,6 +36,7 @@
 #' Analysis: Forecasting and Control. John Wiley & Sons, Hoboken.
 #' 
 "seriesJ"
+seriesJ <- NULL
 
 #' Wisconsin Telephone Company
 #'
@@ -53,6 +56,7 @@
 #'
 #' @source \url{https://drive.google.com/file/d/1LP8aMIQewMrxgOlrg9rN3eWHhZuUsY8K/view?usp=sharing}
 "Wtelephone"
+Wtelephone <- NULL
 
 #' Monthly Retail Sales: Building Material and Supplies Dealers (NAICS 4441)
 #'
@@ -64,7 +68,5 @@
 #' starting in January 1992 and ending in December 2024.
 #' @references U.S. Census Bureau, Monthly Retail Trade Survey.
 #' FRED series code: MRTSSM4441USS.
-#' @examples
-#' plot(BuildingMat, ylab = "Millions of dollars",
-#'      main = "Building Material and Supplies Dealers")
 "BuildingMat"
+BuildingMat <- NULL

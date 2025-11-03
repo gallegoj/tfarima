@@ -1,43 +1,46 @@
-#' Transfer Function and ARIMA Models.
+#' Transfer Function and ARIMA Models
 #'
-#' The tfarima package provides classes and methods to build customized transfer
-#' function and ARIMA models with multiple operators and parameter restrictions.
-#' The package also includes functions for model identification, model
-#' estimation (exact or conditional maximum likelihood), model diagnostic
-#' checking, automatic outlier detection, calendar effects, forecasting and
-#' seasonal adjustment.
+#' The \pkg{tfarima} package provides classes and methods to build customized
+#' transfer function and ARIMA models with multiple operators and parameter
+#' restrictions. It includes functions for model identification, estimation using
+#' exact or conditional maximum likelihood, diagnostic checking, automatic outlier
+#' detection, calendar effects, forecasting, and seasonal adjustment.
+#'
+#' The current version extends the functionality by incorporating the estimation
+#' of unobserved components in ARIMA models through the UCARIMA representation
+#' and structural time series models. The explicit C++11 specification has been
+#' removed following CRAN feedback.
 #'
 #' @name tfarima-package
 #' @aliases tfarima
-#' @author Jose Luis Gallego \email{jose.gallego@@unican.es}
+#' @author
+#' Jose Luis Gallego \email{jose.gallego@@unican.es}
 #'
 #' @references
+#' Bell, W. R. and Hillmer, S. C. (1983).
+#' Modeling Time Series with Calendar Variation.
+#' \emph{Journal of the American Statistical Association}, 78(383), 526–534.  
 #'
-#' Bell, W.R. and Hillmer, S.C. (1983) Modeling Time Series with Calendar
-#' Variation, Journal of the American Statistical Association, Vol. 78, No. 383,
-#' pp. 526-534.
+#' Box, G. E. P., Jenkins, G. M., Reinsel, G. C., and Ljung, G. M. (2015).
+#' \emph{Time Series Analysis: Forecasting and Control}.
+#' John Wiley & Sons, Hoboken.  
 #'
-#' Box, G.E., Jenkins, G.M., Reinsel, G.C. and Ljung, G.M. (2015) Time Series
-#' Analysis: Forecasting and Control. John Wiley & Sons, Hoboken.
+#' Box, G. E. P., Pierce, D. A., and Newbold, D. A. (1987).
+#' Estimating Trend and Growth Rates in Seasonal Time Series.
+#' \emph{Journal of the American Statistical Association}, 82(397), 276–282.  
 #'
-#' Box, G.E.P.,  Pierce, D.A. and Newbold, D. A. (1987) Estimating Trend and
-#' Growth Rates in Seasonal Time Series, Journal of the American Statistical
-#' Association, Vol. 82, No. 397, pp. 276-282.
+#' Box, G. E. P. and Tiao, G. C. (1975).
+#' Intervention Analysis with Applications to Economic and Environmental Problems.
+#' \emph{Journal of the American Statistical Association}, 70(349), 70–79.  
 #'
-#' Box, G.E.P. and  Tiao,  G.C. (1975) “Intervention Analysis with Applications
-#' to Economic and Environmental Problems”, Journal of the American Statistical
-#' Association, Vol. 70, No. 349, pp. 70-79.
+#' Chen, C. and Liu, L. (1993).
+#' Joint Estimation of Model Parameters and Outlier Effects in Time Series.
+#' \emph{Journal of the American Statistical Association}, 88(421), 284–297.  
 #'
-#' Chen, C. and Liu, L. (1993) Joint Estimation of Model Parameters and Outlier
-#' Effects in Time Series, Journal of the American Statistical Association, Vol.
-#' 88, No. 421, pp. 284-297
+#' Thompson, H. E. and Tiao, G. C. (1971).
+#' Analysis of Telephone Data: A Case Study of Forecasting Seasonal Time Series.
+#' \emph{Bell Journal of Economics}, 2(2), 515–541.
 #'
-#' Thompson, H. E. and Tiao, G. C. (1971) "Analysis of Telephone
-#' Data: A Case Study of Forecasting Seasonal Time Series," Bell Journal of
-#' Economics, The RAND Corporation, vol. 2(2), pages 515-541, Autumn.
-#'
-#' @keywords internal
-"_PACKAGE"
 #' @importFrom Rcpp evalCpp
 #' @importFrom numDeriv jacobian
 #' @importFrom MASS ginv
@@ -47,7 +50,7 @@
 #' @importFrom stats resid residuals rnorm sd start time ts tsdiag update var 
 #' @importFrom stats window rbinom toeplitz
 #' @importFrom graphics abline axis hist layout lcm legend lines mtext par
-#' @importFrom graphics plot  plot.new points segments text title 
+#' @importFrom graphics plot plot.new points segments text title 
 #' @importFrom utils tail
-#' @useDynLib tfarima, .registration=TRUE
+#' @useDynLib tfarima, .registration = TRUE
 NULL

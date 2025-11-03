@@ -104,8 +104,8 @@ variables: week days and weekends. Optionally, a deterministic variable to
 estimate the Easter effect can also be included, see "\code{\link{easter}}".
 }
 \examples{
-Y <- tfarima::rsales
-um1 <- um(Y, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
+data(rsales)
+um1 <- um(rsales, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 tfm1 <- calendar(um1)
 
 }

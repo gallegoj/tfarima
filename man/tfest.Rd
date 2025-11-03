@@ -52,7 +52,7 @@ that relates the input X_t to the output Y_t.
 Uses prewhitening to estimate initial parameter values.
 }
 \examples{
-
+data(seriesJ)
 Y <- seriesJ$Y - mean(seriesJ$Y)
 X <- seriesJ$X - mean(seriesJ$X)
 umx <- um(X, ar = 3)

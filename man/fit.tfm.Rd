@@ -51,6 +51,7 @@ Estimates the parameters of a transfer function model of class \code{tfm} by
 }
 \examples{
 \dontrun{
+data(seriesJ)
 Y <- seriesJ$Y - mean(seriesJ$Y)
 X <- seriesJ$X - mean(seriesJ$X)
 umx <- um(X, ar = 3)

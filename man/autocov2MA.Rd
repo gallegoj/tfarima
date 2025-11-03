@@ -26,8 +26,8 @@ autocov2MA(autocov(ma1, 1))
 autocov2MA(autocov(ma1, 1), method = "acov")
 }
 \references{
-Godolphin, E. J. (1976). On the Cramér-Wold factorization.
-\emph{Biometrika}, \strong{63}(2), 367-372. \doi{10.2307/2335982}
+Godolphin, E. J. (1976). On the Cramer-Wold factorization.
+\emph{Biometrika}, \strong{63}(2), 367-372. \doi{10.1093/biomet/63.2.367}
 
 Tunnicliffe Wilson, G. (1969). Factorization of the covariance generating
 function of a pure moving average process. \emph{SIAM Journal on Numerical

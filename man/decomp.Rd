@@ -6,7 +6,7 @@
 \alias{decomp.ucarima}
 \alias{decomp}
 \alias{decomp.um}
-\title{Unobserved components}
+\title{Unobserved components decomposition}
 \usage{
 \method{decomp}{ssm}(mdl, tol = 1e-05, ...)
 
@@ -25,21 +25,42 @@ decomp(mdl, ...)
 \method{decomp}{um}(
   mdl,
   z = NULL,
-  method = c("ucarima", "ucarima0", "mixed", "forecast", "backcast"),
+  method = c("ucarima", "ucarima0", "ssm", "ssm0", "mixed", "forecast", "backcast"),
+  envir = parent.frame(),
+  ...
+)
+
+\method{decomp}{um}(
+  mdl,
+  z = NULL,
+  method = c("ucarima", "ucarima0", "ssm", "ssm0", "mixed", "forecast", "backcast"),
   envir = parent.frame(),
   ...
 )
 }
 \arguments{
-\item{mdl}{an object of class \code{\link{um}} or \code{\link{tfm}}.}
+\item{mdl}{An object of class \code{\link{um}} or \code{\link{tfm}},
+representing a univariate ARIMA or transfer function model.}
 
 \item{tol}{numeric tolerance for classifying eigenvalues.}
 
-\item{...}{additional arguments.}
+\item{...}{Additional arguments passed to internal methods.}
 
 \item{y}{an object of class \code{\link{ts}}.}
 
-\item{method}{forward/backward forecasts or a mixture of the two.}
+\item{method}{Character string specifying the decomposition method.
+Options are:
+\itemize{
+  \item \code{"ucarima"}, \code{"ucarima0"} – using the UCARIMA
+    representation, without or with the canonical requirement.
+  \item \code{"ssm"}, \code{"ssm0"} – using the state-space model
+    representation, with multiple sources of error (MSOE) or a single
+    source of error (SSOE), respectively.
+  \item \code{"mixed"} – combining forward and backward forecasts.
+  \item \code{"forecast"}, \code{"backcast"} – using the forward or
+  backward eventual forecast function. The last three options are 
+  deprecated and will be removed in a future release.
+}}
 
 \item{envir}{environment in which the function arguments are evaluated.
 If NULL the calling environment of this function will be used.}
@@ -47,15 +68,24 @@ If NULL the calling environment of this function will be used.}
 \item{z}{an object of class \code{\link{ts}}.}
 }
 \value{
-A matrix with the unobserved components.
+A data.frame with the estimated unobserved components.
 }
 \description{
-\code{decomp} estimates the unobserved components of a time series (trend,
-seasonal, cycle, stationary and irregular) from the eventual forecast
-function.
+Estimates the unobserved components of a time series (trend, seasonal,
+cycle, stationary, and irregular) based on the structure of an underlying
+model. The estimation can be carried out through the UCARIMA
+representation, the state-space model (SSM) form, or via forward/backward
+forecasts.
+}
+\details{
+The function applies the corresponding internal routines to estimate
+the components depending on the chosen \code{method}. For UCARIMA-based
+methods, the Wiener–Kolmogorov filter is used. For state-space approaches,
+a Kalman smoother is applied.
 }
 \examples{
 Z <- AirPassengers
 um1 <- um(Z, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
-#uc1 <- decomp(um1)
+uc1 <- decomp(um1, method = "ucarima")
+
 }

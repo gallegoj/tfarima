@@ -10,19 +10,32 @@ seasadj(mdl, ...)
 \method{seasadj}{um}(
   mdl,
   z = NULL,
-  method = c("mixed", "forecast", "backcast"),
-  envir = NULL,
+  method = c("ucarima", "ucarima0", "ssm", "ssm0", "mixed", "forecast", "backcast"),
+  envir = parent.frame(),
   ...
 )
 }
 \arguments{
-\item{mdl}{an object of class \code{\link{um}} or \code{\link{tfm}}.}
+\item{mdl}{An object of class \code{\link{um}} or \code{\link{tfm}},
+representing a univariate ARIMA or transfer function model.}
 
-\item{...}{additional arguments.}
+\item{...}{Additional arguments passed to internal methods.}
 
 \item{z}{an object of class \code{\link{ts}}.}
 
-\item{method}{forward/backward forecasts or a mixture of the two.}
+\item{method}{Character string specifying the decomposition method.
+Options are:
+\itemize{
+  \item \code{"ucarima"}, \code{"ucarima0"} – using the UCARIMA
+    representation, without or with the canonical requirement.
+  \item \code{"ssm"}, \code{"ssm0"} – using the state-space model
+    representation, with multiple sources of error (MSOE) or a single
+    source of error (SSOE), respectively.
+  \item \code{"mixed"} – combining forward and backward forecasts.
+  \item \code{"forecast"}, \code{"backcast"} – using the forward or
+  backward eventual forecast function. The last three options are 
+  deprecated and will be removed in a future release.
+}}
 
 \item{envir}{environment in which the function arguments are evaluated.
 If NULL the calling environment of this function will be used.}

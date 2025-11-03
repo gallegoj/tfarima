@@ -162,7 +162,7 @@ tf <- function(x = NULL, delay = 0,  w0 = 0.01, ar = NULL, ma = NULL, um = NULL,
 #' @details Uses prewhitening to estimate initial parameter values.
 #'
 #' @examples
-#'
+#' data(seriesJ)
 #' Y <- seriesJ$Y - mean(seriesJ$Y)
 #' X <- seriesJ$X - mean(seriesJ$X)
 #' umx <- um(X, ar = 3)

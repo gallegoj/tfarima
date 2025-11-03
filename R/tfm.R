@@ -43,6 +43,7 @@
 #'
 #' @examples
 #' \dontrun{
+#' data(seriesJ)
 #' Y <- seriesJ$Y - mean(seriesJ$Y)
 #' X <- seriesJ$X - mean(seriesJ$X)
 #' umx <- um(X, ar = 3)
@@ -213,6 +214,7 @@ tfm <- function(output = NULL, xreg = NULL, inputs = NULL, noise, fit = TRUE,
 #'
 #' @examples
 #' \dontrun{
+#' data(seriesJ)
 #' Y <- seriesJ$Y - mean(seriesJ$Y)
 #' X <- seriesJ$X - mean(seriesJ$X)
 #' umx <- um(X, ar = 3)
@@ -360,6 +362,7 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
 #'
 #' @examples
 #' \dontrun{
+#' data(seriesJ)
 #' Y <- seriesJ$Y - mean(seriesJ$Y)
 #' X <- seriesJ$X - mean(seriesJ$X)
 #' umx <- um(X, ar = 3)

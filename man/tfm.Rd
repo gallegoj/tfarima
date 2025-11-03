@@ -59,6 +59,7 @@ transformation as specified in \code{noise}.
 }
 \examples{
 \dontrun{
+data(seriesJ)
 Y <- seriesJ$Y - mean(seriesJ$Y)
 X <- seriesJ$X - mean(seriesJ$X)
 umx <- um(X, ar = 3)

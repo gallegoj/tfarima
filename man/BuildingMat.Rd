@@ -16,10 +16,6 @@ Monthly U.S. retail sales for building material and supplies dealers
 (NAICS code 4441), in millions of dollars, seasonally adjusted.
 Source: U.S. Census Bureau, Monthly Retail Trade Survey (via FRED).
 }
-\examples{
-plot(BuildingMat, ylab = "Millions of dollars",
-     main = "Building Material and Supplies Dealers")
-}
 \references{
 U.S. Census Bureau, Monthly Retail Trade Survey.
 FRED series code: MRTSSM4441USS.

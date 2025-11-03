@@ -114,7 +114,7 @@ outliers are unknown, an iterative detection process like that proposed by
 Chen and Liu (1993) is conducted.
 }
 \examples{
-Y <- rsales
-um1 <- um(Y, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
+data(rsales)
+um1 <- um(rsales, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 outliers(um1)
 }

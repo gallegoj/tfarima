@@ -44,6 +44,7 @@ z-statistics, p-values, AIC, BIC, log-likelihood, Ljung-Box tests
 }
 \examples{
 \dontrun{
+data(seriesJ)
 Y <- seriesJ$Y - mean(seriesJ$Y)
 X <- seriesJ$X - mean(seriesJ$X)
 umx <- um(X, ar = 3)

@@ -43,7 +43,7 @@ An object of class "\code{\link{tfm}}".
 variable to capture the Easter effect.
 }
 \examples{
-Y <- rsales
-um1 <- um(Y, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
+data(rsales)
+um1 <- um(rsales, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 tfm1 <- easter(um1)
 }

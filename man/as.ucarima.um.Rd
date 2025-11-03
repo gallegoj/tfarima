@@ -66,8 +66,8 @@ Association}, \strong{77}(377), 63–70.
 Burman, J. P. (1980). Seasonal adjustment by signal extraction. \emph{Journal
 of the Royal Statistical Society: Series A}, \strong{143}(3), 321–337.
 
-Godolphin, E. J. (1976). On the Cramér–Wold factorization. \emph{Biometrika},
-\strong{63}(2), 367–372. \doi{10.2307/2335982}
+Godolphin, E. J. (1976). On the Cramer–Wold factorization. \emph{Biometrika},
+\strong{63}(2), 367–372. \doi{10.1093/biomet/63.2.367}
 
 Tunnicliffe Wilson, G. (1969). Factorization of the covariance generating
 function of a pure moving average process. \emph{SIAM Journal on Numerical
