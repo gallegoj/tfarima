@@ -8,8 +8,7 @@
 #'
 #' The current version extends the functionality by incorporating the estimation
 #' of unobserved components in ARIMA models through the UCARIMA representation
-#' and structural time series models. The explicit C++11 specification has been
-#' removed following CRAN feedback.
+#' and structural time series models. 
 #'
 #' @name tfarima-package
 #' @aliases tfarima

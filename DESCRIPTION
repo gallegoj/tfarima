@@ -1,7 +1,7 @@
 Package: tfarima
 Type: Package
 Title: Transfer Function and ARIMA Models
-Version: 0.4.0
+Version: 0.4.1
 Authors@R: 
     person("Jose L.", "Gallego", email = "jose.gallego@unican.es", 
            role = c("aut", "cre"))
@@ -9,7 +9,8 @@ Description: Build customized transfer function and ARIMA models with multiple o
     and parameter restrictions. Provides tools for model identification, estimation 
     using exact or conditional maximum likelihood, diagnostic checking, automatic outlier 
     detection, calendar effects, forecasting, and seasonal adjustment. The new version 
-    also supports UCARIMA model specification and estimation for structural time series analysis.
+    also supports unobserved component ARIMA model specification and estimation 
+    for structural time series analysis.
 License: GPL (>= 2)
 URL: https://github.com/gallegoj/tfarima
 Depends: R (>= 3.5.0)
